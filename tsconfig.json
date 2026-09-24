@@ -1,0 +1,36 @@
+{
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "exactOptionalPropertyTypes": true,
+    "lib": ["ES2023", "ESNext.Disposable"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "noEmit": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noUncheckedIndexedAccess": true,
+    "paths": {
+      "@personal-assistant/assistant-core": ["./packages/assistant-core/src/index.ts"],
+      "@personal-assistant/capability-registry": ["./packages/capability-registry/src/index.ts"],
+      "@personal-assistant/contracts": ["./packages/contracts/src/index.ts"],
+      "@personal-assistant/dsh-adapter": ["./adapters/dsh/src/index.ts"],
+      "@personal-assistant/personal-memory": ["./packages/personal-memory/src/index.ts"],
+      "@personal-assistant/policy": ["./packages/policy/src/index.ts"],
+      "@personal-assistant/runtime": ["./apps/runtime/src/index.ts"],
+      "@personal-assistant/task-ledger": ["./packages/task-ledger/src/index.ts"]
+    },
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "target": "ES2023",
+    "types": ["node", "vitest/globals"]
+  },
+  "include": [
+    "adapters/**/*.ts",
+    "apps/**/*.ts",
+    "packages/**/*.ts",
+    "tests/**/*.ts",
+    "tsup.config.ts",
+    "vitest.config.ts"
+  ]
+}

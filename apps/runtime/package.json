@@ -1,0 +1,14 @@
+{
+  "name": "@personal-assistant/runtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@personal-assistant/assistant-core": "workspace:*",
+    "@personal-assistant/capability-registry": "workspace:*",
+    "@personal-assistant/dsh-adapter": "workspace:*",
+    "@personal-assistant/policy": "workspace:*",
+    "@personal-assistant/task-ledger": "workspace:*"
+  }
+}

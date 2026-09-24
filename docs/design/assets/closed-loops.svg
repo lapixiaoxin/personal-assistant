@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 560" width="1000" height="560">
+  <rect x="0" y="0" width="1000" height="560" rx="24" fill="#f6f8fc"/>
+  <text x="44" y="48" font-family="sans-serif" font-size="25" font-weight="700" fill="#17243b">一个持续的个人助手，两条有证据的闭环</text>
+  <text x="44" y="78" font-family="sans-serif" font-size="15" fill="#526178">目标设计 · 模块可替换，授权与核验不可旁路</text>
+  <rect x="45" y="103" width="910" height="66" rx="33" fill="#172f53"/>
+  <text x="500" y="132" text-anchor="middle" font-family="sans-serif" font-size="19" fill="#ffffff">用户拥有的连续资产</text>
+  <text x="500" y="155" text-anchor="middle" font-family="sans-serif" font-size="15" fill="#d9e5f5">身份 · 目标 · 记忆 · 承诺 · 授权 · 证据</text>
+  <text x="48" y="209" font-family="sans-serif" font-size="18" font-weight="700" fill="#185e8a">办事闭环</text>
+  <line x1="235" y1="260" x2="760" y2="260" stroke="#4986aa" stroke-width="3"/>
+  <polygon points="408,254 420,260 408,266" fill="#4986aa"/>
+  <polygon points="715,254 727,260 715,266" fill="#4986aa"/>
+  <circle cx="230" cy="260" r="46" fill="#dceffc" stroke="#4986aa" stroke-width="2"/>
+  <text x="230" y="255" text-anchor="middle" font-family="sans-serif" font-size="17" fill="#173b54">理解目标</text>
+  <text x="230" y="278" text-anchor="middle" font-family="sans-serif" font-size="14" fill="#375b73">组织上下文</text>
+  <rect x="421" y="220" width="238" height="80" rx="18" fill="#e9f4fa" stroke="#4986aa" stroke-width="2"/>
+  <text x="540" y="251" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="700" fill="#173b54">动作门禁 → 能力执行</text>
+  <text x="540" y="277" text-anchor="middle" font-family="sans-serif" font-size="14" fill="#375b73">工具 / DSH / 专家 / 设备</text>
+  <circle cx="800" cy="260" r="46" fill="#dceffc" stroke="#4986aa" stroke-width="2"/>
+  <text x="800" y="255" text-anchor="middle" font-family="sans-serif" font-size="17" fill="#173b54">独立核验</text>
+  <text x="800" y="278" text-anchor="middle" font-family="sans-serif" font-size="14" fill="#375b73">产物与回执</text>
+  <polyline points="800,307 800,330 230,330 230,309" fill="none" stroke="#4986aa" stroke-width="2"/>
+  <polygon points="224,315 230,304 236,315" fill="#4986aa"/>
+  <text x="516" y="352" text-anchor="middle" font-family="sans-serif" font-size="14" fill="#526178">有证据的结果回到目标；可复用经验进入改进候选</text>
+  <text x="48" y="391" font-family="sans-serif" font-size="18" font-weight="700" fill="#6b5295">进化闭环</text>
+  <line x1="235" y1="436" x2="760" y2="436" stroke="#8c70b0" stroke-width="3"/>
+  <polygon points="408,430 420,436 408,442" fill="#8c70b0"/>
+  <polygon points="715,430 727,436 715,442" fill="#8c70b0"/>
+  <circle cx="230" cy="436" r="46" fill="#eee7f7" stroke="#8c70b0" stroke-width="2"/>
+  <text x="230" y="431" text-anchor="middle" font-family="sans-serif" font-size="17" fill="#50376b">规范提案</text>
+  <text x="230" y="454" text-anchor="middle" font-family="sans-serif" font-size="14" fill="#6b5287">目标与验收</text>
+  <rect x="421" y="396" width="238" height="80" rx="18" fill="#f1ecf8" stroke="#8c70b0" stroke-width="2"/>
+  <text x="540" y="427" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="700" fill="#50376b">隔离开发 → 独立验证</text>
+  <text x="540" y="453" text-anchor="middle" font-family="sans-serif" font-size="14" fill="#6b5287">精确版本 / 测试 / SOP</text>
+  <circle cx="800" cy="436" r="46" fill="#eee7f7" stroke="#8c70b0" stroke-width="2"/>
+  <text x="800" y="431" text-anchor="middle" font-family="sans-serif" font-size="17" fill="#50376b">受控发布</text>
+  <text x="800" y="454" text-anchor="middle" font-family="sans-serif" font-size="14" fill="#6b5287">观察与回滚</text>
+  <polyline points="800,483 800,506 230,506 230,485" fill="none" stroke="#8c70b0" stroke-width="2"/>
+  <polygon points="224,491 230,480 236,491" fill="#8c70b0"/>
+  <text x="516" y="539" text-anchor="middle" font-family="sans-serif" font-size="14" fill="#526178">升级权限由发布政策决定；开发 Agent 不持有生产动作与发布密钥</text>
+</svg>

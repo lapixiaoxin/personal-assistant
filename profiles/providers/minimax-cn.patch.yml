@@ -1,0 +1,7 @@
+# Enable the DSH-bundled MiniMax China catalog without copying endpoint or
+# model metadata. DSH owns those versioned compatibility details.
+- id: llm-pi-ai
+  config:
+    providers:
+      minimax-cn:
+        apiKeyEnv: MINIMAX_CN_API_KEY

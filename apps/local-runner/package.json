@@ -1,0 +1,11 @@
+{
+  "name": "@personal-assistant/local-runner",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@personal-assistant/contracts": "workspace:*",
+    "@personal-assistant/runtime": "workspace:*",
+    "commander": "14.0.1"
+  }
+}

@@ -1,0 +1,7 @@
+# Enable the DSH-bundled global MiniMax catalog without copying endpoint or
+# model metadata. DSH owns those versioned compatibility details.
+- id: llm-pi-ai
+  config:
+    providers:
+      minimax:
+        apiKeyEnv: MINIMAX_API_KEY
