@@ -2,12 +2,12 @@
 
 import { resolve } from 'node:path'
 import { Command } from 'commander'
-import { createTaskRequest, TaskStateSchema } from '@personal-assistant/contracts'
+import { createTaskRequest, TaskStateSchema } from '@lumi/contracts'
 import {
   createAssistantRuntime,
   loadLocalEnvironment,
   type AssistantRuntime,
-} from '@personal-assistant/runtime'
+} from '@lumi/runtime'
 
 interface GlobalOptions {
   db?: string
@@ -16,8 +16,8 @@ interface GlobalOptions {
 loadLocalEnvironment()
 
 const program = new Command()
-  .name('personal-assistant')
-  .description('Local CLI for the personal assistant task ledger')
+  .name('lumi')
+  .description('Local CLI for the lumi personal agent task ledger')
   .option('--db <path>', 'SQLite database path')
 
 program

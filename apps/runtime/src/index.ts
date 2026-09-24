@@ -1,14 +1,14 @@
 import { resolve } from 'node:path'
 import { loadEnvFile } from 'node:process'
-import { AssistantCore, type TaskExecutor } from '@personal-assistant/assistant-core'
+import { AssistantCore, type TaskExecutor } from '@lumi/assistant-core'
 import {
   createDefaultCapabilityRegistry,
   RuleBasedRouter,
   type CapabilityRegistry,
-} from '@personal-assistant/capability-registry'
-import { DshAdapter, MockDshAdapter } from '@personal-assistant/dsh-adapter'
-import { DefaultPolicyEngine, type PolicyEngine } from '@personal-assistant/policy'
-import { SqliteTaskLedger, type TaskLedger } from '@personal-assistant/task-ledger'
+} from '@lumi/capability-registry'
+import { DshAdapter, MockDshAdapter } from '@lumi/dsh-adapter'
+import { DefaultPolicyEngine, type PolicyEngine } from '@lumi/policy'
+import { SqliteTaskLedger, type TaskLedger } from '@lumi/task-ledger'
 
 export interface AssistantRuntime {
   capabilities: CapabilityRegistry
@@ -85,7 +85,7 @@ function createConfiguredExecutor(cwd: string, dataDir: string): {
     executor: new DshAdapter({
       capabilityPatchFiles: {
         'coding-agent': ['profiles/dsh-coding/cordis.patch.yml'],
-        'personal-assistant': ['profiles/dsh-personal/cordis.patch.yml'],
+        'personal-assistant': ['profiles/dsh-lumi/cordis.patch.yml'],
       },
       cwd,
       dshHome: resolve(process.env.PA_DSH_HOME ?? `${dataDir}/dsh`),

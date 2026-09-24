@@ -4,7 +4,7 @@ import type {
   ExecutionInput,
   ExecutionResult,
   TaskExecutor,
-} from '@personal-assistant/assistant-core'
+} from '@lumi/assistant-core'
 
 interface HarnessNotification {
   method: string
@@ -151,7 +151,7 @@ export class MockDshAdapter implements TaskExecutor {
 function createDshHarnessFactory(options: DshAdapterOptions): HarnessFactory {
   const defaultPatchFile = resolve(
     options.cwd,
-    options.patchFile ?? 'profiles/dsh-personal/cordis.patch.yml',
+    options.patchFile ?? 'profiles/dsh-lumi/cordis.patch.yml',
   )
   return async (input) => {
     const { DeepSeekHarness } = await import('@deepseek-ai/dsh-sdk-client')

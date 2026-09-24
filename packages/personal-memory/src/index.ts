@@ -1,4 +1,4 @@
-import { createId } from '@personal-assistant/contracts'
+import { createId } from '@lumi/contracts'
 import { z } from 'zod'
 
 export const PersonalMemorySchema = z.object({

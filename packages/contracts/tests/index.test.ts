@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createTaskRequest, TaskRequestSchema } from './index.ts'
+import { createTaskRequest, TaskRequestSchema } from '../src/index.ts'
 
 describe('task contracts', () => {
   it('normalizes an entry-specific submission into one stable request', () => {

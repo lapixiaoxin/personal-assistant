@@ -2,6 +2,8 @@
 
 发布日期：2026-09-24。状态：已发布审阅版 v0.2，方案本身为 Proposed。用户授权在“个人助手”下新建方案子文档；原始愿景与原工程方案未修改。
 
+投影差异（SPEC-0002）：本次任务整理当前工程，未重新发布飞书。仓库的 `00-overview` 新增 lumi 命名、`08-sdd` 更新测试布局、`current-state` 追加整理与验证记录；这三篇的飞书正文仍为下表所列旧 revision。后续发布按本节差异局部同步，不能把旧投影当作最新工程事实。
+
 入口：[超级个人助手：长期设计总纲](https://bytedance.larkoffice.com/wiki/DnYJwYk8iiijjykyqHqc4xAYnke)。
 
 总纲位于用户指定的 [个人助手](https://bytedance.larkoffice.com/wiki/CIACwItFgimTkrkM3B4cGAxznyf) 节点下。以下 10 篇均为总纲的直接子节点，已核验 `has_more=false`、parent_node_token 与 obj_token。

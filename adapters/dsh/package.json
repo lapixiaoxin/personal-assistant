@@ -1,12 +1,12 @@
 {
-  "name": "@personal-assistant/dsh-adapter",
+  "name": "@lumi/dsh-adapter",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "exports": "./src/index.ts",
   "dependencies": {
     "@deepseek-ai/dsh-sdk-client": "0.1.7-rc.1",
-    "@personal-assistant/assistant-core": "workspace:*",
-    "@personal-assistant/contracts": "workspace:*"
+    "@lumi/assistant-core": "workspace:*",
+    "@lumi/contracts": "workspace:*"
   }
 }

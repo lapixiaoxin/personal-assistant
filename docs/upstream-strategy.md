@@ -10,7 +10,7 @@
 
 - `@deepseek-ai/dsh-sdk-client` 会解析同版本的 `@deepseek-ai/dsh`，版本不一致会直接失败。
 - 包依赖可以由 lockfile 完整复现，升级差异集中且便于自动化。
-- Personal Assistant Core 只依赖本仓的 `TaskExecutor`，DSH 类型停留在 `adapters/dsh`。
+- lumi 的 Assistant Core 只依赖本仓的 `TaskExecutor`，DSH 类型停留在 `adapters/dsh`。
 - 若必须修改 DSH，补丁应先贡献上游；合并前使用独立 fork 和短期分支验证，不改变主仓依赖形态。
 
 ### DSH Desktop
@@ -43,7 +43,7 @@ sdk profile + repository-owned patch
 - `adapters/dsh`
 - `profiles/dsh-*`
 - `profiles/providers`
-- `tests/dsh-runtime.contract.test.ts`
+- `tests/contract/dsh-runtime.test.ts`
 - `upstream.lock.json`
 
 不允许 DSH 类型进入：

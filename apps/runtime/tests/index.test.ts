@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createAssistantRuntime, resolveDshModelConfiguration } from './index.ts'
+import { createAssistantRuntime, resolveDshModelConfiguration } from '../src/index.ts'
 
 afterEach(() => {
   vi.unstubAllEnvs()

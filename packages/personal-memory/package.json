@@ -1,11 +1,11 @@
 {
-  "name": "@personal-assistant/personal-memory",
+  "name": "@lumi/personal-memory",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "exports": "./src/index.ts",
   "dependencies": {
-    "@personal-assistant/contracts": "workspace:*",
+    "@lumi/contracts": "workspace:*",
     "zod": "4.1.11"
   }
 }

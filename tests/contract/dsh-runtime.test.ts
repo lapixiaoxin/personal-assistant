@@ -4,11 +4,11 @@ import { fileURLToPath } from 'node:url'
 import { DeepSeekHarness } from '@deepseek-ai/dsh-sdk-client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { startMockLlmServer, type MockLlmServer } from '@deepseek-ai/dsh-llm-mock-server'
-import { DshAdapter } from '../adapters/dsh/src/index.ts'
-import { buildGateway } from '../apps/gateway/src/server.ts'
-import { createAssistantRuntime, type AssistantRuntime } from '../apps/runtime/src/index.ts'
+import { DshAdapter } from '../../adapters/dsh/src/index.ts'
+import { buildGateway } from '../../apps/gateway/src/server.ts'
+import { createAssistantRuntime, type AssistantRuntime } from '../../apps/runtime/src/index.ts'
 
-const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const runtimes: AssistantRuntime[] = []
 const servers: MockLlmServer[] = []
 const directories: string[] = []
@@ -38,7 +38,7 @@ describe('DSH runtime contract', () => {
     const executor = new DshAdapter({
       capabilityPatchFiles: {
         'coding-agent': ['profiles/dsh-coding/cordis.patch.yml'],
-        'personal-assistant': ['profiles/dsh-personal/cordis.patch.yml'],
+        'personal-assistant': ['profiles/dsh-lumi/cordis.patch.yml'],
       },
       cwd: projectRoot,
       dshHome: join(directory, 'dsh-home'),
@@ -79,7 +79,7 @@ describe('DSH runtime contract', () => {
       .toContain('execution.completed')
     expect(modelServer.requests).toHaveLength(1)
     expect(JSON.stringify(modelServer.requests[0]?.body))
-      .toContain('coding specialist for a personal assistant')
+      .toContain('coding specialist for lumi')
   }, 30_000)
 
   it('boots the DSH MiniMax catalog route without network access', async () => {

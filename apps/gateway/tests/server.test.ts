@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import type { TaskExecutor } from '@personal-assistant/assistant-core'
-import { createAssistantRuntime, type AssistantRuntime } from '@personal-assistant/runtime'
-import { buildGateway } from './server.ts'
+import type { TaskExecutor } from '@lumi/assistant-core'
+import { createAssistantRuntime, type AssistantRuntime } from '@lumi/runtime'
+import { buildGateway } from '../src/server.ts'
 
 const openRuntimes: AssistantRuntime[] = []
 

@@ -11,6 +11,9 @@ export default defineConfig({
       provider: 'v8',
     },
     environment: 'node',
-    include: ['{adapters,apps,packages,tests}/**/*.test.ts'],
+    include: [
+      '{adapters,apps,packages}/*/tests/**/*.test.ts',
+      'tests/**/*.test.ts',
+    ],
   },
 })

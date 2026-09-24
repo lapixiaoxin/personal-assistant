@@ -1,5 +1,5 @@
-import type { CapabilityDescriptor, TaskRequest } from '@personal-assistant/contracts'
-import { CapabilityDescriptorSchema } from '@personal-assistant/contracts'
+import type { CapabilityDescriptor, TaskRequest } from '@lumi/contracts'
+import { CapabilityDescriptorSchema } from '@lumi/contracts'
 
 export interface RoutingDecision {
   capability: CapabilityDescriptor

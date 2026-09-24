@@ -1,5 +1,5 @@
 {
-  "name": "personal-assistant",
+  "name": "lumi",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -27,7 +27,7 @@
     "lint": "eslint .",
     "start": "node dist/gateway/main.js",
     "test": "vitest run",
-    "test:dsh": "vitest run tests/dsh-runtime.contract.test.ts",
+    "test:dsh": "vitest run tests/contract/dsh-runtime.test.ts",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
   },

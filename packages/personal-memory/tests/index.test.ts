@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { InMemoryPersonalMemoryStore, PersonalMemoryService } from './index.ts'
+import { InMemoryPersonalMemoryStore, PersonalMemoryService } from '../src/index.ts'
 
 describe('PersonalMemoryService', () => {
   it('keeps inferred memories as candidates until explicitly confirmed', () => {

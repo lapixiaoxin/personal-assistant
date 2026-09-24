@@ -66,7 +66,7 @@
 
 ## 对 Agent 友好的仓库
 
-根 AGENTS.md 保持短而明确，提供入口和不变量，不复制全套设计。模块 README 解释职责、公开端口、运行方式、依赖和典型失败。测试目录区分 unit / contract / integration / scenario / live / recovery；现有测试不需要立刻全部搬目录。
+根 AGENTS.md 保持短而明确，提供入口和不变量，不复制全套设计。模块 README 解释职责、公开端口、运行方式、依赖和典型失败。lumi 的模块生产代码放在 `<module>/src/`，模块测试放同级 `<module>/tests/`；跨模块测试放在根 `tests/`，目前有 `contract/`，后续按需求增加 integration / scenario / live / recovery。已有测试按 [SPEC-0002](../../specs/0002-lumi-workspace/spec.md) 迁移，具体运行方式见 [测试约定](../../tests/README.md)。
 
 能力新增采用 `adapters/<system>`、独立模块或插件，不往 Core 中累计业务条件分支。没有真实调用方时不预建抽象。每个可扩展端口至少有一个实际 provider 和 consumer。
 

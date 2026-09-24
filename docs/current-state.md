@@ -1,4 +1,4 @@
-# 工程事实基线
+# lumi 工程事实基线
 
 采集日期：2026-09-24。范围：首次设计时的工作区源码与本机验证。当时分支为 `feat/initial-mvp`、尚无 commit，原工程文件均未跟踪。随后用户授权 Agent 托管版本管理，现已在 `main` 建立初始基线 `1cd54cc`；提交保留原业务源码，不把用户既有实现归为本次新增功能。后续按 `AGENTS.md` 主动提交已授权且验证完成的工作。
 
@@ -52,6 +52,16 @@ NPM_CONFIG_CACHE=./data/tooling/npm-cache NPM_CONFIG_REGISTRY=https://registry.n
 安装隔离工具只影响已忽略的 `data/tooling/npm-cache`；未升级项目依赖或改写 lockfile。现有源码与测试未为本次设计改动。
 
 另执行三次独立 CLI 进程：在专用 SQLite 库提交模拟高风险任务 → 批准 → 重启 CLI 查询。实际观察为 `waiting_approval/pending → completed → completed/approved`，持久化结果带 `[mock:coding-agent]`。这是实际本地集成操作，未发送真实消息；完整命令、时刻和源码摘要见 [证据](evidence/2026-09-24-design-baseline.md) 与 [SOP](runbooks/local-validation.md)。
+
+## 2026-09-24 · lumi 工程整理
+
+用户将产品命名为 `lumi`，取意于与“光”有关的词根。根包名与 CLI 已更名，内部包统一为 `@lumi/*`；协调者 profile 位于 `profiles/dsh-lumi/`。模块测试已从 `src/` 迁到同级 `tests/`，跨模块 DSH 契约放根 `tests/contract/`。
+
+保留 pnpm 隔离结构：10 个模块的 `node_modules` 合计 25 个依赖符号链接，刷新后均有效；第三方版本未升级。`lumi.code-workspace` 提供工作区显示名称与生成目录隐藏配置，磁盘根路径保留原名。
+
+23:34 本机执行 `pnpm check`，lint、typecheck、DSH 版本检查、9 文件/23 用例及构建全部通过。另以构建后的 CLI 和独立数据库验证 `waiting_approval → completed → completed/approved`；真实 DSH SDK + 本地 mock 模型成功加载 lumi persona。命名规范化后，9 个测试文件与迁移前代码逐字相同，未减少或弱化断言。
+
+`PA_*`、`data/assistant.db`、`personal-assistant` capability ID、`pa-` 会话前缀保持兼容，无数据库迁移。本次没有实现 SPEC-0001 或执行真实云模型/外部业务任务。范围、命令、证据及工具限制见 [SPEC-0002](../specs/0002-lumi-workspace/spec.md)，复用步骤见 [工程整理 SOP](runbooks/workspace-layout.md)。
 
 ## 状态标注规则
 

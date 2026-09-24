@@ -20,7 +20,7 @@ import {
   type TaskRecord,
   type TaskRequest,
   type TaskState,
-} from '@personal-assistant/contracts'
+} from '@lumi/contracts'
 
 // Keep the specifier intact when bundlers use an older built-in module table.
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite') as {

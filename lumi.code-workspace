@@ -1,0 +1,16 @@
+{
+  "folders": [
+    {
+      "name": "lumi",
+      "path": "."
+    }
+  ],
+  "settings": {
+    "files.exclude": {
+      "**/node_modules": true,
+      "**/.pnpm-store": true,
+      "dist": true,
+      "coverage": true
+    }
+  }
+}

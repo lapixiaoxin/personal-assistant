@@ -1,4 +1,4 @@
-# 文档与开发导航
+# lumi 文档与开发导航
 
 本目录区分已观察事实、待审设计和已验证操作。面向用户的发布索引见 [飞书方案](publication.md)。
 
@@ -10,6 +10,7 @@
 | 实现或接入新能力 | [架构](design/02-architecture.md)、[协议](design/03-protocols.md)、[安全](design/05-safety.md) |
 | 建设自我升级 | [进化工厂](design/06-evolution.md)、[里程碑](design/07-roadmap.md) |
 | Agent 开始工作 | [AGENTS](../AGENTS.md)、[SDD](design/08-sdd.md)、[模板](templates/README.md) |
+| 工程命名与测试布局 | [SPEC-0002](../specs/0002-lumi-workspace/spec.md)、[测试约定](../tests/README.md) |
 | 选择下一开发切片 | [首个 M1 规范](../specs/0001-action-boundary/spec.md) |
 | 理解关键取舍 | [ADR](adr/README.md) |
 | 运行和验证 | [SOP](runbooks/README.md)、[评测](design/09-evaluation.md)、[本次证据](evidence/2026-09-24-design-baseline.md) |

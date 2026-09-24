@@ -2,16 +2,16 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   createDefaultCapabilityRegistry,
   RuleBasedRouter,
-} from '@personal-assistant/capability-registry'
-import { createTaskRequest } from '@personal-assistant/contracts'
-import { DefaultPolicyEngine } from '@personal-assistant/policy'
-import { SqliteTaskLedger } from '@personal-assistant/task-ledger'
+} from '@lumi/capability-registry'
+import { createTaskRequest } from '@lumi/contracts'
+import { DefaultPolicyEngine } from '@lumi/policy'
+import { SqliteTaskLedger } from '@lumi/task-ledger'
 import {
   AssistantCore,
   TaskIdConflictError,
   type ExecutionInput,
   type TaskExecutor,
-} from './index.ts'
+} from '../src/index.ts'
 
 function createCore(executor: TaskExecutor): {
   core: AssistantCore

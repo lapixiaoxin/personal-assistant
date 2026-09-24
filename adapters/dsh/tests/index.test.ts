@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createTaskRequest, type CapabilityDescriptor } from '@personal-assistant/contracts'
-import { DshAdapter, DshExecutionError, TaskExecutionAbortedError } from './index.ts'
+import { createTaskRequest, type CapabilityDescriptor } from '@lumi/contracts'
+import { DshAdapter, DshExecutionError, TaskExecutionAbortedError } from '../src/index.ts'
 
 const capability: CapabilityDescriptor = {
   description: 'Coding specialist',

@@ -1,5 +1,5 @@
 import { buildGateway } from './server.ts'
-import { loadLocalEnvironment } from '@personal-assistant/runtime'
+import { loadLocalEnvironment } from '@lumi/runtime'
 
 loadLocalEnvironment()
 const host = process.env.PA_HOST ?? '127.0.0.1'
@@ -15,7 +15,7 @@ process.once('SIGTERM', () => void shutdown())
 
 try {
   const address = await app.listen({ host, port })
-  app.log.info({ address }, 'personal assistant gateway ready')
+  app.log.info({ address }, 'lumi gateway ready')
 } catch (error) {
   app.log.error(error)
   process.exitCode = 1

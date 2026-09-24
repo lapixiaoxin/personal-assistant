@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { createTaskRequest, type CapabilityDescriptor } from '@personal-assistant/contracts'
-import { DefaultPolicyEngine } from './index.ts'
+import { createTaskRequest, type CapabilityDescriptor } from '@lumi/contracts'
+import { DefaultPolicyEngine } from '../src/index.ts'
 
 const readCapability: CapabilityDescriptor = {
   description: 'General assistant',

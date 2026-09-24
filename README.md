@@ -1,6 +1,8 @@
-# Personal Assistant
+# lumi
 
-长期个人助手的第一阶段 MVP。当前实现重点是持久化、可审计的任务闭环；运行中任务尚不能在进程重启后自动恢复。
+`lumi` 是面向长期成长的超级个人智能体，名字取意于与“光”有关的词根，短、具有未来感。
+
+当前处于第一阶段 MVP，重点是持久化、可审计的任务闭环；运行中任务尚不能在进程重启后自动恢复。
 
 长期方案与后续建设入口：[设计总纲](docs/design/00-overview.md)、[文档导航](docs/README.md)、[Agent 指南](AGENTS.md)、[首个 SDD 规范](specs/0001-action-boundary/spec.md)。设计为 Proposed，已实现与未实现的边界见 [工程事实基线](docs/current-state.md)。
 
@@ -43,8 +45,15 @@ packages/policy/               Risk classification and approval policy
 packages/capability-registry/  Capability discovery and routing
 packages/personal-memory/      Explicit candidate/confirm/retract model
 adapters/dsh/                  DSH-only types and event mapping
-profiles/dsh-personal/         DSH SDK profile overlay
+profiles/dsh-lumi/             lumi DSH SDK profile overlay
+tests/contract/                Cross-module DSH runtime contracts
 ```
+
+每个模块的生产代码放在 `src/`，测试放在同级 `tests/`，例如 `packages/assistant-core/{src,tests}/`。跨模块测试放在根 `tests/` 下，按 contract、integration 等用途逐步扩展。内部包统一使用 `@lumi/*`，模块目录按职责命名。详见 [测试约定](tests/README.md)。
+
+打开 [lumi.code-workspace](lumi.code-workspace) 可将编辑器工作区显示为 `lumi`，并隐藏 `node_modules`、构建和覆盖率目录。当前磁盘根目录保留原路径，避免已有工具路径失效。
+
+本仓使用 pnpm：依赖共享存放在根 `node_modules/.pnpm`，各模块的 `node_modules` 主要是链接，不是每个模块都重复保存完整依赖。保留这种隔离结构有助于检查模块是否正确声明依赖；无需手动删除或合并。
 
 ## 环境
 
@@ -66,6 +75,8 @@ pnpm install --registry=https://registry.npmjs.org
 ## CLI
 
 默认数据文件是 `./data/assistant.db`，默认 executor 是 `dsh`。使用真实 DSH 前需要配置模型凭据。
+
+命名调整保留了 `PA_*` 环境变量、默认数据路径、`personal-assistant` capability ID 和 `pa-` 会话前缀，以兼容已有配置与任务记录。更新本次版本后运行 `pnpm install` 刷新包链接；自行引用旧 profile 的脚本需要改用 `profiles/dsh-lumi/`。
 
 仅验证个人助手控制层时，可显式切换到 mock：
 
@@ -161,7 +172,7 @@ pnpm cli -- submit "分析当前仓库并运行测试"
 ```
 
 DSH 凭据由 DSH 自己的配置或环境变量提供。默认 DSH home 是 `./data/dsh`，可通过 `PA_DSH_HOME` 覆盖；adapter 每个任务启动一个独立 SDK runtime，使运行中取消能够回收对应子进程。启动时会应用
-[`profiles/dsh-personal/cordis.patch.yml`](profiles/dsh-personal/cordis.patch.yml)
+[`profiles/dsh-lumi/cordis.patch.yml`](profiles/dsh-lumi/cordis.patch.yml)
 或 [`profiles/dsh-coding/cordis.patch.yml`](profiles/dsh-coding/cordis.patch.yml)。
 
 `pnpm test:dsh` 是不需要真实凭据的 DSH runtime contract test：它启动真正的 DSH SDK 子进程，通过官方本地模拟模型端点完成整条任务链，并验证 MiniMax catalog 可以完成 SDK 初始化。该测试也包含在 `pnpm test` 中。真实提供方 smoke 仍需对应的 API Key。
@@ -188,9 +199,9 @@ export PA_DSH_PROVIDER_PATCH=profiles/providers/my-provider.patch.yml
 pnpm dsh:web:minimax-cn
 ```
 
-打开命令输出的带 `token` 本地 URL，在模型设置中选择 `minimax-cn / MiniMax-M3` 后即可连续对话。这条链路用于直接验证 DSH，会使用 DSH 自己的会话存储，不经过 Personal Assistant Task Ledger。
+打开命令输出的带 `token` 本地 URL，在模型设置中选择 `minimax-cn / MiniMax-M3` 后即可连续对话。这条链路用于直接验证 DSH，会使用 DSH 自己的会话存储，不经过 lumi Task Ledger。
 
-当前 Personal Assistant Gateway 是单任务接口：每次 `POST /v1/tasks` 都是独立任务，尚未提供多轮会话 API。
+当前 lumi Gateway 是单任务接口：每次 `POST /v1/tasks` 都是独立任务，尚未提供多轮会话 API。
 
 ## 安全边界
 
@@ -202,7 +213,7 @@ pnpm dsh:web:minimax-cn
 ## 暂未实现
 
 - WebSocket/A2A 流式协议
-- Personal Assistant 多轮会话协议
+- lumi 多轮会话协议
 - 自动重试与跨进程运行中任务恢复
 - Desktop、Mobile、Watch、Voice 客户端
 - 自动长期记忆写入

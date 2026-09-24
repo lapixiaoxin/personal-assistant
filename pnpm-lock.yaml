@@ -57,19 +57,19 @@ importers:
       '@deepseek-ai/dsh-sdk-client':
         specifier: 0.1.7-rc.1
         version: 0.1.7-rc.1(c65f8391c9e17246e3a58338ecd4cfe2)
-      '@personal-assistant/assistant-core':
+      '@lumi/assistant-core':
         specifier: workspace:*
         version: link:../../packages/assistant-core
-      '@personal-assistant/contracts':
+      '@lumi/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
 
   apps/gateway:
     dependencies:
-      '@personal-assistant/contracts':
+      '@lumi/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
-      '@personal-assistant/runtime':
+      '@lumi/runtime':
         specifier: workspace:*
         version: link:../runtime
       fastify:
@@ -81,10 +81,10 @@ importers:
 
   apps/local-runner:
     dependencies:
-      '@personal-assistant/contracts':
+      '@lumi/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
-      '@personal-assistant/runtime':
+      '@lumi/runtime':
         specifier: workspace:*
         version: link:../runtime
       commander:
@@ -93,40 +93,40 @@ importers:
 
   apps/runtime:
     dependencies:
-      '@personal-assistant/assistant-core':
+      '@lumi/assistant-core':
         specifier: workspace:*
         version: link:../../packages/assistant-core
-      '@personal-assistant/capability-registry':
+      '@lumi/capability-registry':
         specifier: workspace:*
         version: link:../../packages/capability-registry
-      '@personal-assistant/dsh-adapter':
+      '@lumi/dsh-adapter':
         specifier: workspace:*
         version: link:../../adapters/dsh
-      '@personal-assistant/policy':
+      '@lumi/policy':
         specifier: workspace:*
         version: link:../../packages/policy
-      '@personal-assistant/task-ledger':
+      '@lumi/task-ledger':
         specifier: workspace:*
         version: link:../../packages/task-ledger
 
   packages/assistant-core:
     dependencies:
-      '@personal-assistant/capability-registry':
+      '@lumi/capability-registry':
         specifier: workspace:*
         version: link:../capability-registry
-      '@personal-assistant/contracts':
+      '@lumi/contracts':
         specifier: workspace:*
         version: link:../contracts
-      '@personal-assistant/policy':
+      '@lumi/policy':
         specifier: workspace:*
         version: link:../policy
-      '@personal-assistant/task-ledger':
+      '@lumi/task-ledger':
         specifier: workspace:*
         version: link:../task-ledger
 
   packages/capability-registry:
     dependencies:
-      '@personal-assistant/contracts':
+      '@lumi/contracts':
         specifier: workspace:*
         version: link:../contracts
 
@@ -138,7 +138,7 @@ importers:
 
   packages/personal-memory:
     dependencies:
-      '@personal-assistant/contracts':
+      '@lumi/contracts':
         specifier: workspace:*
         version: link:../contracts
       zod:
@@ -147,13 +147,13 @@ importers:
 
   packages/policy:
     dependencies:
-      '@personal-assistant/contracts':
+      '@lumi/contracts':
         specifier: workspace:*
         version: link:../contracts
 
   packages/task-ledger:
     dependencies:
-      '@personal-assistant/contracts':
+      '@lumi/contracts':
         specifier: workspace:*
         version: link:../contracts
 

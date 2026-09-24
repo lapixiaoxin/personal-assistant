@@ -1,13 +1,13 @@
 {
-  "name": "@personal-assistant/assistant-core",
+  "name": "@lumi/assistant-core",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "exports": "./src/index.ts",
   "dependencies": {
-    "@personal-assistant/capability-registry": "workspace:*",
-    "@personal-assistant/contracts": "workspace:*",
-    "@personal-assistant/policy": "workspace:*",
-    "@personal-assistant/task-ledger": "workspace:*"
+    "@lumi/capability-registry": "workspace:*",
+    "@lumi/contracts": "workspace:*",
+    "@lumi/policy": "workspace:*",
+    "@lumi/task-ledger": "workspace:*"
   }
 }

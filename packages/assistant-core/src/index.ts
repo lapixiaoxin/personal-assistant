@@ -1,13 +1,13 @@
-import type { TaskRouter } from '@personal-assistant/capability-registry'
+import type { TaskRouter } from '@lumi/capability-registry'
 import {
   TaskRequestSchema,
   type CapabilityDescriptor,
   type JsonValue,
   type TaskRecord,
   type TaskRequest,
-} from '@personal-assistant/contracts'
-import type { PolicyEngine } from '@personal-assistant/policy'
-import type { TaskLedger } from '@personal-assistant/task-ledger'
+} from '@lumi/contracts'
+import type { PolicyEngine } from '@lumi/policy'
+import type { TaskLedger } from '@lumi/task-ledger'
 
 export type ExecutionEvent =
   | { kind: 'progress'; message: string }

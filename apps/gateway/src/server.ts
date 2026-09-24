@@ -1,6 +1,6 @@
 import Fastify, { type FastifyInstance } from 'fastify'
-import { createTaskRequest, TaskListQuerySchema, TaskSubmissionSchema } from '@personal-assistant/contracts'
-import { createAssistantRuntime, type AssistantRuntime } from '@personal-assistant/runtime'
+import { createTaskRequest, TaskListQuerySchema, TaskSubmissionSchema } from '@lumi/contracts'
+import { createAssistantRuntime, type AssistantRuntime } from '@lumi/runtime'
 import { z, ZodError } from 'zod'
 
 const TaskParamsSchema = z.object({

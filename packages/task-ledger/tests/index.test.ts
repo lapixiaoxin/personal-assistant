@@ -2,8 +2,8 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { createTaskRequest } from '@personal-assistant/contracts'
-import { SqliteTaskLedger, TaskStateConflictError } from './index.ts'
+import { createTaskRequest } from '@lumi/contracts'
+import { SqliteTaskLedger, TaskStateConflictError } from '../src/index.ts'
 
 const temporaryDirectories: string[] = []
 
@@ -15,7 +15,7 @@ afterEach(() => {
 
 describe('SqliteTaskLedger', () => {
   it('persists tasks, events, approvals, and audit records across restarts', () => {
-    const directory = mkdtempSync(join(tmpdir(), 'personal-assistant-ledger-'))
+    const directory = mkdtempSync(join(tmpdir(), 'lumi-ledger-'))
     temporaryDirectories.push(directory)
     const filename = join(directory, 'assistant.db')
     const request = createTaskRequest({

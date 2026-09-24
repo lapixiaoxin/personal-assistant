@@ -1,6 +1,6 @@
-# Agent 工作入口
+# lumi · Agent 工作入口
 
-本仓建设一个最懂用户、能交付结果、可持续进化的个人助手。先读事实，再读方案；方案存在不等于能力已启用。
+本仓建设 lumi：一个最懂用户、能交付结果、可持续进化的超级个人智能体。名字取意于与“光”有关的词根。先读事实，再读方案；方案存在不等于能力已启用。
 
 ## 接手顺序
 
@@ -43,6 +43,8 @@
 ## 开发与验证
 
 Node >=22.19.0，pnpm 10.20.0。优先查版本，再执行相关验证；完整门禁为 `pnpm check`。默认 executor 为 DSH，离线验证必须显式 `PA_EXECUTOR=mock` 并使用独立数据库。
+
+内部包统一使用 `@lumi/*`；模块目录按职责命名。生产代码放 `<module>/src/`，模块测试放同级 `<module>/tests/`，跨模块测试放根 `tests/<category>/`；不在 `src/` 中新建测试。参见 [测试约定](tests/README.md)。保留 pnpm 的模块依赖链接，使用 `lumi.code-workspace` 隐藏生成目录。
 
 [本机基线 SOP](docs/runbooks/local-validation.md) 包含已成功执行的环境修正和 CLI 流程。真实服务验证使用 [live 规程](docs/runbooks/live-acceptance.md)，不将 mock 结果标为 live。
 

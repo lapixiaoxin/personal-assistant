@@ -1,4 +1,4 @@
-import type { CapabilityDescriptor, RiskLevel, TaskRequest } from '@personal-assistant/contracts'
+import type { CapabilityDescriptor, RiskLevel, TaskRequest } from '@lumi/contracts'
 
 export type PolicyAction = 'allow' | 'require_approval' | 'deny'
 

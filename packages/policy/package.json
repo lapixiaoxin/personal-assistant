@@ -1,10 +1,10 @@
 {
-  "name": "@personal-assistant/policy",
+  "name": "@lumi/policy",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "exports": "./src/index.ts",
   "dependencies": {
-    "@personal-assistant/contracts": "workspace:*"
+    "@lumi/contracts": "workspace:*"
   }
 }

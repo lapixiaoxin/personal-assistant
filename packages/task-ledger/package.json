@@ -1,10 +1,10 @@
 {
-  "name": "@personal-assistant/task-ledger",
+  "name": "@lumi/task-ledger",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "exports": "./src/index.ts",
   "dependencies": {
-    "@personal-assistant/contracts": "workspace:*"
+    "@lumi/contracts": "workspace:*"
   }
 }
