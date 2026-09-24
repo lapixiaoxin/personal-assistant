@@ -4,6 +4,7 @@
 | --- | --- | --- |
 | [本机检查与 mock CLI](local-validation.md) | verified_once | 本机 Node22/pnpm10、现有检查；独立进程间任务/审批持久化 |
 | [设计文档发布与读回](design-publication.md) | verified_once | 本次 11 篇飞书文档、导航、父子节点与画板预览 |
+| [Agent 版本管理](version-control.md) | verified_once | main 初始提交、暂存边界与提交后核验 |
 | [真实任务验收](live-acceptance.md) | planned | 尚未通过个人助手执行真实外部服务操作 |
 | [升级、停止与回滚](upgrade-rollback.md) | planned | 当前没有完整自动发布和迁移回滚控制器 |
 

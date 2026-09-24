@@ -8,7 +8,7 @@
 
 | 本地设计源 | 飞书审阅版 | 已读回 revision |
 | --- | --- | --- |
-| [00-overview](design/00-overview.md) | [长期设计总纲](https://bytedance.larkoffice.com/wiki/DnYJwYk8iiijjykyqHqc4xAYnke) | 4 |
+| [00-overview](design/00-overview.md) | [长期设计总纲](https://bytedance.larkoffice.com/wiki/DnYJwYk8iiijjykyqHqc4xAYnke) | 5 |
 | [01-product](design/01-product.md) | [产品宪章与体验](https://bytedance.larkoffice.com/wiki/TSCpwWZF1i5k9Vk8a3Sc6sIznlc) | 3 |
 | [02-architecture](design/02-architecture.md) | [系统架构与插件机制](https://bytedance.larkoffice.com/wiki/VEWUwNfKkiyRkakAYzKcZRIUn1g) | 4 |
 | [03-protocols](design/03-protocols.md) | [领域协议与兼容](https://bytedance.larkoffice.com/wiki/H1wCwYIZWicTL2kmSCBcP4uNnCe) | 3 |
@@ -16,13 +16,15 @@
 | [05-safety](design/05-safety.md) | [安全、授权与数据主权](https://bytedance.larkoffice.com/wiki/AXOGwel6riy8Tgk7FUDc6JQan7d) | 3 |
 | [06-evolution](design/06-evolution.md) | [自主进化与软件工厂](https://bytedance.larkoffice.com/wiki/HLdFw6mCpi9Zv9kPV9scj0n9nqe) | 3 |
 | [07-roadmap](design/07-roadmap.md) | [能力演进与里程碑](https://bytedance.larkoffice.com/wiki/TZG5wTrHHiV9VtkXRgZcsbfqnCd) | 3 |
-| [08-sdd](design/08-sdd.md) | [SDD 与工程治理](https://bytedance.larkoffice.com/wiki/O8vdwkRCSinYuAkN3decZqkDn9e) | 3 |
-| [09-evaluation](design/09-evaluation.md) | [评测与真实验收](https://bytedance.larkoffice.com/wiki/OtCCwj9t9icgTOkRwCrcCv33nEg) | 3 |
-| [current-state](current-state.md) | [工程事实基线](https://bytedance.larkoffice.com/wiki/ToilwRbJOiQicrk40Jicqwvvnln) | 3 |
+| [08-sdd](design/08-sdd.md) | [SDD 与工程治理](https://bytedance.larkoffice.com/wiki/O8vdwkRCSinYuAkN3decZqkDn9e) | 6 |
+| [09-evaluation](design/09-evaluation.md) | [评测与真实验收](https://bytedance.larkoffice.com/wiki/OtCCwj9t9icgTOkRwCrcCv33nEg) | 4 |
+| [current-state](current-state.md) | [工程事实基线](https://bytedance.larkoffice.com/wiki/ToilwRbJOiQicrk40Jicqwvvnln) | 4 |
 
 ## 内容与证据
 
-11 篇均经 init-draft → XML → parse（assessment=passed）→ create → 全文 fetch。10 篇专题正文与草稿的规范化文本相等；总纲和架构的导航替换后再次读回，只改变链接表示，不改变设计正文。总纲图已导出 JPEG 人工目视核验，标签和闭环可读，没有空白画板。
+初次发布的 11 篇均经 init-draft → XML → parse（assessment=passed）→ create → 全文 fetch。10 篇专题正文与草稿的规范化文本相等；总纲和架构的导航替换后再次读回，只改变链接表示，不改变设计正文。总纲图已导出 JPEG 人工目视核验，标签和闭环可读，没有空白画板。
+
+2026-09-24 后续更新：用户明确授权 Agent 主动提交 main。初始基线 `1cd54cc` 建立后，对总纲、SDD、评测和工程基线共 6 个段落做局部替换；每次写后读回，规范化正文差异与计划替换完全一致，未改其他正文和画板。最新 revision 如上；回执为本机证据目录中的 `*-main-update-*.json`。
 
 每篇保留源文件路径、版本、日期和能力状态。已发布专题提供返回总纲链接；总纲文档地图可点击进入各篇。仅在工程内交付的 AGENTS、模板、spec、SOP 保留仓库相对路径说明，不伪造无法打开的网页链接。
 

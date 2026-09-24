@@ -82,5 +82,5 @@ SDD 和 SOP 从今天开始；它们不等待 M5。M5 指助手能在既定发�
 
 - 用户原始宪章：[超级个人助手](https://bytedance.larkoffice.com/wiki/ScpuwoQA9iDEdmkTMNacHUAvnHd)，读取版本 revision 7。
 - 原工程方案：[长期个人助手 Agent：初步实现方案](https://bytedance.larkoffice.com/wiki/TurQw7H5TiplD1kOYAHcvQWlnEd)，读取版本 revision 6。
-- 本仓现状：2026-09-24，`feat/initial-mvp`，尚无初始 commit；事实与验证记录见工程基线。
+- 本仓采集快照：2026-09-24，首次设计时位于 `feat/initial-mvp`、尚无初始 commit；随后按用户授权在 `main` 建立基线 `1cd54cc`。事实与验证记录见工程基线。
 - DSH：[README](https://github.com/deepseek-ai/deepseek-harness/blob/master/README.md)、[架构](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/architecture.md)、[Cordis primer](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/cordis-primer.md)、[Safety](https://github.com/deepseek-ai/deepseek-harness/blob/master/SAFETY.md)，2026-09-24 读取 master；同期 HEAD 为 `477b4f420553e8a52c2fbccc464d7561b239c443`。这些是上游设计参考，不代表仓库固定的 `0.1.7-rc.1` 已具备所有最新能力。
