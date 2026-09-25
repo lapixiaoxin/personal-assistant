@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ApiError, isTaskActive, LumiApi } from '../src/api.ts'
-import type { TaskRecord } from '../src/types.ts'
+import type { ActionDetail, TaskRecord } from '../src/types.ts'
 
 const task: TaskRecord = {
   actorId: 'local-user',
@@ -15,6 +15,40 @@ const task: TaskRecord = {
   result: null,
   state: 'running',
   updatedAt: '2026-09-25T09:00:01.000Z',
+}
+
+const actionDetail: ActionDetail = {
+  action: {
+    actionDigest: 'a'.repeat(64),
+    authorizationId: null,
+    cancellationRequestedAt: null,
+    capability: {
+      id: 'local-artifact',
+      version: '1.0.0',
+    },
+    createdAt: '2026-09-25T09:00:00.000Z',
+    deadline: null,
+    effect: 'local_artifact',
+    id: 'action-one',
+    idempotencyKey: 'idempotency-one',
+    inputDigest: 'b'.repeat(64),
+    inputRef: 'ledger://actions/action-one/input',
+    operation: 'artifact.write',
+    ownerId: 'local-user',
+    principalId: 'local-user',
+    receiptId: null,
+    revocationEpoch: 0,
+    schemaVersion: 'lumi.action/v1',
+    status: 'prepared',
+    target: { artifactId: 'brief.md' },
+    taskId: 'task-one',
+    updatedAt: '2026-09-25T09:00:00.000Z',
+    verificationId: null,
+  },
+  authorization: null,
+  receipt: null,
+  task,
+  verification: null,
 }
 
 describe('LumiApi', () => {
@@ -64,6 +98,49 @@ describe('LumiApi', () => {
     await expect(api.approve('task-one')).rejects.toEqual(
       new ApiError('Task already exists', 409, 'TASK_CONFLICT'),
     )
+  })
+
+  it('uses the v2 action lifecycle endpoints without changing the payload', async () => {
+    const calls: Array<[RequestInfo | URL, RequestInit | undefined]> = []
+    const fetcher: typeof fetch = async (input, init) => {
+      calls.push([input, init])
+      const path = String(input)
+      const data = path.endsWith('/cancel')
+        ? {
+            action: { ...actionDetail.action, status: 'cancelled' },
+            effectMayRemain: false,
+            preventedExecution: true,
+          }
+        : path.includes('?limit=')
+          ? [actionDetail]
+          : actionDetail
+      return new Response(JSON.stringify({ data }), {
+        headers: { 'content-type': 'application/json' },
+        status: 200,
+      })
+    }
+    const api = new LumiApi(fetcher, 'test-token')
+
+    await api.listActions()
+    await api.getAction('action-one')
+    await api.authorizeAction('action-one')
+    await api.executeAction('action-one')
+    await api.reconcileAction('action-one')
+    await api.cancelAction('action-one')
+
+    expect(calls.map(([path]) => path)).toEqual([
+      '/v2/actions?limit=100',
+      '/v2/actions/action-one',
+      '/v2/actions/action-one/authorize',
+      '/v2/actions/action-one/execute',
+      '/v2/actions/action-one/reconcile',
+      '/v2/actions/action-one/cancel',
+    ])
+    for (const [, request] of calls.slice(2)) {
+      expect(request?.method).toBe('POST')
+      expect(request?.body).toBe(JSON.stringify({}))
+      expect(new Headers(request?.headers).get('authorization')).toBe('Bearer test-token')
+    }
   })
 })
 

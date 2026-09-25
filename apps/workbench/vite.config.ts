@@ -12,6 +12,7 @@ export default defineConfig({
     proxy: {
       '/health': 'http://127.0.0.1:4310',
       '/v1': 'http://127.0.0.1:4310',
+      '/v2': 'http://127.0.0.1:4310',
     },
   },
 })

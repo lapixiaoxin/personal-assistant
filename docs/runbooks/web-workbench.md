@@ -1,6 +1,6 @@
 # 本地 Web 工作台
 
-状态：verified_once · 2026-09-25。适用版本：SPEC-0004 v0.1，本机 Node 22.19.0、pnpm 10.20.0。当前仅验证 mock executor；真实模型和外部业务能力未包含在本记录。
+状态：verified_once · 2026-09-25。适用版本：SPEC-0004 v0.1、SPEC-0006 v0.1，本机 Node 22.19.0、pnpm 10.20.0。当前任务 executor 使用 mock；Action prepare/authorize/execute/verify 经过真实本地运行时。真实模型和外部业务能力未包含在本记录。
 
 ## 前置
 
@@ -17,7 +17,7 @@ PA_EXECUTOR=mock pnpm dev
 pnpm dev:web
 ```
 
-打开 `http://127.0.0.1:4311`。Vite 将 `/health` 和 `/v1` 请求代理到端口 4310。
+打开 `http://127.0.0.1:4311/#token=<PA_HTTP_TOKEN>`。Vite 将 `/health`、`/v1` 和 `/v2` 请求代理到端口 4310。
 
 预期观察：
 
@@ -25,6 +25,9 @@ pnpm dev:web
 - 中间可提交任务并读取最终结果。
 - 右侧可查看事件、审计；待审批任务显示允许和拒绝操作。
 - 运行中任务可以取消。
+- 顶部“动作”视图列出当前 principal 的 Action，并显示待处理数量。
+- `prepared` 动作可授权或取消；授权后可执行；`outcome_unknown` 只显示对账。
+- 成功动作显示 Authorization、Receipt、Verification 和产物引用，不显示动作正文。
 
 ## 生产构建运行
 
@@ -49,12 +52,18 @@ PLAYWRIGHT_BROWSERS_PATH=./data/playwright-browsers pnpm exec playwright install
 PLAYWRIGHT_BROWSERS_PATH=./data/playwright-browsers pnpm test:e2e
 ```
 
-测试启动 mock Gateway，在桌面 Chrome 和移动 Chromium 视口执行任务提交、审批、状态刷新及横向溢出检查。截图与 trace 写入 `data/`，不提交。
+测试启动 mock executor 的 Gateway，在桌面 Chrome 和移动 Chromium 视口执行两组流程：
+
+1. 任务提交、任务级审批和状态刷新。
+2. API 准备 Action，页面授权并执行，随后经 API 读取 Receipt/Verification，并从回执文件 URL 独立读回正文。
+
+两组流程均检查横向溢出和浏览器 console error。截图、隔离数据库、artifact 与 trace 写入 `data/`，不提交。
 
 ## 已知限制
 
 - 当前任务提交和审批请求会等待执行结束，页面通过预先生成 task ID 和并发轮询显示进度。
-- 当前审批是任务级，不显示 DSH 产生的真实工具参数。
+- 任务视图的审批仍是任务级；Action Inbox 才提供参数摘要绑定的动作授权，两者不合并。
+- Action Inbox 当前只支持已注册的 `local-artifact@1.0.0 / artifact.write`，不代表真实外部 connector 已启用。
 - 当前没有产品级 Conversation、token 流、远程认证、运行中任务跨进程恢复或原生桌面能力。
 
 ## 停止与清理

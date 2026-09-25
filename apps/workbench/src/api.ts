@@ -1,4 +1,7 @@
 import type {
+  ActionCancellationResult,
+  ActionDetail,
+  ActionRecord,
   AuditRecord,
   CapabilityDescriptor,
   HealthStatus,
@@ -32,14 +35,20 @@ export class ApiError extends Error {
 }
 
 export interface LumiApiClient {
+  authorizeAction(actionId: string): Promise<ActionDetail>
   approve(taskId: string): Promise<TaskRecord>
   cancel(taskId: string): Promise<TaskRecord>
+  cancelAction(actionId: string): Promise<ActionCancellationResult>
   capabilities(): Promise<CapabilityDescriptor[]>
+  executeAction(actionId: string): Promise<ActionDetail>
+  getAction(actionId: string): Promise<ActionDetail>
   getAudit(taskId: string): Promise<AuditRecord[]>
   getEvents(taskId: string): Promise<TaskEvent[]>
   getTask(taskId: string): Promise<TaskDetail>
   health(): Promise<HealthStatus>
+  listActions(): Promise<ActionDetail[]>
   listTasks(): Promise<TaskRecord[]>
+  reconcileAction(actionId: string): Promise<ActionDetail>
   reject(taskId: string): Promise<TaskRecord>
   submitTask(content: string, id: string): Promise<TaskDetail>
 }
@@ -64,9 +73,20 @@ export class LumiApi implements LumiApiClient {
       .then(response => response.data)
   }
 
+  listActions(): Promise<ActionDetail[]> {
+    return this.request<DataEnvelope<ActionDetail[]>>('/v2/actions?limit=100')
+      .then(response => response.data)
+  }
+
   getTask(taskId: string): Promise<TaskDetail> {
     return this.request<DataEnvelope<TaskDetail>>(`/v1/tasks/${encodeURIComponent(taskId)}`)
       .then(response => response.data)
+  }
+
+  getAction(actionId: string): Promise<ActionDetail> {
+    return this.request<DataEnvelope<ActionDetail>>(
+      `/v2/actions/${encodeURIComponent(actionId)}`,
+    ).then(response => response.data)
   }
 
   getEvents(taskId: string): Promise<TaskEvent[]> {
@@ -105,9 +125,39 @@ export class LumiApi implements LumiApiClient {
     return this.decide(taskId, 'cancel')
   }
 
+  authorizeAction(actionId: string): Promise<ActionDetail> {
+    return this.actionCommand<ActionDetail>(actionId, 'authorize')
+  }
+
+  executeAction(actionId: string): Promise<ActionDetail> {
+    return this.actionCommand<ActionDetail>(actionId, 'execute')
+  }
+
+  reconcileAction(actionId: string): Promise<ActionDetail> {
+    return this.actionCommand<ActionDetail>(actionId, 'reconcile')
+  }
+
+  cancelAction(actionId: string): Promise<ActionCancellationResult> {
+    return this.actionCommand<ActionCancellationResult>(actionId, 'cancel')
+  }
+
   private decide(taskId: string, decision: 'approve' | 'cancel' | 'reject'): Promise<TaskRecord> {
     return this.request<DataEnvelope<TaskRecord>>(
       `/v1/tasks/${encodeURIComponent(taskId)}/${decision}`,
+      {
+        body: JSON.stringify({}),
+        headers: { 'content-type': 'application/json' },
+        method: 'POST',
+      },
+    ).then(response => response.data)
+  }
+
+  private actionCommand<T>(
+    actionId: string,
+    command: 'authorize' | 'cancel' | 'execute' | 'reconcile',
+  ): Promise<T> {
+    return this.request<DataEnvelope<T>>(
+      `/v2/actions/${encodeURIComponent(actionId)}/${command}`,
       {
         body: JSON.stringify({}),
         headers: { 'content-type': 'application/json' },
@@ -143,6 +193,12 @@ export function isTaskActive(task: TaskRecord): boolean {
   return task.state === 'queued'
     || task.state === 'running'
     || task.state === 'waiting_approval'
+}
+
+export function isActionAwaitingUser(action: ActionRecord): boolean {
+  return action.status === 'prepared'
+    || action.status === 'authorized'
+    || action.status === 'outcome_unknown'
 }
 
 function resolveBrowserToken(): string | undefined {

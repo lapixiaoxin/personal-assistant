@@ -19,7 +19,15 @@ import {
   X,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ApiError, createTaskId, isTaskActive, LumiApi, type LumiApiClient } from './api.ts'
+import { ActionInbox } from './ActionInbox.tsx'
+import {
+  ApiError,
+  createTaskId,
+  isActionAwaitingUser,
+  isTaskActive,
+  LumiApi,
+  type LumiApiClient,
+} from './api.ts'
 import type {
   ApprovalRecord,
   AuditRecord,
@@ -30,6 +38,7 @@ import type {
   TaskRecord,
   TaskState,
 } from './types.ts'
+import { WorkspaceSwitcher, type WorkspaceView } from './WorkspaceSwitcher.tsx'
 
 const defaultApi = new LumiApi()
 
@@ -50,6 +59,52 @@ const stateLabels: Record<TaskState, string> = {
 }
 
 export function App({ api = defaultApi }: AppProps) {
+  const [workspace, setWorkspace] = useState<WorkspaceView>('tasks')
+  const [actionCount, setActionCount] = useState(0)
+
+  useEffect(() => {
+    let active = true
+    void api.listActions()
+      .then(actions => {
+        if (active) {
+          setActionCount(actions.filter(item => isActionAwaitingUser(item.action)).length)
+        }
+      })
+      .catch(() => undefined)
+    return () => {
+      active = false
+    }
+  }, [api])
+
+  if (workspace === 'actions') {
+    return (
+      <ActionInbox
+        actionCount={actionCount}
+        api={api}
+        onActionCountChange={setActionCount}
+        onWorkspaceChange={setWorkspace}
+      />
+    )
+  }
+
+  return (
+    <TaskWorkspace
+      actionCount={actionCount}
+      api={api}
+      onWorkspaceChange={setWorkspace}
+    />
+  )
+}
+
+function TaskWorkspace({
+  actionCount,
+  api,
+  onWorkspaceChange,
+}: {
+  actionCount: number
+  api: LumiApiClient
+  onWorkspaceChange: (view: WorkspaceView) => void
+}) {
   const [health, setHealth] = useState<HealthStatus>()
   const [capabilities, setCapabilities] = useState<CapabilityDescriptor[]>([])
   const [tasks, setTasks] = useState<TaskRecord[]>([])
@@ -186,6 +241,12 @@ export function App({ api = defaultApi }: AppProps) {
           <span className="brand-mark" aria-hidden="true">L</span>
           <span>lumi</span>
         </header>
+
+        <WorkspaceSwitcher
+          actionCount={actionCount}
+          onChange={onWorkspaceChange}
+          value="tasks"
+        />
 
         <button className="new-task-button" type="button" onClick={() => {
           setSelectedId(undefined)

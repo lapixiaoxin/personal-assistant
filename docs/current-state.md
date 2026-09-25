@@ -81,7 +81,7 @@ NPM_CONFIG_CACHE=./data/tooling/npm-cache NPM_CONFIG_REGISTRY=https://registry.n
 
 `apps/workbench` 已提供 React + Vite 单页工作台，通过现有 Gateway 提交和查询任务，显示结果、错误、事件与审计，并支持已有任务级审批、拒绝和取消。生产构建输出到 `dist/workbench`，Gateway 在产物存在时从同一 loopback 地址托管页面和哈希资源。
 
-当前 Gateway 的提交与批准调用仍等待执行结束；页面以客户端 task ID 和并发轮询呈现中间状态。它不是产品级多轮对话或流式协议。参数级 Action Authorization、远程身份、重启恢复、记忆接线和真实工作工具仍未实现。
+当前 Gateway 的提交与批准调用仍等待执行结束；页面以客户端 task ID 和并发轮询呈现中间状态。它不是产品级多轮对话或流式协议。该初始切片没有 Action 操作面，后续已由 SPEC-0006 补齐；远程身份、重启恢复、记忆接线和真实工作工具仍未实现。
 
 验证包括 Vitest API/组件/静态托管测试，以及 Playwright 在桌面 Chrome 和移动 Chromium 视口上的 mock 任务与审批流程；细节见 [SPEC-0004 证据](../specs/0004-web-workbench/evidence.md) 和 [Workbench SOP](runbooks/web-workbench.md)。
 
@@ -106,6 +106,14 @@ SPEC-0001 单独不证明 DSH Shell、网络、MCP 或外部 connector 已受参
 DSH 子进程环境会移除全部 `PA_*` 和旧 `LUMI_ACTION_BRIDGE_*` 变量，再注入本 Run bridge URL/token；Gateway Bearer token 未出现在 mock provider 请求。新增测试也修正了 adapter 对 rc.1 `tool/result.message.isError` 的识别。
 
 边界仍然存在：该 guard 是受信 profile 内的进程内控制，不是恶意插件或同机进程隔离；`read`/`grep` 等仍可访问 workspace 授权范围；开发态 `coding-agent` 仍有文件、Shell 与网络工具，不能持有生产 Connector 凭据。真实外部写入尚未启用。
+
+## 2026-09-25 · Workbench Action Inbox
+
+`SPEC-0006` 在现有 Workbench 增加任务/动作双视图。动作列表和详情直接读取 Gateway `ActionDetail`，展示 target、operation、期限、input/action digest、Authorization、Receipt 和 Verification；不读取或显示动作正文。
+
+页面严格按服务端状态提供命令：`prepared` 可授权/取消，`authorized` 可执行/取消，`outcome_unknown` 只可对账，终态不提供重试。命令完成后重新读取列表与详情，HTTP 成功本身不被当作动作成功证明。Vite 开发代理已覆盖 `/v2`。
+
+本机验证包括 Workbench API/组件 15 项、全量仓库门禁及 Playwright 桌面/移动 4 个场景。浏览器通过真实 Gateway、Action Runtime、SQLite Ledger 和 local artifact provider 完成 prepare → authorize → execute → read-back verification；任务执行器仍为 mock，未调用真实模型或外部服务。细节见 [SPEC-0006 证据](../specs/0006-action-inbox/evidence.md) 和 [Workbench SOP](runbooks/web-workbench.md)。
 
 ## 状态标注规则
 

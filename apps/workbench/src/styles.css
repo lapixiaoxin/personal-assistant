@@ -52,6 +52,7 @@ textarea:focus-visible {
   --accent: #18d47b;
   --accent-deep: #075f39;
   --danger: #c8453a;
+  --warning: #9b6412;
   display: grid;
   grid-template-columns: minmax(220px, 260px) minmax(420px, 1fr) minmax(250px, 310px);
   width: min(1440px, calc(100% - 48px));
@@ -97,6 +98,50 @@ textarea:focus-visible {
   font-weight: 800;
 }
 
+.workspace-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  margin-top: 24px;
+  padding: 4px;
+  background: rgb(255 255 255 / 7%);
+  border-radius: 7px;
+}
+
+.workspace-tab {
+  display: inline-flex;
+  min-width: 0;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 5px 8px;
+  cursor: pointer;
+  color: var(--sidebar-muted);
+  background: transparent;
+  border-radius: 5px;
+  font-size: 12px;
+}
+
+.workspace-tab.active {
+  color: #f8faf8;
+  background: rgb(255 255 255 / 11%);
+}
+
+.workspace-count {
+  display: inline-flex;
+  min-width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  color: #082d1c;
+  background: var(--accent);
+  border-radius: 9px;
+  font-size: 10px;
+  font-weight: 750;
+}
+
 .new-task-button,
 .cancel-button,
 .approval-actions button {
@@ -111,10 +156,22 @@ textarea:focus-visible {
 
 .new-task-button {
   width: 100%;
-  margin-top: 28px;
+  margin-top: 14px;
   color: #082d1c;
   background: var(--accent);
   border-radius: 7px;
+  font-weight: 650;
+}
+
+.sidebar-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  margin-top: 14px;
+  padding: 0 8px;
+  color: #f4f7f4;
+  font-size: 13px;
   font-weight: 650;
 }
 
@@ -128,7 +185,7 @@ textarea:focus-visible {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 4px;
-  margin-top: 24px;
+  margin-top: 16px;
   padding: 4px;
   background: rgb(255 255 255 / 7%);
   border-radius: 7px;
@@ -221,6 +278,20 @@ textarea:focus-visible {
   background: #ef766b;
 }
 
+.state-dot.action-prepared,
+.state-dot.action-authorized,
+.state-dot.action-outcome_unknown {
+  background: var(--accent);
+}
+
+.state-dot.action-executing {
+  background: #70a8dc;
+}
+
+.state-dot.action-failed {
+  background: #ef766b;
+}
+
 .connection {
   display: flex;
   align-items: center;
@@ -299,6 +370,22 @@ textarea:focus-visible {
   color: var(--danger);
 }
 
+.state-badge.action-prepared,
+.state-badge.action-authorized,
+.state-badge.action-succeeded {
+  color: var(--accent-deep);
+  border-color: var(--accent);
+}
+
+.state-badge.action-failed {
+  color: var(--danger);
+}
+
+.state-badge.action-outcome_unknown {
+  color: var(--warning);
+  border-color: #d59b43;
+}
+
 .conversation-body {
   min-height: 0;
   padding: 28px 0;
@@ -356,6 +443,105 @@ textarea:focus-visible {
 .message-stack {
   display: grid;
   gap: 18px;
+}
+
+.action-conversation {
+  grid-template-rows: auto 1fr auto;
+}
+
+.action-detail-view {
+  display: grid;
+  width: min(760px, 100%);
+  margin: 0 auto;
+  gap: 28px;
+}
+
+.action-overview,
+.digest-section {
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--line);
+}
+
+.action-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  color: var(--accent-deep);
+}
+
+.action-section-heading h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.action-facts,
+.record-grid {
+  margin: 0;
+}
+
+.fact-row {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(88px, 116px) minmax(0, 1fr);
+  gap: 14px;
+  padding: 9px 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+}
+
+.fact-row:last-child {
+  border-bottom: 0;
+}
+
+.fact-row dt,
+.fact-row dd {
+  min-width: 0;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.fact-row dt {
+  color: var(--muted);
+}
+
+.fact-row dd {
+  overflow-wrap: anywhere;
+}
+
+.fact-row code,
+.digest-block code,
+.evidence-refs code {
+  color: #34433a;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+}
+
+.digest-section {
+  display: grid;
+  gap: 10px;
+}
+
+.digest-section .action-section-heading {
+  margin-bottom: 6px;
+}
+
+.digest-block {
+  display: grid;
+  gap: 6px;
+  padding: 11px 12px;
+  background: #eef1ed;
+  border-left: 2px solid #8a948c;
+}
+
+.digest-block span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 650;
 }
 
 .message {
@@ -485,6 +671,7 @@ textarea:focus-visible {
 .details-panel {
   min-width: 0;
   padding: 24px 18px;
+  overflow-y: auto;
   background: #f4f5f2;
   border-left: 1px solid var(--line);
 }
@@ -513,6 +700,18 @@ textarea:focus-visible {
 .approval-panel p {
   margin: 9px 0 5px;
   line-height: 1.5;
+}
+
+.action-control-panel.warning {
+  border-color: #d59b43;
+}
+
+.action-control-panel.warning .approval-title {
+  color: var(--warning);
+}
+
+.approval-actions.single-action {
+  grid-template-columns: 1fr;
 }
 
 .risk-label {
@@ -580,6 +779,57 @@ textarea:focus-visible {
 
 .timeline {
   margin-top: 14px;
+}
+
+.evidence-stack {
+  display: grid;
+  gap: 2px;
+  margin-top: 18px;
+}
+
+.evidence-group {
+  padding: 16px 0;
+  border-top: 1px solid var(--line);
+}
+
+.evidence-heading {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 8px;
+  color: var(--accent-deep);
+}
+
+.evidence-heading h3 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.evidence-heading span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.record-grid .fact-row {
+  display: block;
+  padding: 7px 0;
+}
+
+.record-grid .fact-row dt {
+  margin-bottom: 2px;
+}
+
+.evidence-refs {
+  display: grid;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.detail-empty {
+  margin-top: 12px;
 }
 
 .timeline-item {
@@ -665,20 +915,52 @@ textarea:focus-visible {
   }
 
   .brand {
+    grid-column: 1;
+    grid-row: 1;
     padding: 0;
   }
 
+  .workspace-tabs {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    margin: 0;
+  }
+
   .new-task-button {
+    grid-column: 2;
+    grid-row: 1;
     width: auto;
     min-width: 104px;
     margin: 0;
     padding: 0 12px;
   }
 
+  .sidebar-section-title {
+    grid-column: 2;
+    grid-row: 1;
+    margin: 0;
+    padding: 0;
+  }
+
   .filter-tabs,
   .task-list,
   .connection {
     display: none;
+  }
+
+  .action-sidebar .filter-tabs {
+    display: grid;
+    grid-column: 1 / -1;
+    grid-row: 3;
+    margin: 0;
+  }
+
+  .action-sidebar .task-list {
+    display: block;
+    grid-column: 1 / -1;
+    grid-row: 4;
+    max-height: 168px;
+    margin: 0;
   }
 
   .conversation {
@@ -701,5 +983,13 @@ textarea:focus-visible {
 
   .details-panel {
     padding: 18px 16px 24px;
+  }
+
+  .fact-row {
+    display: block;
+  }
+
+  .fact-row dt {
+    margin-bottom: 3px;
   }
 }

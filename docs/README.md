@@ -8,7 +8,7 @@
 | 查看 DSH 核心架构与多端流程 | [v0.3 六图方案](design/10-dsh-centered-architecture.md)、[ADR-003](adr/0003-dsh-centered-harness.md)、[SPEC-0003](../specs/0003-dsh-centered-design/spec.md) |
 | 理解 DSH 当前源码与能力 | [rc.2 源码分析](research/2026-09-25-dsh-source-analysis.md)：插件理念、执行链路、能力开关、与 lumi 固定 rc.1 的差异 |
 | 检查当前真实能力 | [工程事实基线](current-state.md) |
-| 使用电脑端任务工作台 | [Workbench SOP](runbooks/web-workbench.md)、[SPEC-0004](../specs/0004-web-workbench/spec.md) |
+| 使用电脑端任务与动作工作台 | [Workbench SOP](runbooks/web-workbench.md)、[SPEC-0004](../specs/0004-web-workbench/spec.md)、[SPEC-0006](../specs/0006-action-inbox/spec.md) |
 | 验证 DSH 受控动作与旁路阻断 | [Action Bridge SOP](runbooks/dsh-action-bridge.md)、[SPEC-0005](../specs/0005-dsh-action-bridge/spec.md) |
 | 理解产品与个人模型 | [产品宪章](design/01-product.md)、[记忆与主动性](design/04-personal-model.md) |
 | 实现或接入新能力 | [架构](design/02-architecture.md)、[协议](design/03-protocols.md)、[安全](design/05-safety.md) |

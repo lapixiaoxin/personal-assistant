@@ -14,6 +14,7 @@
 - 规则识别出的外部发送、支付、删除和设备控制等高风险任务进入任务级审批。
 - v2 动作 API 对一个受控 `artifact.write` 能力执行参数摘要绑定、一次性授权、原子额度消费、独占文件创建、读回核验和崩溃后显式对账。
 - `personal-assistant` 的 DSH profile 通过每 Run loopback bridge 提议/执行同一 v2 Action；未知工具以及直接文件写、Shell、网络、workflow/`run_code` 在工具主体前失败关闭。
+- 本地 Web 工作台提供任务与动作双视图；用户可审阅参数摘要、授权或取消动作、执行已授权动作，并读取回执和独立验证。
 - Gateway 使用本地 Bearer token 派生 owner/principal；请求体中的 `actorId` 不能用于切换身份。
 - 任务事件、工具调用摘要、审批动作和执行结果可查询，服务重启后仍保留。
 - DSH 通过独立 adapter 接入，固定为 `0.1.7-rc.1`；核心层不导入 DSH。
@@ -172,7 +173,7 @@ curl -sS http://127.0.0.1:4310/v1/tasks/task-http-demo/audit \
 
 ## Web 工作台
 
-第一版电脑端入口位于 `apps/workbench`，提供任务提交、状态与结果查看、任务级审批、取消、事件和审计记录。它调用 lumi Gateway，不直接连接 DSH 或数据库。
+电脑端入口位于 `apps/workbench`。任务视图提供任务提交、状态与结果查看、任务级审批、取消、事件和审计记录；动作视图列出 DSH 或 API 提议的受控 Action，展示目标、参数摘要、期限、授权、回执和 verification，并按服务端状态提供授权、执行、取消或对账。它只调用 lumi Gateway，不直接连接 DSH、数据库或 artifact 目录。
 
 开发时分别启动 Gateway 和 Vite：
 
@@ -184,7 +185,7 @@ PA_EXECUTOR=mock pnpm dev
 pnpm dev:web
 ```
 
-打开 `http://127.0.0.1:4311/#token=<PA_HTTP_TOKEN>`。页面会移除 fragment 并仅在当前 tab 的 `sessionStorage` 保存 token。根目录 `.env` 会由 CLI 和 Gateway 自动加载；不要将密钥提交到仓库。
+打开 `http://127.0.0.1:4311/#token=<PA_HTTP_TOKEN>`。Vite 同时代理 `/v1`、`/v2` 和 `/health`。页面会移除 fragment 并仅在当前 tab 的 `sessionStorage` 保存 token。根目录 `.env` 会由 CLI 和 Gateway 自动加载；不要将密钥提交到仓库。
 
 生产方式先构建，再由 Gateway 同源托管：
 
