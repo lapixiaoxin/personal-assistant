@@ -7,6 +7,7 @@
     "@lumi/action-runtime": "workspace:*",
     "@lumi/contracts": "workspace:*",
     "@lumi/identity": "workspace:*",
+    "@lumi/research-workflow": "workspace:*",
     "@lumi/runtime": "workspace:*",
     "@lumi/task-ledger": "workspace:*",
     "fastify": "5.6.1",

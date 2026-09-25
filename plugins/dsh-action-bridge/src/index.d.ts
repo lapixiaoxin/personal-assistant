@@ -1,11 +1,15 @@
 export interface BridgeConnection {
+  readonly actionEnabled: boolean
+  readonly researchEnabled: boolean
   readonly token: string
   readonly url: string
 }
 
 export interface BridgeEnvironment {
+  readonly LUMI_ACTION_BRIDGE_ENABLED?: string
   readonly LUMI_ACTION_BRIDGE_TOKEN?: string
   readonly LUMI_ACTION_BRIDGE_URL?: string
+  readonly LUMI_RESEARCH_BRIDGE_ENABLED?: string
   readonly [key: string]: string | undefined
 }
 

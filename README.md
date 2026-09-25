@@ -14,6 +14,7 @@
 - 规则识别出的外部发送、支付、删除和设备控制等高风险任务进入任务级审批。
 - v2 动作 API 对一个受控 `artifact.write` 能力执行参数摘要绑定、一次性授权、原子额度消费、独占文件创建、读回核验和崩溃后显式对账。
 - `personal-assistant` 的 DSH profile 通过每 Run loopback bridge 提议/执行同一 v2 Action；未知工具以及直接文件写、Shell、网络、workflow/`run_code` 在工具主体前失败关闭。
+- 结构化研究简报接收 1-8 个用户声明的公开 HTTPS 来源；`research-agent` 只能抓取本次 Task 绑定的 URL，保存不可变来源快照，并在全部来源已抓取且 source ID 引用覆盖通过后完成。
 - 本地 Web 工作台提供任务与动作双视图；用户可审阅参数摘要、授权或取消动作、执行已授权动作，并读取回执和独立验证。
 - Gateway 使用本地 Bearer token 派生 owner/principal；请求体中的 `actorId` 不能用于切换身份。
 - 任务事件、工具调用摘要、审批动作和执行结果可查询，服务重启后仍保留。
@@ -48,8 +49,11 @@ packages/task-ledger/          SQLite persistence
 packages/policy/               Risk classification and approval policy
 packages/capability-registry/  Capability discovery and routing
 packages/personal-memory/      Explicit candidate/confirm/retract model
+packages/research-workflow/    Research submission, source records, citation verification
 adapters/dsh/                  DSH-only types and event mapping
+adapters/research-sources/     Public HTTPS fetch and immutable source snapshots
 profiles/dsh-lumi/             lumi DSH SDK profile overlay
+profiles/dsh-research/         Protected public-source research profile
 tests/contract/                Cross-module DSH runtime contracts
 ```
 
@@ -93,6 +97,9 @@ PA_EXECUTOR=mock pnpm cli -- submit "总结今天的工作"
 ```bash
 pnpm cli -- submit "总结今天的工作"
 pnpm cli -- submit "实现一个 TypeScript API"
+pnpm cli -- research "比较这两个方案" \
+  --source https://example.com/a \
+  --source https://example.com/b
 pnpm cli -- list
 pnpm cli -- get <task-id>
 pnpm cli -- events <task-id>
@@ -168,12 +175,13 @@ curl -sS http://127.0.0.1:4310/v1/tasks/task-http-demo/audit \
 | `POST` | `/v2/actions/:id/execute` | 执行动作并读回核验 |
 | `POST` | `/v2/actions/:id/reconcile` | 对账不确定结果 |
 | `POST` | `/v2/actions/:id/cancel` | 撤销未执行动作或记录剩余影响 |
+| `POST` | `/v2/workflows/research-brief` | 提交绑定公开 HTTPS 来源的研究简报 |
 
 当前 HTTP 提交会等待任务完成后返回。流式响应和 WebSocket 属于下一阶段。
 
 ## Web 工作台
 
-电脑端入口位于 `apps/workbench`。任务视图提供任务提交、状态与结果查看、任务级审批、取消、事件和审计记录；动作视图列出 DSH 或 API 提议的受控 Action，展示目标、参数摘要、期限、授权、回执和 verification，并按服务端状态提供授权、执行、取消或对账。它只调用 lumi Gateway，不直接连接 DSH、数据库或 artifact 目录。
+电脑端入口位于 `apps/workbench`。任务视图提供普通任务与研究简报两种 composer 模式、状态与结果查看、任务级审批、取消、事件和审计记录；研究模式要求逐行填写公开 HTTPS 来源，并在任务消息中显示服务端绑定的来源。动作视图列出 DSH 或 API 提议的受控 Action，展示目标、参数摘要、期限、授权、回执和 verification，并按服务端状态提供授权、执行、取消或对账。它只调用 lumi Gateway，不直接连接 DSH、数据库、source snapshot 或 artifact 目录。
 
 开发时分别启动 Gateway 和 Vite：
 
@@ -230,6 +238,8 @@ DSH 凭据由 DSH 自己的配置或环境变量提供。默认 DSH home 是 `./
 
 `personal-assistant` profile 会加载 [`plugins/dsh-action-bridge`](plugins/dsh-action-bridge)。插件启动后先向本 Run 的短期 bridge 完成认证握手；握手缺失时 adapter 在发送首个模型请求前失败。DSH 子进程不继承 `PA_*` 或旧 bridge 变量，不能取得 Gateway Bearer token。
 
+`research-agent` 使用独立的 [`profiles/dsh-research/cordis.patch.yml`](profiles/dsh-research/cordis.patch.yml)。该 Run 只注册 `lumi_public_web_fetch`，不注册 Action 工具；Host 对 URL 做精确 Task allowlist、HTTPS/DNS 公网地址、重定向、大小、类型与超时检查。来源快照默认位于 `data/research/sources`，可用 `PA_RESEARCH_ROOT` 覆盖。
+
 DSH 准备动作后不会自动授权或执行。用户通过 `action get/authorize` 审阅并批准；后续任务必须显式携带同一个 Action 引用：
 
 ```bash
@@ -240,7 +250,7 @@ pnpm cli -- submit "执行我已批准的动作" --context "lumi-action:<action-
 
 也可以继续使用 `pnpm cli -- action execute <action-id>` 直接走确定性的 Host 路径。两条路径都消费同一份参数绑定授权和 Verification。
 
-`pnpm test:dsh` 是不需要真实凭据的 DSH runtime contract test：它启动真正的 DSH SDK 子进程，通过官方本地模拟模型端点验证 coding 兼容、MiniMax catalog、插件握手、Action prepare/execute，以及 `write`/`bash` 旁路阻断。该测试也包含在 `pnpm test` 中。真实提供方 smoke 仍需对应的 API Key。
+`pnpm test:dsh` 是不需要真实凭据的 DSH runtime contract test：它启动真正的 DSH SDK 子进程，通过官方本地模拟模型端点验证 coding 兼容、MiniMax catalog、插件握手、Action prepare/execute、research source capture/citation，以及 `write`/`bash`/`web_fetch` 旁路阻断。该测试也包含在 `pnpm test` 中。真实提供方 smoke 仍需对应的 API Key。
 
 上游依赖和升级规则见 [`docs/upstream-strategy.md`](docs/upstream-strategy.md)。
 
@@ -272,6 +282,7 @@ pnpm dsh:web:minimax-cn
 
 - Gateway 默认只监听 loopback，并使用单 owner 的本地 Bearer token；这不是公网所需的多用户认证、TLS、限流或来源控制。
 - `personal-assistant` 的固定 rc.1 profile 已将 `artifact.write` 接到参数级 Broker，并用显式 allowlist guard 阻断直接文件写、Shell、网络、MCP、workflow/`run_code` 和未知工具。
+- `research-agent` 不开放 DSH 通用网络；只读用户声明的公开 HTTPS 来源，拒绝 URL 凭据、非 443 端口、IP literal、私网/保留 DNS 结果、超限响应和非 UTF-8 文本。网页内容仍是不可信数据，引用覆盖不等于事实真实性验证。
 - `coding-agent` 仍是本机开发态宽权限 profile；它不属于生产动作边界，不能持有真实 Connector 凭据。进程内 guard 也不是对恶意插件或同机进程的 OS 沙箱。
 - 受控 profile 仍能读取 workspace 内允许的资料；敏感读取、模型出境和通用 secret store 尚未完成。
 - 工具审计只保存工具名、调用 ID 和成功状态，不复制参数或返回正文。
@@ -284,4 +295,5 @@ pnpm dsh:web:minimax-cn
 - 自动重试与跨进程运行中任务恢复
 - Desktop、Mobile、Watch、Voice 客户端
 - 自动长期记忆写入
+- 搜索引擎、登录态网页、JavaScript 渲染和跨站爬取
 - 无人确认的外部发送、支付、删除和设备控制

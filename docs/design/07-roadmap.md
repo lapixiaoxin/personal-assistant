@@ -42,6 +42,8 @@ M2 的记忆存储可以与 M1 非重叠开发，但没有 M1 的安全出口证
 
 2026-09-25，M1.1、受控本地产物范围的 M1.2 和 M1.4 已由 SPEC-0001 完成本地验证。SPEC-0005 已完成 `personal-assistant` 固定 DSH 版本的 Broker 参数封存、跨 Run Action 引用、同步 guard 与 Shell/文件旁路阻断；M1.3 的剩余边界是读取隔离、OS 级沙箱和开发态 `coding-agent`。这些证据不能外推到任意第三方插件或真实 Connector。
 
+2026-09-25，SPEC-0007 完成 M1.5 中首个研究报告切片：用户声明的公开 HTTPS 来源经 Host URL allowlist、SSRF/大小/类型控制和不可变 snapshot 后进入独立 `research-agent`，最终结果必须覆盖全部 source ID。已完成一次真实 MiniMax + 公开网页只读样本；会议 brief、仓库变更和研究场景的建议样本量仍未满足，不能据此宣布 M1.5 整体完成。
+
 建议每个开发切片控制在一个 Agent 能完整理解、实现、验证和交接的范围；不要按目录把一个不可验收的大功能机械拆碎。
 
 ## 首轮真实样本与门槛

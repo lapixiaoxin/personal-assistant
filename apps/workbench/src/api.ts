@@ -50,6 +50,7 @@ export interface LumiApiClient {
   listTasks(): Promise<TaskRecord[]>
   reconcileAction(actionId: string): Promise<ActionDetail>
   reject(taskId: string): Promise<TaskRecord>
+  submitResearchBrief(question: string, sources: string[], id: string): Promise<TaskDetail>
   submitTask(content: string, id: string): Promise<TaskDetail>
 }
 
@@ -107,6 +108,19 @@ export class LumiApi implements LumiApiClient {
         channel: 'web',
         content,
         id,
+      }),
+      headers: { 'content-type': 'application/json' },
+      method: 'POST',
+    }).then(response => response.data)
+  }
+
+  submitResearchBrief(question: string, sources: string[], id: string): Promise<TaskDetail> {
+    return this.request<DataEnvelope<TaskDetail>>('/v2/workflows/research-brief', {
+      body: JSON.stringify({
+        id,
+        question,
+        schemaVersion: 'lumi.research-brief/v1',
+        sources,
       }),
       headers: { 'content-type': 'application/json' },
       method: 'POST',

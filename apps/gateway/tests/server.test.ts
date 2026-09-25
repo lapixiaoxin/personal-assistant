@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { TaskExecutor } from '@lumi/assistant-core'
 import { createAssistantRuntime, type AssistantRuntime } from '@lumi/runtime'
+import { researchSourceUrlsFromContextRefs } from '@lumi/research-workflow'
 import { buildGateway } from '../src/server.ts'
 
 const openRuntimes: AssistantRuntime[] = []
@@ -218,6 +219,76 @@ describe('gateway', () => {
       task: { state: 'completed' },
       verification: { status: 'passed' },
     })
+    await app.close()
+  })
+
+  it('submits a structured research brief with server-owned workflow refs', async () => {
+    const state: { runtime?: AssistantRuntime } = {}
+    const executor: TaskExecutor = {
+      execute: async ({ task }) => {
+        const sources = researchSourceUrlsFromContextRefs(task.contextRefs)
+        const sourceIds = sources.map((_source, index) =>
+          `source_${String(index + 1).padStart(24, '0')}`,
+        )
+        sources.forEach((source, index) => {
+          state.runtime?.ledger.appendEvent(task.id, 'research.source_captured', {
+            requestedUrl: source,
+            sourceId: sourceIds[index] ?? '',
+          })
+        })
+        return {
+          output: `Research result ${sourceIds.map(id => `[${id}]`).join(' ')}`,
+          sessionId: `session-${task.id}`,
+        }
+      },
+    }
+    const runtime = createAssistantRuntime({
+      dbPath: ':memory:',
+      executor,
+      httpToken: token,
+      principalId: 'user-1',
+    })
+    state.runtime = runtime
+    openRuntimes.push(runtime)
+    const app = buildGateway({ runtime })
+    const submitted = await app.inject({
+      headers: authenticatedHeaders(true),
+      method: 'POST',
+      payload: {
+        id: 'research-http',
+        question: 'Compare the declared sources',
+        schemaVersion: 'lumi.research-brief/v1',
+        sources: ['https://example.com', 'https://example.org/report'],
+      },
+      url: '/v2/workflows/research-brief',
+    })
+
+    expect(submitted.statusCode).toBe(201)
+    expect(submitted.json().data.task).toMatchObject({
+      capabilityId: 'research-agent',
+      channel: 'research-brief',
+      id: 'research-http',
+      state: 'completed',
+    })
+    expect(submitted.json().data.task.contextRefs).toHaveLength(3)
+    expect(runtime.ledger.listEvents('research-http')).toContainEqual(
+      expect.objectContaining({
+        payload: expect.objectContaining({ status: 'passed', sourceCount: 2 }),
+        type: 'verification.completed',
+      }),
+    )
+
+    const invalid = await app.inject({
+      headers: authenticatedHeaders(true),
+      method: 'POST',
+      payload: {
+        question: 'Read a private service',
+        sources: ['http://127.0.0.1/private'],
+      },
+      url: '/v2/workflows/research-brief',
+    })
+    expect(invalid.statusCode).toBe(400)
+    expect(invalid.json().error.code).toBe('INVALID_REQUEST')
     await app.close()
   })
 })

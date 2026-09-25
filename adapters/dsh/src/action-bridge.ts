@@ -11,6 +11,12 @@ import {
   type ActionProposalSubmission,
   type JsonValue,
 } from '@lumi/contracts'
+import {
+  researchSourceUrlsFromContextRefs,
+  ResearchFetchSubmissionSchema,
+  type ResearchFetchSubmission,
+  type ResearchSourceRecord,
+} from '@lumi/research-workflow'
 
 const MAX_REQUEST_BYTES = 1_100_000
 const ACTION_REFERENCE = /^lumi-action:([A-Za-z0-9][A-Za-z0-9._-]{0,127})$/
@@ -18,6 +24,14 @@ const ACTION_REFERENCE = /^lumi-action:([A-Za-z0-9][A-Za-z0-9._-]{0,127})$/
 export interface DshActionBroker {
   execute(actionId: string, invocation: DshBrokerInvocation): Promise<ActionDetail>
   prepare(input: ActionProposalSubmission, invocation: DshBrokerInvocation): ActionDetail
+}
+
+export interface DshResearchBroker {
+  capture(
+    input: ResearchFetchSubmission,
+    invocation: DshBrokerInvocation,
+    signal: AbortSignal,
+  ): Promise<ResearchSourceRecord>
 }
 
 export interface DshBrokerInvocation {
@@ -34,6 +48,8 @@ export interface DshActionBridgeRun {
 export interface DshActionBridgeOptions {
   broker: DshActionBroker
   contextRefs: readonly string[]
+  enableActions?: boolean
+  researchBroker?: DshResearchBroker
   taskId: string
 }
 
@@ -43,24 +59,36 @@ export async function startDshActionBridge(
   const token = randomBytes(32).toString('base64url')
   const tokenDigest = digestToken(token)
   const allowedActionIds = actionIdsFromContextRefs(options.contextRefs)
+  const allowedResearchSources = new Set(researchSourceUrlsFromContextRefs(options.contextRefs))
+  const activeRequests = new Set<AbortController>()
   let markReady: (() => void) | undefined
   let ready = false
   const readySignal = new Promise<void>((resolveReady) => {
     markReady = resolveReady
   })
   const server = createServer((request, response) => {
-    void handleRequest(
-      request,
-      response,
-      options.broker,
-      tokenDigest,
+    const controller = new AbortController()
+    activeRequests.add(controller)
+    response.once('close', () => {
+      if (!response.writableEnded) controller.abort()
+      activeRequests.delete(controller)
+    })
+    void handleRequest({
+      actionBroker: options.broker,
+      actionsEnabled: options.enableActions !== false,
       allowedActionIds,
-      { sourceTaskId: options.taskId },
-      () => {
+      allowedResearchSources,
+      invocation: { sourceTaskId: options.taskId },
+      markReady: () => {
         ready = true
         markReady?.()
       },
-    )
+      ...(options.researchBroker ? { researchBroker: options.researchBroker } : {}),
+      request,
+      response,
+      signal: controller.signal,
+      tokenDigest,
+    }).finally(() => activeRequests.delete(controller))
   })
   await listen(server)
   const address = server.address()
@@ -75,11 +103,14 @@ export async function startDshActionBridge(
     environment: {
       LUMI_ACTION_BRIDGE_TOKEN: token,
       LUMI_ACTION_BRIDGE_URL: url,
+      ...(options.enableActions === false ? { LUMI_ACTION_BRIDGE_ENABLED: '0' } : {}),
+      ...(options.researchBroker ? { LUMI_RESEARCH_BRIDGE_ENABLED: '1' } : {}),
     },
     url,
     async close() {
       if (closed) return
       closed = true
+      for (const controller of activeRequests) controller.abort()
       await closeServer(server)
     },
     async waitUntilReady(timeoutMs = 5_000) {
@@ -113,22 +144,30 @@ export function createDshChildEnvironment(
     Object.entries(parent).filter(([key, value]) =>
       value !== undefined
       && !key.startsWith('PA_')
-      && !key.startsWith('LUMI_ACTION_BRIDGE_')),
+      && !key.startsWith('LUMI_ACTION_BRIDGE_')
+      && !key.startsWith('LUMI_RESEARCH_BRIDGE_')),
   )
   return { ...environment, ...additions }
 }
 
-async function handleRequest(
-  request: IncomingMessage,
-  response: ServerResponse,
-  broker: DshActionBroker,
-  expectedTokenDigest: Buffer,
-  allowedActionIds: ReadonlySet<string>,
-  invocation: DshBrokerInvocation,
-  markReady: () => void,
-): Promise<void> {
+interface BridgeRequestContext {
+  actionBroker: DshActionBroker
+  actionsEnabled: boolean
+  allowedActionIds: ReadonlySet<string>
+  allowedResearchSources: ReadonlySet<string>
+  invocation: DshBrokerInvocation
+  markReady: () => void
+  researchBroker?: DshResearchBroker
+  request: IncomingMessage
+  response: ServerResponse
+  signal: AbortSignal
+  tokenDigest: Buffer
+}
+
+async function handleRequest(context: BridgeRequestContext): Promise<void> {
+  const { request, response } = context
   try {
-    requireAuthorization(request, expectedTokenDigest)
+    requireAuthorization(request, context.tokenDigest)
     requireJsonRequest(request)
     const target = new URL(request.url ?? '/', 'http://127.0.0.1')
     if (target.search !== '') {
@@ -139,15 +178,50 @@ async function handleRequest(
     if (path === '/v1/ready') {
       requireMethod(request, 'POST')
       await readEmptyJsonObject(request)
-      markReady()
+      context.markReady()
       sendJson(response, 200, { data: { ready: true } })
       return
     }
 
     if (path === '/v1/actions/prepare') {
       requireMethod(request, 'POST')
+      if (context.actionsEnabled === false) {
+        throw new BridgeRequestError(
+          403,
+          'PERMISSION_DENIED',
+          'Action access is not enabled for this DSH task',
+        )
+      }
       const proposal = ActionProposalSubmissionSchema.parse(await readJsonBody(request))
-      sendJson(response, 202, { data: summarizeAction(broker.prepare(proposal, invocation)) })
+      sendJson(response, 202, {
+        data: summarizeAction(context.actionBroker.prepare(proposal, context.invocation)),
+      })
+      return
+    }
+
+    if (path === '/v1/research/fetch') {
+      requireMethod(request, 'POST')
+      if (!context.researchBroker) {
+        throw new BridgeRequestError(
+          403,
+          'PERMISSION_DENIED',
+          'Research source access is not enabled for this DSH task',
+        )
+      }
+      const submission = ResearchFetchSubmissionSchema.parse(await readJsonBody(request))
+      if (!context.allowedResearchSources.has(submission.url)) {
+        throw new BridgeRequestError(
+          403,
+          'PERMISSION_DENIED',
+          'The public source is not declared by this DSH task',
+        )
+      }
+      const source = await context.researchBroker.capture(
+        submission,
+        context.invocation,
+        context.signal,
+      )
+      sendJson(response, 200, { data: source })
       return
     }
 
@@ -155,9 +229,16 @@ async function handleRequest(
       .exec(path)
     if (executeMatch?.[1]) {
       requireMethod(request, 'POST')
+      if (context.actionsEnabled === false) {
+        throw new BridgeRequestError(
+          403,
+          'PERMISSION_DENIED',
+          'Action access is not enabled for this DSH task',
+        )
+      }
       await readEmptyJsonObject(request)
       const actionId = executeMatch[1]
-      if (!allowedActionIds.has(actionId)) {
+      if (!context.allowedActionIds.has(actionId)) {
         throw new BridgeRequestError(
           403,
           'PERMISSION_DENIED',
@@ -165,7 +246,7 @@ async function handleRequest(
         )
       }
       sendJson(response, 200, {
-        data: summarizeAction(await broker.execute(actionId, invocation)),
+        data: summarizeAction(await context.actionBroker.execute(actionId, context.invocation)),
       })
       return
     }
@@ -265,7 +346,7 @@ function sendBridgeError(response: ServerResponse, error: unknown): void {
     sendJson(response, 400, {
       error: {
         code: 'INVALID_INPUT',
-        message: 'Action proposal validation failed',
+        message: 'Bridge request validation failed',
         retryable: false,
         safeToRetry: false,
       },
@@ -304,6 +385,8 @@ function sendJson(response: ServerResponse, status: number, body: unknown): void
 function actionErrorStatus(code: string): number {
   if (code === 'PERMISSION_DENIED') return 403
   if (code === 'INVALID_INPUT') return 400
+  if (code === 'DEADLINE_EXCEEDED') return 504
+  if (code === 'DEPENDENCY_UNAVAILABLE') return 503
   if (
     code === 'APPROVAL_EXPIRED'
     || code === 'APPROVAL_REQUIRED'
@@ -320,6 +403,8 @@ function isActionErrorCode(code: string): boolean {
     'APPROVAL_REQUIRED',
     'CANCELLED',
     'CONFLICT',
+    'DEADLINE_EXCEEDED',
+    'DEPENDENCY_UNAVAILABLE',
     'INVALID_INPUT',
     'OUTCOME_UNKNOWN',
     'PERMISSION_DENIED',

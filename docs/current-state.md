@@ -115,6 +115,16 @@ DSH 子进程环境会移除全部 `PA_*` 和旧 `LUMI_ACTION_BRIDGE_*` 变量�
 
 本机验证包括 Workbench API/组件 15 项、全量仓库门禁及 Playwright 桌面/移动 4 个场景。浏览器通过真实 Gateway、Action Runtime、SQLite Ledger 和 local artifact provider 完成 prepare → authorize → execute → read-back verification；任务执行器仍为 mock，未调用真实模型或外部服务。细节见 [SPEC-0006 证据](../specs/0006-action-inbox/evidence.md) 和 [Workbench SOP](runbooks/web-workbench.md)。
 
+## 2026-09-25 · 受控公开来源研究简报
+
+`SPEC-0007` 新增结构化 research brief workflow。Workbench、Gateway `/v2/workflows/research-brief` 和 CLI `research` 接收问题及 1-8 个显式公开 HTTPS 来源，生成不可伪造的 workflow/source context refs，并路由到独立 `research-agent`。
+
+研究 Run 只注册 `lumi_public_web_fetch`，不注册 Action 工具；原生 `web_fetch`/`web_search`、Shell、文件写和未知工具仍由单调 guard 关闭。Host 在实际 TLS 连接前校验每个重定向目标的 HTTPS 默认端口及全部 DNS 地址，只把已验证地址交给 Node lookup；同时限制 3 次重定向、10 秒、1 MiB、UTF-8 HTML/XHTML/plain text 和 50,000 字符规范化文本。
+
+来源正文保存为 owner-only 的不可变 JSON snapshot，普通事件和审计只记录 URL、source ID、digest、ref 与截断状态。Research verifier 要求每个声明 URL 均有抓取事件，且最终结果引用全部 source ID；缺失时 Task 失败，不能用模型自报完成代替。
+
+本机 `pnpm check` 通过 19 个测试文件、118 个用例，其中 9 个启动真实 DSH SDK 子进程；桌面/移动 Playwright 共 6 个场景通过。真实 MiniMax + `https://example.com/` 只读样本在约 7 秒内完成，生成 `source_b6884ffc9252983d798adc5a`，引用覆盖 verification passed；隔离数据库、DSH home 和 snapshot 已在取证后清理。该结果仅为 `verified_once`，不证明任意站点可读、来源事实正确或搜索/登录态网页可用。细节见 [SPEC-0007 证据](../specs/0007-research-brief/evidence.md) 和 [研究简报 SOP](runbooks/research-brief.md)。
+
 ## 状态标注规则
 
 `Proposed`：设计建议；`Specified`：验收和边界已写清；`Implemented`：代码存在；`Verified`：指定环境和版本有证据；`Enabled`：部署配置已启用。后一个状态不能由前一个自动推断。

@@ -40,11 +40,18 @@ export class CapabilityRegistry {
 
 const CODING_INTENT =
   /\b(code|coding|repository|repo|commit|pull request|typescript|javascript|python|golang|rust|java|debug|test|refactor|implement|fix)\b|代码|编码|仓库|单测|测试|调试|重构|实现|修复|提交/i
+const RESEARCH_WORKFLOW_REFERENCE = 'lumi-workflow:research-brief/v1'
 
 export class RuleBasedRouter implements TaskRouter {
   constructor(private readonly registry: CapabilityRegistry) {}
 
   route(request: TaskRequest): RoutingDecision {
+    if (request.contextRefs.includes(RESEARCH_WORKFLOW_REFERENCE)) {
+      return {
+        capability: this.registry.require('research-agent'),
+        reason: 'Matched the explicit research brief workflow marker.',
+      }
+    }
     if (CODING_INTENT.test(request.content)) {
       return {
         capability: this.registry.require('coding-agent'),
@@ -74,6 +81,13 @@ export function createDefaultCapabilityRegistry(): CapabilityRegistry {
     kind: 'agent',
     operations: ['analyze_code', 'edit_code', 'run_tests', 'summarize_changes'],
     riskLevel: 'write',
+  })
+  registry.register({
+    description: 'Builds cited briefs from user-declared public HTTPS sources.',
+    id: 'research-agent',
+    kind: 'agent',
+    operations: ['fetch_declared_public_source', 'synthesize_cited_brief'],
+    riskLevel: 'read',
   })
   return registry
 }

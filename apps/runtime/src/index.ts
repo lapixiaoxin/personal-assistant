@@ -11,6 +11,7 @@ import {
   DshAdapter,
   MockDshAdapter,
   type DshActionBroker,
+  type DshResearchBroker,
 } from '@lumi/dsh-adapter'
 import {
   LocalIdentityAuthority,
@@ -27,6 +28,17 @@ import {
   type PolicyEngine,
 } from '@lumi/policy'
 import {
+  HttpsPublicSourceFetcher,
+  LocalResearchSourceStore,
+} from '@lumi/research-sources'
+import {
+  ResearchBriefWorkflow,
+  ResearchEvidenceExecutor,
+  ResearchSourceService,
+  type PublicSourceFetcher,
+  type ResearchSourceStore,
+} from '@lumi/research-workflow'
+import {
   SqliteTaskLedger,
   type ActionLedger,
   type TaskLedger,
@@ -39,6 +51,7 @@ export interface AssistantRuntime {
   executorKind: 'custom' | 'dsh' | 'mock'
   identity: IdentityAuthority
   ledger: ActionLedger & TaskLedger
+  research: ResearchBriefWorkflow
   close(): Promise<void>
 }
 
@@ -55,6 +68,9 @@ export interface RuntimeOptions {
   ownerId?: string
   policy?: PolicyEngine
   principalId?: string
+  publicSourceFetcher?: PublicSourceFetcher
+  researchRoot?: string
+  researchSourceStore?: ResearchSourceStore
 }
 
 export interface DshModelConfiguration {
@@ -96,15 +112,24 @@ export function createAssistantRuntime(options: RuntimeOptions = {}): AssistantR
     provider,
     ...options.actionService,
   })
+  const researchSources = new ResearchSourceService({
+    fetcher: options.publicSourceFetcher ?? new HttpsPublicSourceFetcher(),
+    ledger,
+    store: options.researchSourceStore ?? new LocalResearchSourceStore(
+      resolve(options.researchRoot ?? process.env.PA_RESEARCH_ROOT ?? `${dataDir}/research/sources`),
+    ),
+  })
   const configured = options.executor
     ? { executor: options.executor, kind: 'custom' as const }
     : createConfiguredExecutor(
         cwd,
         dataDir,
         createDshActionBroker(actions, ledger, identity),
+        createDshResearchBroker(researchSources, identity),
       )
-  const { executor } = configured
+  const executor = new ResearchEvidenceExecutor(configured.executor, ledger)
   const core = new AssistantCore(ledger, router, policy, executor)
+  const research = new ResearchBriefWorkflow(core)
 
   return {
     actions,
@@ -113,6 +138,7 @@ export function createAssistantRuntime(options: RuntimeOptions = {}): AssistantR
     executorKind: configured.kind,
     identity,
     ledger,
+    research,
     close: () => core.close(),
   }
 }
@@ -191,6 +217,17 @@ function createDshActionBroker(
   }
 }
 
+function createDshResearchBroker(
+  sources: ResearchSourceService,
+  identity: IdentityAuthority,
+): DshResearchBroker {
+  return {
+    capture(input, invocation, signal) {
+      return sources.capture(identity.localPrincipal(), input, invocation, signal)
+    },
+  }
+}
+
 function errorCode(error: unknown): string {
   if (typeof error === 'object' && error !== null) {
     const code = Reflect.get(error, 'code')
@@ -203,6 +240,7 @@ function createConfiguredExecutor(
   cwd: string,
   dataDir: string,
   actionBroker: DshActionBroker,
+  researchBroker: DshResearchBroker,
 ): {
   executor: TaskExecutor
   kind: 'dsh' | 'mock'
@@ -223,11 +261,12 @@ function createConfiguredExecutor(
 
   return {
     executor: new DshAdapter({
-      actionBridgeCapabilities: ['personal-assistant'],
+      actionBridgeCapabilities: ['personal-assistant', 'research-agent'],
       actionBroker,
       capabilityPatchFiles: {
         'coding-agent': ['profiles/dsh-coding/cordis.patch.yml'],
         'personal-assistant': ['profiles/dsh-lumi/cordis.patch.yml'],
+        'research-agent': ['profiles/dsh-research/cordis.patch.yml'],
       },
       cwd,
       dshHome: resolve(process.env.PA_DSH_HOME ?? `${dataDir}/dsh`),
@@ -236,6 +275,8 @@ function createConfiguredExecutor(
       patchFiles: modelConfiguration.providerPatchFiles,
       ...(process.env.PA_DSH_PROFILE ? { profile: process.env.PA_DSH_PROFILE } : {}),
       provider: modelConfiguration.provider,
+      researchBridgeCapabilities: ['research-agent'],
+      researchBroker,
     }),
     kind: 'dsh',
   }

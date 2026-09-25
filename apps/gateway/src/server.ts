@@ -13,6 +13,10 @@ import {
   type TaskRecord,
 } from '@lumi/contracts'
 import { IdentityError } from '@lumi/identity'
+import {
+  ResearchBriefSubmissionSchema,
+  ResearchWorkflowError,
+} from '@lumi/research-workflow'
 import { createAssistantRuntime, type AssistantRuntime } from '@lumi/runtime'
 import {
   ActionAuthorizationError,
@@ -201,6 +205,19 @@ export function buildGateway(options: GatewayOptions = {}): FastifyInstance {
     return { data: runtime.actions.cancel(principal, actionId) }
   })
 
+  app.post('/v2/workflows/research-brief', async (request, reply) => {
+    const principal = authenticate(runtime, request)
+    const submission = ResearchBriefSubmissionSchema.parse(request.body)
+    const task = await runtime.research.submit(principal, submission)
+    reply.code(task.state === 'waiting_approval' ? 202 : 201)
+    return {
+      data: {
+        approval: runtime.ledger.getApprovalForTask(task.id) ?? null,
+        task,
+      },
+    }
+  })
+
   if (options.workbenchDir) {
     const root = resolve(options.workbenchDir)
     if (!existsSync(root)) {
@@ -249,6 +266,17 @@ export function buildGateway(options: GatewayOptions = {}): FastifyInstance {
           message: error.message,
           retryable: error.retryable,
           safeToRetry: error.safeToRetry,
+        },
+      })
+      return
+    }
+    if (error instanceof ResearchWorkflowError) {
+      reply.code(error.code === 'PERMISSION_DENIED' ? 403 : 422).send({
+        error: {
+          code: error.code,
+          message: error.message,
+          retryable: error.code === 'DEPENDENCY_UNAVAILABLE',
+          safeToRetry: error.code === 'DEPENDENCY_UNAVAILABLE',
         },
       })
       return

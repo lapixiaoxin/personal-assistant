@@ -9,6 +9,10 @@ import type {
   ActionProposalSubmission,
   ActionStatus,
 } from '@lumi/contracts'
+import {
+  encodeResearchSourceReference,
+  type ResearchSourceRecord,
+} from '@lumi/research-workflow'
 
 const tokenHeader = (token: string): Record<string, string> => ({
   authorization: `Bearer ${token}`,
@@ -148,6 +152,85 @@ describe('DSH per-Run action bridge', () => {
     }
   })
 
+  it('fetches only an exact public source declared by the task', async () => {
+    const sourceUrl = 'https://example.com/report'
+    const capture = vi.fn(async (
+      _input: unknown,
+      _invocation: unknown,
+      _signal: AbortSignal,
+    ): Promise<ResearchSourceRecord> => {
+      void _input
+      void _invocation
+      void _signal
+      return {
+        contentDigest: `sha256:${'b'.repeat(64)}`,
+        fetchedAt: '2026-09-25T00:00:00.000Z',
+        finalUrl: sourceUrl,
+        id: 'source_0123456789abcdef01234567',
+        mediaType: 'text/html',
+        requestedUrl: sourceUrl,
+        schemaVersion: 'lumi.research-source/v1',
+        sourceRef: 'file:///tmp/source.json',
+        text: 'Source evidence',
+        title: 'Report',
+        truncated: false,
+      }
+    })
+    const bridge = await startDshActionBridge({
+      broker: fakeBroker(),
+      contextRefs: [encodeResearchSourceReference(sourceUrl)],
+      enableActions: false,
+      researchBroker: { capture },
+      taskId: 'task-research',
+    })
+    const token = bridge.environment.LUMI_ACTION_BRIDGE_TOKEN ?? ''
+    try {
+      expect(bridge.environment.LUMI_ACTION_BRIDGE_ENABLED).toBe('0')
+      expect(bridge.environment.LUMI_RESEARCH_BRIDGE_ENABLED).toBe('1')
+      const actionDenied = await fetch(`${bridge.url}/v1/actions/prepare`, {
+        body: JSON.stringify({
+          content: 'not allowed',
+          idempotencyKey: 'not-allowed',
+          operation: 'artifact.write',
+          schemaVersion: 'lumi.action-proposal/v1',
+          target: { artifactId: 'not-allowed' },
+        }),
+        headers: tokenHeader(token),
+        method: 'POST',
+      })
+      expect(actionDenied.status).toBe(403)
+
+      const denied = await fetch(`${bridge.url}/v1/research/fetch`, {
+        body: JSON.stringify({
+          schemaVersion: 'lumi.research-fetch/v1',
+          url: 'https://example.org/other',
+        }),
+        headers: tokenHeader(token),
+        method: 'POST',
+      })
+      expect(denied.status).toBe(403)
+      expect(capture).not.toHaveBeenCalled()
+
+      const accepted = await fetch(`${bridge.url}/v1/research/fetch`, {
+        body: JSON.stringify({
+          schemaVersion: 'lumi.research-fetch/v1',
+          url: sourceUrl,
+        }),
+        headers: tokenHeader(token),
+        method: 'POST',
+      })
+      expect(accepted.status).toBe(200)
+      expect(await accepted.text()).toContain('source_0123456789abcdef01234567')
+      expect(capture).toHaveBeenCalledOnce()
+      expect(capture.mock.calls[0]?.[0]).toEqual({
+        schemaVersion: 'lumi.research-fetch/v1',
+        url: sourceUrl,
+      })
+    } finally {
+      await bridge.close()
+    }
+  })
+
   it('isolates concurrent tokens and closes the listener with the Run', async () => {
     const first = await startDshActionBridge({
       broker: fakeBroker(),
@@ -183,6 +266,7 @@ describe('DSH per-Run action bridge', () => {
     expect(createDshChildEnvironment({
       DEEPSEEK_API_KEY: 'model-key',
       LUMI_ACTION_BRIDGE_TOKEN: 'stale-token',
+      LUMI_RESEARCH_BRIDGE_ENABLED: '1',
       PA_HTTP_TOKEN: 'host-token',
       PA_OWNER_ID: 'host-owner',
       PATH: '/usr/bin',

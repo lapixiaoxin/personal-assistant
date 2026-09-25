@@ -119,3 +119,41 @@ test('authorizes and verifies a bound action from the inbox', async ({ page, req
   })
   expect(consoleErrors).toEqual([])
 })
+
+test('submits a bounded research brief and reports offline verification failure', async ({ page }, testInfo) => {
+  const consoleErrors: string[] = []
+  page.on('console', (message) => {
+    if (message.type() === 'error') consoleErrors.push(message.text())
+  })
+  page.on('pageerror', error => consoleErrors.push(error.message))
+
+  const suffix = `${testInfo.project.name}-${Date.now()}`
+  const question = `比较公开来源 ${suffix}`
+  await page.goto(`/#token=${token}`)
+  await page.getByRole('tab', { name: '研究简报' }).click()
+  await page.getByLabel('研究问题').fill(question)
+  await page.getByLabel('公开来源').fill(
+    'https://example.com/\nhttps://example.org/report',
+  )
+  await page.getByRole('button', { name: '提交研究简报' }).click()
+
+  await expect(page.locator('.user-message p')).toHaveText(question)
+  await expect(page.locator('.conversation-header .eyebrow')).toHaveText('research-agent')
+  await expect(page.locator('.state-badge')).toHaveText('失败')
+  await expect(page.locator('.error-copy')).toContainText('did not capture 2 declared source')
+  await expect(page.getByRole('link', { name: 'https://example.com/' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'https://example.org/report' })).toBeVisible()
+
+  const noHorizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth <= window.innerWidth,
+  )
+  expect(noHorizontalOverflow).toBe(true)
+
+  const screenshotDir = join(process.cwd(), 'data', 'workbench-evidence')
+  await mkdir(screenshotDir, { recursive: true })
+  await page.screenshot({
+    fullPage: true,
+    path: join(screenshotDir, `research-${testInfo.project.name}.png`),
+  })
+  expect(consoleErrors).toEqual([])
+})

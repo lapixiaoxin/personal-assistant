@@ -100,6 +100,42 @@ describe('LumiApi', () => {
     )
   })
 
+  it('submits a structured research brief without exposing context encoding', async () => {
+    const calls: Array<[RequestInfo | URL, RequestInit | undefined]> = []
+    const fetcher: typeof fetch = async (input, init) => {
+      calls.push([input, init])
+      return new Response(JSON.stringify({
+        data: {
+          approval: null,
+          task: {
+            ...task,
+            capabilityId: 'research-agent',
+            channel: 'research-brief',
+            content: 'Compare sources',
+          },
+        },
+      }), {
+        headers: { 'content-type': 'application/json' },
+        status: 201,
+      })
+    }
+    const api = new LumiApi(fetcher, 'test-token')
+
+    await api.submitResearchBrief(
+      'Compare sources',
+      ['https://example.com', 'https://example.org/report'],
+      'task-one',
+    )
+
+    expect(calls[0]?.[0]).toBe('/v2/workflows/research-brief')
+    expect(JSON.parse(String(calls[0]?.[1]?.body))).toEqual({
+      id: 'task-one',
+      question: 'Compare sources',
+      schemaVersion: 'lumi.research-brief/v1',
+      sources: ['https://example.com', 'https://example.org/report'],
+    })
+  })
+
   it('uses the v2 action lifecycle endpoints without changing the payload', async () => {
     const calls: Array<[RequestInfo | URL, RequestInit | undefined]> = []
     const fetcher: typeof fetch = async (input, init) => {

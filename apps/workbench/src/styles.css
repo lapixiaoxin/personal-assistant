@@ -572,6 +572,38 @@ textarea:focus-visible {
   border-radius: 8px;
 }
 
+.research-source-list {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+  margin-top: 11px;
+  padding-top: 9px;
+  border-top: 1px solid var(--line);
+}
+
+.research-source-list span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.research-source-list a {
+  overflow: hidden;
+  color: var(--accent-deep);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 11px;
+  text-decoration: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.research-source-list a:hover {
+  text-decoration: underline;
+}
+
 .assistant-message {
   justify-self: start;
   padding: 2px 0 2px 15px;
@@ -623,6 +655,37 @@ textarea:focus-visible {
   border-color: var(--accent);
 }
 
+.composer-modes {
+  display: inline-grid;
+  width: fit-content;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px;
+  padding: 3px;
+  background: var(--panel-muted);
+  border-radius: 7px;
+}
+
+.composer-mode {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 9px;
+  cursor: pointer;
+  color: var(--muted);
+  background: transparent;
+  border-radius: 5px;
+  font-size: 12px;
+}
+
+.composer-mode.active {
+  color: var(--ink);
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgb(24 31 26 / 9%);
+}
+
 .composer textarea {
   width: 100%;
   min-height: 48px;
@@ -633,6 +696,18 @@ textarea:focus-visible {
   border: 0;
   outline: 0;
   line-height: 1.5;
+}
+
+.research-composer > textarea:not(.source-input) {
+  grid-column: 1 / -1;
+}
+
+.composer .source-input {
+  min-height: 58px;
+  padding-top: 9px;
+  border-top: 1px solid var(--line);
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
 }
 
 .composer textarea::placeholder {

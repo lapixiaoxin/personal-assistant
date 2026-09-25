@@ -7,6 +7,7 @@
   "dependencies": {
     "@deepseek-ai/dsh-sdk-client": "0.1.7-rc.1",
     "@lumi/assistant-core": "workspace:*",
-    "@lumi/contracts": "workspace:*"
+    "@lumi/contracts": "workspace:*",
+    "@lumi/research-workflow": "workspace:*"
   }
 }

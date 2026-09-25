@@ -1,6 +1,6 @@
 # 本地 Web 工作台
 
-状态：verified_once · 2026-09-25。适用版本：SPEC-0004 v0.1、SPEC-0006 v0.1，本机 Node 22.19.0、pnpm 10.20.0。当前任务 executor 使用 mock；Action prepare/authorize/execute/verify 经过真实本地运行时。真实模型和外部业务能力未包含在本记录。
+状态：verified_once · 2026-09-25。适用版本：SPEC-0004 v0.1、SPEC-0006 v0.1、SPEC-0007 v0.1，本机 Node 22.19.0、pnpm 10.20.0。浏览器任务 executor 使用 mock；Action prepare/authorize/execute/verify 经过真实本地运行时。研究真实模型与公开网页的独立验收见 [研究简报 SOP](research-brief.md)。
 
 ## 前置
 
@@ -23,6 +23,7 @@ pnpm dev:web
 
 - 左侧显示任务列表与连接状态。
 - 中间可提交任务并读取最终结果。
+- composer 可切换普通任务/研究简报；研究模式要求逐行 HTTPS 来源，提交后显示服务端绑定来源。
 - 右侧可查看事件、审计；待审批任务显示允许和拒绝操作。
 - 运行中任务可以取消。
 - 顶部“动作”视图列出当前 principal 的 Action，并显示待处理数量。
@@ -52,12 +53,13 @@ PLAYWRIGHT_BROWSERS_PATH=./data/playwright-browsers pnpm exec playwright install
 PLAYWRIGHT_BROWSERS_PATH=./data/playwright-browsers pnpm test:e2e
 ```
 
-测试启动 mock executor 的 Gateway，在桌面 Chrome 和移动 Chromium 视口执行两组流程：
+测试启动 mock executor 的 Gateway，在桌面 Chrome 和移动 Chromium 视口执行三组流程：
 
 1. 任务提交、任务级审批和状态刷新。
 2. API 准备 Action，页面授权并执行，随后经 API 读取 Receipt/Verification，并从回执文件 URL 独立读回正文。
+3. 提交两个显式来源的研究简报，确认路由与来源展示；mock 不伪造抓取，citation verifier 必须明确失败。
 
-两组流程均检查横向溢出和浏览器 console error。截图、隔离数据库、artifact 与 trace 写入 `data/`，不提交。
+三组流程均检查横向溢出和浏览器 console error。截图、隔离数据库、artifact 与 trace 写入 `data/`，不提交。
 
 ## 已知限制
 

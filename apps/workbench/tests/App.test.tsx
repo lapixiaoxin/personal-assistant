@@ -43,6 +43,7 @@ function fakeApiWithActions(
   initialActions: ActionDetail[] = [],
 ): LumiApiClient {
   let actions = initialActions
+  let taskRecords = tasks
   const replaceAction = (actionId: string, status: ActionStatus): ActionDetail => {
     const current = actions.find(item => item.action.id === actionId)
     if (!current) throw new Error(`Action not found: ${actionId}`)
@@ -79,8 +80,8 @@ function fakeApiWithActions(
 
   return {
     authorizeAction: vi.fn(async actionId => replaceAction(actionId, 'authorized')),
-    approve: vi.fn(async () => ({ ...waitingTask, state: 'completed' })),
-    cancel: vi.fn(async () => ({ ...waitingTask, state: 'cancelled' })),
+    approve: vi.fn(async () => ({ ...waitingTask, state: 'completed' as const })),
+    cancel: vi.fn(async () => ({ ...waitingTask, state: 'cancelled' as const })),
     cancelAction: vi.fn(async actionId => ({
       action: replaceAction(actionId, 'cancelled').action,
       effectMayRemain: false,
@@ -97,17 +98,43 @@ function fakeApiWithActions(
     getEvents: vi.fn(async () => []),
     getTask: vi.fn(async taskId => ({
       approval: taskId === waitingTask.id ? approval : null,
-      task: tasks.find(task => task.id === taskId) ?? waitingTask,
+      task: taskRecords.find(task => task.id === taskId) ?? waitingTask,
     })),
     health: vi.fn(async () => ({ executor: 'mock', status: 'ok' })),
     listActions: vi.fn(async () => actions),
-    listTasks: vi.fn(async () => tasks),
+    listTasks: vi.fn(async () => taskRecords),
     reconcileAction: vi.fn(async actionId => replaceAction(actionId, 'succeeded')),
-    reject: vi.fn(async () => ({ ...waitingTask, state: 'cancelled' })),
-    submitTask: vi.fn(async (content, id) => ({
-      approval: null,
-      task: { ...waitingTask, content, id, state: 'completed' },
-    })),
+    reject: vi.fn(async () => ({ ...waitingTask, state: 'cancelled' as const })),
+    submitResearchBrief: vi.fn(async (
+      question: string,
+      sources: string[],
+      id: string,
+    ) => {
+      const task: TaskRecord = {
+        ...waitingTask,
+        capabilityId: 'research-agent',
+        channel: 'research-brief',
+        content: question,
+        contextRefs: [
+          'lumi-workflow:research-brief/v1',
+          ...sources.map(source =>
+            `lumi-public-source:${Buffer.from(source).toString('base64url')}`,
+          ),
+        ],
+        id,
+        state: 'completed',
+      }
+      taskRecords = [task, ...taskRecords]
+      return {
+        approval: null,
+        task,
+      }
+    }),
+    submitTask: vi.fn(async (content, id) => {
+      const task: TaskRecord = { ...waitingTask, content, id, state: 'completed' }
+      taskRecords = [task, ...taskRecords]
+      return { approval: null, task }
+    }),
   }
 }
 
@@ -170,6 +197,30 @@ describe('Workbench', () => {
     fireEvent.click(screen.getByRole('button', { name: '允许' }))
 
     await waitFor(() => expect(api.approve).toHaveBeenCalledWith(waitingTask.id))
+  })
+
+  it('submits a research brief with explicit source URLs', async () => {
+    const api = fakeApi()
+    render(<App api={api} />)
+
+    fireEvent.click(await screen.findByRole('tab', { name: '研究简报' }))
+    fireEvent.change(screen.getByLabelText('研究问题'), {
+      target: { value: 'Compare these sources' },
+    })
+    fireEvent.change(screen.getByLabelText('公开来源'), {
+      target: { value: 'https://example.com\n\nhttps://example.org/report' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '提交研究简报' }))
+
+    await waitFor(() => {
+      expect(api.submitResearchBrief).toHaveBeenCalledWith(
+        'Compare these sources',
+        ['https://example.com', 'https://example.org/report'],
+        expect.stringMatching(/^task_/),
+      )
+    })
+    expect(await screen.findByRole('link', { name: 'https://example.com/' })).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'https://example.org/report' })).toBeTruthy()
   })
 
   it('shows bound action facts and refreshes after authorization', async () => {

@@ -9,6 +9,7 @@ import {
   createDshChildEnvironment,
   startDshActionBridge,
   type DshActionBroker,
+  type DshResearchBroker,
 } from './action-bridge.ts'
 
 export {
@@ -19,6 +20,7 @@ export {
   type DshActionBridgeRun,
   type DshActionBroker,
   type DshBrokerInvocation,
+  type DshResearchBroker,
 } from './action-bridge.ts'
 
 interface HarnessNotification {
@@ -58,6 +60,8 @@ export interface DshAdapterOptions {
   patchFile?: string
   profile?: string
   provider?: string
+  researchBridgeCapabilities?: readonly string[]
+  researchBroker?: DshResearchBroker
 }
 
 export class TaskExecutionAbortedError extends Error {
@@ -172,9 +176,14 @@ function createDshHarnessFactory(options: DshAdapterOptions): HarnessFactory {
     options.patchFile ?? 'profiles/dsh-lumi/cordis.patch.yml',
   )
   const actionBridgeCapabilities = new Set(options.actionBridgeCapabilities ?? [])
+  const researchBridgeCapabilities = new Set(options.researchBridgeCapabilities ?? [])
   return async (input) => {
     const bridge = actionBridgeCapabilities.has(input.capability.id)
-      ? await createActionBridge(options, input)
+      ? await createActionBridge(
+          options,
+          input,
+          researchBridgeCapabilities.has(input.capability.id),
+        )
       : undefined
     const { DeepSeekHarness } = await import('@deepseek-ai/dsh-sdk-client')
     const commonPatches = (options.patchFiles ?? []).map((patch) => resolve(options.cwd, patch))
@@ -222,6 +231,7 @@ function createDshHarnessFactory(options: DshAdapterOptions): HarnessFactory {
 async function createActionBridge(
   options: DshAdapterOptions,
   input: ExecutionInput,
+  enableResearch: boolean,
 ) {
   if (!options.actionBroker) {
     throw new DshExecutionError(
@@ -231,6 +241,10 @@ async function createActionBridge(
   return startDshActionBridge({
     broker: options.actionBroker,
     contextRefs: input.task.contextRefs,
+    enableActions: !enableResearch,
+    ...(enableResearch && options.researchBroker
+      ? { researchBroker: options.researchBroker }
+      : {}),
     taskId: input.task.id,
   })
 }

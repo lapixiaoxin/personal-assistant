@@ -49,6 +49,33 @@ program
   }))
 
 program
+  .command('research')
+  .description('Build a cited brief from explicitly declared public HTTPS sources')
+  .argument('<question...>', 'research question')
+  .option('--id <task-id>', 'caller-provided idempotency key')
+  .option(
+    '--source <url>',
+    'public HTTPS source; repeat for multiple sources',
+    collectOption,
+    [],
+  )
+  .action(async (
+    words: string[],
+    options: { id?: string; source: string[] },
+  ) => withRuntime(async (runtime) => {
+    const task = await runtime.research.submit(runtime.identity.localPrincipal(), {
+      ...(options.id ? { id: options.id } : {}),
+      question: words.join(' '),
+      schemaVersion: 'lumi.research-brief/v1',
+      sources: options.source,
+    })
+    print({
+      approval: runtime.ledger.getApprovalForTask(task.id) ?? null,
+      task,
+    })
+  }))
+
+program
   .command('get')
   .description('Get one task and its current approval')
   .argument('<task-id>')
@@ -224,4 +251,8 @@ function assertV1Task(channel: string, taskId: string): void {
   if (channel === 'action-runtime') {
     throw new Error(`Task not found: ${taskId}; use the action commands for v2 actions`)
   }
+}
+
+function collectOption(value: string, previous: string[]): string[] {
+  return [...previous, value]
 }

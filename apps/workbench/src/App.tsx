@@ -2,6 +2,7 @@ import {
   Activity,
   AlertTriangle,
   Ban,
+  BookOpenText,
   Bot,
   Check,
   CheckCircle2,
@@ -9,6 +10,7 @@ import {
   ClipboardList,
   FileCheck2,
   ListChecks,
+  MessageSquareText,
   Plus,
   RefreshCw,
   Send,
@@ -47,6 +49,7 @@ interface AppProps {
 }
 
 type DetailTab = 'events' | 'audit'
+type ComposerMode = 'task' | 'research'
 type TaskFilter = 'all' | 'active' | 'done'
 
 const stateLabels: Record<TaskState, string> = {
@@ -114,7 +117,9 @@ function TaskWorkspace({
   const [audit, setAudit] = useState<AuditRecord[]>([])
   const [filter, setFilter] = useState<TaskFilter>('all')
   const [tab, setTab] = useState<DetailTab>('events')
+  const [composerMode, setComposerMode] = useState<ComposerMode>('task')
   const [draft, setDraft] = useState('')
+  const [sourceDraft, setSourceDraft] = useState('')
   const [pendingTaskId, setPendingTaskId] = useState<string>()
   const [pendingAction, setPendingAction] = useState<string>()
   const [error, setError] = useState<string>()
@@ -181,6 +186,9 @@ function TaskWorkspace({
   const selectedTask = detail && detail.task.id === selectedId
     ? detail.task
     : tasks.find(task => task.id === selectedId)
+  const selectedResearchSources = selectedTask
+    ? researchSourcesFromContextRefs(selectedTask.contextRefs)
+    : []
   const shouldPoll = pendingTaskId !== undefined || (selectedTask && isTaskActive(selectedTask))
 
   useEffect(() => {
@@ -205,13 +213,21 @@ function TaskWorkspace({
 
   const submit = (): void => {
     const content = draft.trim()
-    if (!content || pendingTaskId) return
+    const sources = sourceDraft
+      .split('\n')
+      .map(source => source.trim())
+      .filter(Boolean)
+    if (!content || pendingTaskId || (composerMode === 'research' && sources.length === 0)) return
     const taskId = createTaskId()
     setDraft('')
+    setSourceDraft('')
     setError(undefined)
     setSelectedId(taskId)
     setPendingTaskId(taskId)
-    void api.submitTask(content, taskId)
+    const submission = composerMode === 'research'
+      ? api.submitResearchBrief(content, sources, taskId)
+      : api.submitTask(content, taskId)
+    void submission
       .then(async (created) => {
         setDetail(created)
         await refreshTasks()
@@ -252,6 +268,7 @@ function TaskWorkspace({
           setSelectedId(undefined)
           setDetail(undefined)
           setDraft('')
+          setSourceDraft('')
         }}>
           <Plus aria-hidden="true" size={17} />
           新任务
@@ -353,6 +370,22 @@ function TaskWorkspace({
               <article className="message user-message">
                 <div className="message-author"><UserRound aria-hidden="true" size={15} />你</div>
                 <p>{selectedTask.content}</p>
+                {selectedResearchSources.length > 0 && (
+                  <div className="research-source-list">
+                    <span><BookOpenText aria-hidden="true" size={14} />公开来源</span>
+                    {selectedResearchSources.map(source => (
+                      <a
+                        href={source}
+                        key={source}
+                        referrerPolicy="no-referrer"
+                        rel="noreferrer"
+                        target="_blank"
+                      >
+                        {source}
+                      </a>
+                    ))}
+                  </div>
+                )}
               </article>
 
               <article className="message assistant-message">
@@ -377,12 +410,34 @@ function TaskWorkspace({
           </div>
         )}
 
-        <form className="composer" onSubmit={(event) => {
+        <form className={composerMode === 'research' ? 'composer research-composer' : 'composer'} onSubmit={(event) => {
           event.preventDefault()
           submit()
         }}>
+          <div className="composer-modes" role="tablist" aria-label="任务类型">
+            <button
+              aria-selected={composerMode === 'task'}
+              className={composerMode === 'task' ? 'composer-mode active' : 'composer-mode'}
+              onClick={() => setComposerMode('task')}
+              role="tab"
+              type="button"
+            >
+              <MessageSquareText aria-hidden="true" size={14} />
+              普通任务
+            </button>
+            <button
+              aria-selected={composerMode === 'research'}
+              className={composerMode === 'research' ? 'composer-mode active' : 'composer-mode'}
+              onClick={() => setComposerMode('research')}
+              role="tab"
+              type="button"
+            >
+              <BookOpenText aria-hidden="true" size={14} />
+              研究简报
+            </button>
+          </div>
           <textarea
-            aria-label="任务内容"
+            aria-label={composerMode === 'research' ? '研究问题' : '任务内容'}
             maxLength={50_000}
             onChange={event => setDraft(event.target.value)}
             onKeyDown={(event) => {
@@ -391,15 +446,32 @@ function TaskWorkspace({
                 submit()
               }
             }}
-            placeholder="交代一个需要完成的任务"
+            placeholder={composerMode === 'research'
+              ? '输入要回答的研究问题'
+              : '交代一个需要完成的任务'}
             rows={2}
             value={draft}
           />
+          {composerMode === 'research' && (
+            <textarea
+              aria-label="公开来源"
+              className="source-input"
+              maxLength={16_384}
+              onChange={event => setSourceDraft(event.target.value)}
+              placeholder="每行一个 HTTPS 来源"
+              rows={2}
+              value={sourceDraft}
+            />
+          )}
           <button
-            aria-label="提交任务"
+            aria-label={composerMode === 'research' ? '提交研究简报' : '提交任务'}
             className="icon-button primary"
-            disabled={!draft.trim() || pendingTaskId !== undefined}
-            title="提交任务"
+            disabled={
+              !draft.trim()
+              || pendingTaskId !== undefined
+              || (composerMode === 'research' && !sourceDraft.trim())
+            }
+            title={composerMode === 'research' ? '提交研究简报' : '提交任务'}
             type="submit"
           >
             {pendingTaskId ? <CircleDashed className="spin" aria-hidden="true" size={18} /> : <Send aria-hidden="true" size={18} />}
@@ -577,6 +649,12 @@ function eventLabel(event: TaskEvent): string {
   if (event.type === 'execution.progress' && typeof event.payload.message === 'string') {
     return event.payload.message
   }
+  if (
+    event.type === 'research.source_captured'
+    && typeof event.payload.sourceId === 'string'
+  ) {
+    return `来源已留存 ${event.payload.sourceId}`
+  }
   return event.type.replaceAll('.', ' / ')
 }
 
@@ -608,4 +686,24 @@ function formatRelativeTime(value: string): string {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
+}
+
+function researchSourcesFromContextRefs(references: readonly string[]): string[] {
+  const prefix = 'lumi-public-source:'
+  const sources = references.flatMap((reference) => {
+    if (!reference.startsWith(prefix)) return []
+    const encoded = reference.slice(prefix.length)
+    if (!/^[A-Za-z0-9_-]+$/.test(encoded)) return []
+    try {
+      const base64 = encoded.replaceAll('-', '+').replaceAll('_', '/')
+      const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=')
+      const bytes = Uint8Array.from(window.atob(padded), character => character.charCodeAt(0))
+      const decoded = new TextDecoder().decode(bytes)
+      const url = new URL(decoded)
+      return url.protocol === 'https:' ? [url.toString()] : []
+    } catch {
+      return []
+    }
+  })
+  return [...new Set(sources)]
 }

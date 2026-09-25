@@ -20,6 +20,8 @@
       "@lumi/local-artifact": ["./adapters/local-artifact/src/index.ts"],
       "@lumi/personal-memory": ["./packages/personal-memory/src/index.ts"],
       "@lumi/policy": ["./packages/policy/src/index.ts"],
+      "@lumi/research-sources": ["./adapters/research-sources/src/index.ts"],
+      "@lumi/research-workflow": ["./packages/research-workflow/src/index.ts"],
       "@lumi/runtime": ["./apps/runtime/src/index.ts"],
       "@lumi/task-ledger": ["./packages/task-ledger/src/index.ts"]
     },
