@@ -8,6 +8,7 @@ import { buildGateway } from '../src/server.ts'
 
 const openRuntimes: AssistantRuntime[] = []
 const temporaryDirectories: string[] = []
+const token = '0123456789abcdef0123456789abcdef'
 
 afterEach(async () => {
   for (const runtime of openRuntimes.splice(0)) await runtime.close()
@@ -23,7 +24,15 @@ function testRuntime(): AssistantRuntime {
       sessionId: `session-${task.id}`,
     }),
   }
-  const runtime = createAssistantRuntime({ dbPath: ':memory:', executor })
+  const artifactRoot = mkdtempSync(join(tmpdir(), 'lumi-gateway-artifacts-'))
+  temporaryDirectories.push(artifactRoot)
+  const runtime = createAssistantRuntime({
+    artifactRoot,
+    dbPath: ':memory:',
+    executor,
+    httpToken: token,
+    principalId: 'user-1',
+  })
   openRuntimes.push(runtime)
   return runtime
 }
@@ -42,6 +51,7 @@ describe('gateway', () => {
         content: 'Implement a TypeScript endpoint',
         id: 'task-http',
       },
+      headers: authenticatedHeaders(true),
       url: '/v1/tasks',
     })
 
@@ -52,14 +62,26 @@ describe('gateway', () => {
       state: 'completed',
     })
 
-    const fetched = await app.inject({ method: 'GET', url: '/v1/tasks/task-http' })
+    const fetched = await app.inject({
+      headers: authenticatedHeaders(),
+      method: 'GET',
+      url: '/v1/tasks/task-http',
+    })
     expect(fetched.json().data.task.result).toBe('coding-agent:Implement a TypeScript endpoint')
 
-    const events = await app.inject({ method: 'GET', url: '/v1/tasks/task-http/events' })
+    const events = await app.inject({
+      headers: authenticatedHeaders(),
+      method: 'GET',
+      url: '/v1/tasks/task-http/events',
+    })
     expect(events.json().data.map((event: { type: string }) => event.type))
       .toContain('execution.completed')
 
-    const audit = await app.inject({ method: 'GET', url: '/v1/tasks/task-http/audit' })
+    const audit = await app.inject({
+      headers: authenticatedHeaders(),
+      method: 'GET',
+      url: '/v1/tasks/task-http/audit',
+    })
     expect(audit.json().data.map((record: { action: string }) => record.action))
       .toContain('execution.complete')
     await app.close()
@@ -74,6 +96,7 @@ describe('gateway', () => {
         content: 'Send this message to the team',
         id: 'task-http-approval',
       },
+      headers: authenticatedHeaders(true),
       url: '/v1/tasks',
     })
     expect(submitted.statusCode).toBe(202)
@@ -82,6 +105,7 @@ describe('gateway', () => {
     const approved = await app.inject({
       method: 'POST',
       payload: { actorId: 'user-1' },
+      headers: authenticatedHeaders(true),
       url: '/v1/tasks/task-http-approval/approve',
     })
     expect(approved.statusCode).toBe(200)
@@ -94,12 +118,17 @@ describe('gateway', () => {
     const invalid = await app.inject({
       method: 'POST',
       payload: { actorId: '', content: '' },
+      headers: authenticatedHeaders(true),
       url: '/v1/tasks',
     })
     expect(invalid.statusCode).toBe(400)
     expect(invalid.json().error.code).toBe('INVALID_REQUEST')
 
-    const missing = await app.inject({ method: 'GET', url: '/v1/tasks/missing' })
+    const missing = await app.inject({
+      headers: authenticatedHeaders(),
+      method: 'GET',
+      url: '/v1/tasks/missing',
+    })
     expect(missing.statusCode).toBe(404)
     expect(missing.json().error.code).toBe('TASK_NOT_FOUND')
     await app.close()
@@ -125,4 +154,77 @@ describe('gateway', () => {
     expect(asset.body).toContain('globalThis.lumi')
     await app.close()
   })
+
+  it('rejects unauthenticated requests and actor impersonation', async () => {
+    const app = buildGateway({ runtime: testRuntime() })
+    const unauthenticated = await app.inject({ method: 'GET', url: '/v1/tasks' })
+    expect(unauthenticated.statusCode).toBe(401)
+    expect(unauthenticated.json().error).toMatchObject({
+      code: 'AUTH_REQUIRED',
+      safeToRetry: false,
+    })
+
+    const impersonated = await app.inject({
+      headers: authenticatedHeaders(true),
+      method: 'POST',
+      payload: {
+        actorId: 'another-user',
+        content: 'Read private tasks',
+      },
+      url: '/v1/tasks',
+    })
+    expect(impersonated.statusCode).toBe(403)
+    expect(impersonated.json().error.code).toBe('PERMISSION_DENIED')
+    await app.close()
+  })
+
+  it('exposes the authenticated v2 action lifecycle', async () => {
+    const app = buildGateway({ runtime: testRuntime() })
+    const prepared = await app.inject({
+      headers: authenticatedHeaders(true),
+      method: 'POST',
+      payload: {
+        content: 'gateway artifact',
+        idempotencyKey: 'gateway-artifact',
+        operation: 'artifact.write',
+        schemaVersion: 'lumi.action-proposal/v1',
+        target: { artifactId: 'gateway-artifact' },
+      },
+      url: '/v2/actions',
+    })
+    expect(prepared.statusCode).toBe(202)
+    const actionId = prepared.json().data.action.id as string
+    const v1Tasks = await app.inject({
+      headers: authenticatedHeaders(),
+      method: 'GET',
+      url: '/v1/tasks',
+    })
+    expect(v1Tasks.json().data).toEqual([])
+
+    const authorized = await app.inject({
+      headers: authenticatedHeaders(),
+      method: 'POST',
+      url: `/v2/actions/${actionId}/authorize`,
+    })
+    expect(authorized.json().data.authorization.status).toBe('active')
+
+    const executed = await app.inject({
+      headers: authenticatedHeaders(),
+      method: 'POST',
+      url: `/v2/actions/${actionId}/execute`,
+    })
+    expect(executed.json().data).toMatchObject({
+      action: { status: 'succeeded' },
+      task: { state: 'completed' },
+      verification: { status: 'passed' },
+    })
+    await app.close()
+  })
 })
+
+function authenticatedHeaders(json = false): Record<string, string> {
+  return {
+    authorization: `Bearer ${token}`,
+    ...(json ? { 'content-type': 'application/json' } : {}),
+  }
+}

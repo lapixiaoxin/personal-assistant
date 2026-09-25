@@ -37,8 +37,14 @@ for number in range(1, 11):
         errors.append(f"SPEC-0001: missing AC-{number:03d}")
     if f"T-{number:02d}" not in tasks:
         errors.append(f"SPEC-0001: missing T-{number:02d}")
-if "not_run" not in evidence:
-    errors.append("SPEC-0001 evidence status needs explicit review after implementation")
+evidence_status = re.search(r"^状态：(.+?)。", evidence, flags=re.MULTILINE)
+if not evidence_status or evidence_status.group(1) not in {
+    "not_run",
+    "passed / locally verified",
+}:
+    errors.append("SPEC-0001 evidence status must be explicitly reviewed")
+if evidence_status and evidence_status.group(1).startswith("passed") and "| not_run |" in evidence:
+    errors.append("SPEC-0001 passed evidence still contains not_run entries")
 for path in (root / "docs/design").glob("*.md"):
     if "Proposed" not in path.read_text():
         errors.append(f"{path.relative_to(root)}: status changed; review design baseline")

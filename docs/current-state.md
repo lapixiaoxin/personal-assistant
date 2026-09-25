@@ -20,17 +20,17 @@
 ## 必须明确的缺口
 
 - 任务记录跨重启保存；**运行中任务不会因此自动恢复**。没有持久 worker 租约、检查点与动作对账。
-- HTTP 身份和审批者由请求字段提供，没有远端认证或对象级授权；loopback 是部署限制，不是完整身份模型。
-- 审批针对任务，而非具体工具参数；工具事件被记录，不是阻止实际执行的门禁。DSH persona 的约束只是提示词。
+- HTTP 已使用本地 Bearer token 映射单 owner/principal 并执行对象归属检查；仍没有公网所需的多用户认证、TLS、限流与来源控制。
+- v1 审批仍针对任务。v2 仅对受控 `artifact.write` 绑定具体参数摘要；DSH 任意工具尚未接入该门禁，DSH persona 的约束仍只是提示词。
 - `operations` 列表进入提示词，不构成工具权限隔离。不能宣称“风险意图被识别”就等于“所有危险动作都被阻止”。
-- Core 收到执行器非空结果后可标记 completed；尚无独立验收器与产物证据协议。
+- v1 Core 收到执行器非空结果后仍可标记 completed；v2 `artifact.write` 已要求独立读回核验，其他任务尚无通用验收器。
 - `TaskRecord.dshSessionId` 带有上游命名；需要兼容迁移到中性执行引用。
 - 幂等比较含 `createdAt`；CLI 只重用 `--id` 会重新产生时间，不能据 README 推断任意重传成功。
 - 记忆未接入 runtime / Gateway，没有持久存储、检索或 owner 访问控制闭环。
 - 当前 coding-agent 是路由到另一份 DSH profile，不是已接入 A2A 的独立外部专家。
 - 无产品级多轮会话；DSH Web UI 使用 DSH 会话，绕开助手 Task Ledger。
 - 尚无插件 host、MCP/A2A adapter、持久 scheduler、设备协议、自动学习或自主发布。
-- 当前迁移函数固定 `PRAGMA user_version=1`，尚不是可回滚的版本化迁移框架。
+- Task Ledger 已按 `user_version` 执行 v1→v2 expand 迁移并记录 `migration_history`；contract/回滚自动化仍未实现。
 - 数据内容、错误、任务结果和 DSH 会话仍可能含敏感信息；只减少工具审计正文不等于全链路脱敏。
 
 这些是设计基线和后续规范输入，不是本次已经修复的行为。
@@ -84,6 +84,18 @@ NPM_CONFIG_CACHE=./data/tooling/npm-cache NPM_CONFIG_REGISTRY=https://registry.n
 当前 Gateway 的提交与批准调用仍等待执行结束；页面以客户端 task ID 和并发轮询呈现中间状态。它不是产品级多轮对话或流式协议。参数级 Action Authorization、远程身份、重启恢复、记忆接线和真实工作工具仍未实现。
 
 验证包括 Vitest API/组件/静态托管测试，以及 Playwright 在桌面 Chrome 和移动 Chromium 视口上的 mock 任务与审批流程；细节见 [SPEC-0004 证据](../specs/0004-web-workbench/evidence.md) 和 [Workbench SOP](runbooks/web-workbench.md)。
+
+## 2026-09-25 · 最小可信动作闭环
+
+`SPEC-0001` 已实现单 owner 本地身份、v2 Action/Authorization/Receipt/Verification 契约、SQLite v2 expand 迁移、一次性授权消费和一个受控 `artifact.write` provider。provider 只接收 artifact ID，使用服务端确定的文件名和独占硬链接提交，不接受任意路径或覆盖既有目标。
+
+动作准备保存正文摘要和不可变参数；领取执行时在同一 SQLite 事务中重新计算正文/动作摘要、检查 capability 版本、有效期、撤销 epoch 并消费额度。文件成功但回执未提交时保留不确定状态，重启后通过确定性路径读回对账；只有摘要与回执均匹配的独立 Verification 才完成关联任务。
+
+Gateway 的 `/v1` 与 `/v2` 数据端点现在要求 `PA_HTTP_TOKEN`，并以认证 principal 覆盖或校验旧 `actorId`。Workbench 从 URL fragment 读取 token 后只保存在当前浏览器会话。CLI 使用本机配置 principal，`--actor` 仅能断言同一身份。
+
+本机验证包括 14 个测试文件、59 个测试（其中 DSH SDK contract 2 项）、桌面/移动 Playwright 2 项，以及独立 CLI/HTTP 真实文件写入、读回和清理。HTTP 观察值为准备约 5.1 ms、授权约 2.2 ms、执行及核验约 14.8 ms；单次 CLI 验收 SQLite 为 128 KiB。精确命令与边界见 [SPEC-0001 证据](../specs/0001-action-boundary/evidence.md) 和 [动作门禁 SOP](runbooks/action-boundary.md)。
+
+该切片不证明 DSH Shell、网络、MCP 或外部 connector 已受参数级控制，也没有启用真实外部写入。固定 DSH 版本保持 `0.1.7-rc.1`。
 
 ## 状态标注规则
 

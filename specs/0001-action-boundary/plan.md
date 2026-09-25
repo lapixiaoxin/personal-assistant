@@ -1,6 +1,6 @@
 # SPEC-0001 实现计划
 
-状态：Proposed / 未执行。对应 spec v0.2。
+状态：Executed / locally verified。对应 spec v0.2；实现与验证证据见 `evidence.md`。
 
 ## 实施切片
 

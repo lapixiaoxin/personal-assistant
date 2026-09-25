@@ -51,12 +51,17 @@ describe('DSH runtime contract', () => {
       cwd: projectRoot,
       dbPath: join(directory, 'assistant.db'),
       executor,
+      httpToken: 'contract-token-0123456789abcdef12',
+      principalId: 'contract-test',
     })
     runtimes.push(runtime)
 
     const app = buildGateway({ runtime })
     const response = await app.inject({
       method: 'POST',
+      headers: {
+        authorization: 'Bearer contract-token-0123456789abcdef12',
+      },
       payload: {
         actorId: 'contract-test',
         channel: 'http',

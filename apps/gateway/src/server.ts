@@ -1,9 +1,25 @@
 import { existsSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
-import Fastify, { type FastifyInstance } from 'fastify'
-import { createTaskRequest, TaskListQuerySchema, TaskSubmissionSchema } from '@lumi/contracts'
+import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify'
+import { ActionServiceError } from '@lumi/action-runtime'
+import {
+  ActionProposalSubmissionSchema,
+  createTaskRequest,
+  TaskListQuerySchema,
+  TaskSubmissionSchema,
+  type ActionErrorCode,
+  type Principal,
+  type TaskRecord,
+} from '@lumi/contracts'
+import { IdentityError } from '@lumi/identity'
 import { createAssistantRuntime, type AssistantRuntime } from '@lumi/runtime'
+import {
+  ActionAuthorizationError,
+  ActionConflictError,
+  ActionNotFoundError,
+  ActionStateConflictError,
+} from '@lumi/task-ledger'
 import { z, ZodError } from 'zod'
 
 const TaskParamsSchema = z.object({
@@ -13,7 +29,13 @@ const AssetParamsSchema = z.object({
   filename: z.string().regex(/^[A-Za-z0-9._-]+$/),
 })
 const DecisionBodySchema = z.object({
-  actorId: z.string().trim().min(1).max(128),
+  actorId: z.string().trim().min(1).max(128).optional(),
+})
+const ActionParamsSchema = z.object({
+  actionId: z.string().trim().min(1).max(128),
+})
+const ActionListQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(200).default(50),
 })
 
 export interface GatewayOptions {
@@ -32,13 +54,19 @@ export function buildGateway(options: GatewayOptions = {}): FastifyInstance {
     status: 'ok',
   }))
 
-  app.get('/v1/capabilities', async () => ({
-    data: runtime.capabilities.list(),
-  }))
+  app.get('/v1/capabilities', async (request) => {
+    authenticate(runtime, request)
+    return { data: runtime.capabilities.list() }
+  })
 
   app.post('/v1/tasks', async (request, reply) => {
+    const principal = authenticate(runtime, request)
     const submission = TaskSubmissionSchema.parse(request.body)
-    const task = await runtime.core.submit(createTaskRequest(submission))
+    if (submission.actorId) assertClaimedActor(principal, submission.actorId)
+    const task = await runtime.core.submit(createTaskRequest({
+      ...submission,
+      actorId: principal.id,
+    }))
     reply.code(task.state === 'waiting_approval' ? 202 : 201)
     return {
       data: {
@@ -49,17 +77,27 @@ export function buildGateway(options: GatewayOptions = {}): FastifyInstance {
   })
 
   app.get('/v1/tasks', async (request) => {
+    const principal = authenticate(runtime, request)
     const query = TaskListQuerySchema.parse(request.query)
-    return { data: runtime.ledger.listTasks(query) }
+    if (query.actorId) assertClaimedActor(principal, query.actorId)
+    return {
+      data: runtime.ledger.listTasks({
+        ...query,
+        actorId: principal.id,
+        limit: 200,
+      }).filter(isVisibleV1Task).slice(0, query.limit),
+    }
   })
 
   app.get('/v1/tasks/:taskId', async (request, reply) => {
+    const principal = authenticate(runtime, request)
     const { taskId } = TaskParamsSchema.parse(request.params)
     const task = runtime.core.getTask(taskId)
-    if (!task) {
+    if (!task || !isVisibleV1Task(task)) {
       reply.code(404)
       return { error: { code: 'TASK_NOT_FOUND', message: `Task not found: ${taskId}` } }
     }
+    assertOwnedTask(principal, task)
     return {
       data: {
         approval: runtime.ledger.getApprovalForTask(taskId) ?? null,
@@ -69,39 +107,98 @@ export function buildGateway(options: GatewayOptions = {}): FastifyInstance {
   })
 
   app.get('/v1/tasks/:taskId/events', async (request, reply) => {
+    const principal = authenticate(runtime, request)
     const { taskId } = TaskParamsSchema.parse(request.params)
-    if (!runtime.core.getTask(taskId)) {
+    const task = runtime.core.getTask(taskId)
+    if (!task || !isVisibleV1Task(task)) {
       reply.code(404)
       return { error: { code: 'TASK_NOT_FOUND', message: `Task not found: ${taskId}` } }
     }
+    assertOwnedTask(principal, task)
     return { data: runtime.ledger.listEvents(taskId) }
   })
 
   app.get('/v1/tasks/:taskId/audit', async (request, reply) => {
+    const principal = authenticate(runtime, request)
     const { taskId } = TaskParamsSchema.parse(request.params)
-    if (!runtime.core.getTask(taskId)) {
+    const task = runtime.core.getTask(taskId)
+    if (!task || !isVisibleV1Task(task)) {
       reply.code(404)
       return { error: { code: 'TASK_NOT_FOUND', message: `Task not found: ${taskId}` } }
     }
+    assertOwnedTask(principal, task)
     return { data: runtime.ledger.listAudit(taskId) }
   })
 
   app.post('/v1/tasks/:taskId/approve', async (request) => {
+    const principal = authenticate(runtime, request)
     const { taskId } = TaskParamsSchema.parse(request.params)
     const { actorId } = DecisionBodySchema.parse(request.body)
-    return { data: await runtime.core.approve(taskId, actorId) }
+    if (actorId) assertClaimedActor(principal, actorId)
+    assertOwnedTask(principal, requireV1Task(runtime, taskId))
+    return { data: await runtime.core.approve(taskId, principal.id) }
   })
 
   app.post('/v1/tasks/:taskId/reject', async (request) => {
+    const principal = authenticate(runtime, request)
     const { taskId } = TaskParamsSchema.parse(request.params)
     const { actorId } = DecisionBodySchema.parse(request.body)
-    return { data: runtime.core.reject(taskId, actorId) }
+    if (actorId) assertClaimedActor(principal, actorId)
+    assertOwnedTask(principal, requireV1Task(runtime, taskId))
+    return { data: runtime.core.reject(taskId, principal.id) }
   })
 
   app.post('/v1/tasks/:taskId/cancel', async (request) => {
+    const principal = authenticate(runtime, request)
     const { taskId } = TaskParamsSchema.parse(request.params)
     const { actorId } = DecisionBodySchema.parse(request.body)
-    return { data: runtime.core.cancel(taskId, actorId) }
+    if (actorId) assertClaimedActor(principal, actorId)
+    assertOwnedTask(principal, requireV1Task(runtime, taskId))
+    return { data: runtime.core.cancel(taskId, principal.id) }
+  })
+
+  app.post('/v2/actions', async (request, reply) => {
+    const principal = authenticate(runtime, request)
+    const proposal = ActionProposalSubmissionSchema.parse(request.body)
+    const detail = runtime.actions.prepare(principal, proposal)
+    reply.code(202)
+    return { data: detail }
+  })
+
+  app.get('/v2/actions', async (request) => {
+    const principal = authenticate(runtime, request)
+    const query = ActionListQuerySchema.parse(request.query)
+    return { data: runtime.actions.list(principal, query.limit) }
+  })
+
+  app.get('/v2/actions/:actionId', async (request) => {
+    const principal = authenticate(runtime, request)
+    const { actionId } = ActionParamsSchema.parse(request.params)
+    return { data: runtime.actions.get(principal, actionId) }
+  })
+
+  app.post('/v2/actions/:actionId/authorize', async (request) => {
+    const principal = authenticate(runtime, request)
+    const { actionId } = ActionParamsSchema.parse(request.params)
+    return { data: runtime.actions.authorize(principal, actionId) }
+  })
+
+  app.post('/v2/actions/:actionId/execute', async (request) => {
+    const principal = authenticate(runtime, request)
+    const { actionId } = ActionParamsSchema.parse(request.params)
+    return { data: await runtime.actions.execute(principal, actionId) }
+  })
+
+  app.post('/v2/actions/:actionId/reconcile', async (request) => {
+    const principal = authenticate(runtime, request)
+    const { actionId } = ActionParamsSchema.parse(request.params)
+    return { data: await runtime.actions.reconcile(principal, actionId) }
+  })
+
+  app.post('/v2/actions/:actionId/cancel', async (request) => {
+    const principal = authenticate(runtime, request)
+    const { actionId } = ActionParamsSchema.parse(request.params)
+    return { data: runtime.actions.cancel(principal, actionId) }
   })
 
   if (options.workbenchDir) {
@@ -127,25 +224,97 @@ export function buildGateway(options: GatewayOptions = {}): FastifyInstance {
         error: {
           code: 'INVALID_REQUEST',
           message: 'Request validation failed',
+          retryable: false,
+          safeToRetry: false,
           issues: error.issues,
+        },
+      })
+      return
+    }
+    if (error instanceof IdentityError) {
+      reply.code(error.code === 'AUTH_REQUIRED' ? 401 : 403).send({
+        error: {
+          code: error.code,
+          message: error.message,
+          retryable: false,
+          safeToRetry: false,
+        },
+      })
+      return
+    }
+    if (error instanceof ActionServiceError) {
+      reply.code(actionErrorStatus(error.code)).send({
+        error: {
+          code: error.code,
+          message: error.message,
+          retryable: error.retryable,
+          safeToRetry: error.safeToRetry,
+        },
+      })
+      return
+    }
+    if (error instanceof ActionAuthorizationError) {
+      reply.code(error.code === 'PERMISSION_DENIED' ? 403 : 409).send({
+        error: {
+          code: error.code,
+          message: error.message,
+          retryable: error.code === 'APPROVAL_EXPIRED',
+          safeToRetry: false,
+        },
+      })
+      return
+    }
+    if (error instanceof ActionNotFoundError) {
+      reply.code(404).send({
+        error: {
+          code: 'INVALID_INPUT',
+          message: error.message,
+          retryable: false,
+          safeToRetry: false,
+        },
+      })
+      return
+    }
+    if (error instanceof ActionConflictError || error instanceof ActionStateConflictError) {
+      reply.code(409).send({
+        error: {
+          code: 'CONFLICT',
+          message: error.message,
+          retryable: false,
+          safeToRetry: false,
         },
       })
       return
     }
     if (error.name === 'TaskIdConflictError' || error.name === 'TaskStateConflictError') {
       reply.code(409).send({
-        error: { code: 'TASK_CONFLICT', message: error.message },
+        error: {
+          code: 'TASK_CONFLICT',
+          message: error.message,
+          retryable: false,
+          safeToRetry: false,
+        },
       })
       return
     }
     if (error.message.startsWith('Task not found:')) {
       reply.code(404).send({
-        error: { code: 'TASK_NOT_FOUND', message: error.message },
+        error: {
+          code: 'TASK_NOT_FOUND',
+          message: error.message,
+          retryable: false,
+          safeToRetry: false,
+        },
       })
       return
     }
     reply.code(500).send({
-      error: { code: 'INTERNAL_ERROR', message: error.message },
+      error: {
+        code: 'INTERNAL_ERROR',
+        message: 'The request could not be completed',
+        retryable: false,
+        safeToRetry: false,
+      },
     })
   })
 
@@ -160,4 +329,41 @@ function assetContentType(filename: string): string {
   if (filename.endsWith('.js')) return 'text/javascript; charset=utf-8'
   if (filename.endsWith('.map')) return 'application/json; charset=utf-8'
   return 'application/octet-stream'
+}
+
+function authenticate(runtime: AssistantRuntime, request: FastifyRequest): Principal {
+  return runtime.identity.authenticateBearer(request.headers.authorization)
+}
+
+function assertClaimedActor(principal: Principal, actorId: string): void {
+  if (actorId !== principal.id) {
+    throw new IdentityError(
+      'PERMISSION_DENIED',
+      'The claimed actor does not match the authenticated principal',
+    )
+  }
+}
+
+function assertOwnedTask(principal: Principal, task: TaskRecord): void {
+  if (task.actorId !== principal.id) {
+    throw new IdentityError('PERMISSION_DENIED', 'The task belongs to another principal')
+  }
+}
+
+function isVisibleV1Task(task: TaskRecord): boolean {
+  return task.channel !== 'action-runtime'
+}
+
+function requireV1Task(runtime: AssistantRuntime, taskId: string): TaskRecord {
+  const task = runtime.core.requireTask(taskId)
+  if (!isVisibleV1Task(task)) throw new Error(`Task not found: ${taskId}`)
+  return task
+}
+
+function actionErrorStatus(code: ActionErrorCode): number {
+  if (code === 'AUTH_REQUIRED') return 401
+  if (code === 'PERMISSION_DENIED') return 403
+  if (code === 'INVALID_INPUT') return 400
+  if (code === 'VERIFICATION_FAILED') return 422
+  return 409
 }

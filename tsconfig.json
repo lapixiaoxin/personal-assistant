@@ -11,10 +11,13 @@
     "noImplicitOverride": true,
     "noUncheckedIndexedAccess": true,
     "paths": {
+      "@lumi/action-runtime": ["./packages/action-runtime/src/index.ts"],
       "@lumi/assistant-core": ["./packages/assistant-core/src/index.ts"],
       "@lumi/capability-registry": ["./packages/capability-registry/src/index.ts"],
       "@lumi/contracts": ["./packages/contracts/src/index.ts"],
       "@lumi/dsh-adapter": ["./adapters/dsh/src/index.ts"],
+      "@lumi/identity": ["./packages/identity/src/index.ts"],
+      "@lumi/local-artifact": ["./adapters/local-artifact/src/index.ts"],
       "@lumi/personal-memory": ["./packages/personal-memory/src/index.ts"],
       "@lumi/policy": ["./packages/policy/src/index.ts"],
       "@lumi/runtime": ["./apps/runtime/src/index.ts"],

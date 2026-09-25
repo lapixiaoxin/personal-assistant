@@ -1,5 +1,6 @@
 import { resolve } from 'node:path'
 import { loadEnvFile } from 'node:process'
+import { ActionService, type ActionServiceOptions } from '@lumi/action-runtime'
 import { AssistantCore, type TaskExecutor } from '@lumi/assistant-core'
 import {
   createDefaultCapabilityRegistry,
@@ -7,22 +8,49 @@ import {
   type CapabilityRegistry,
 } from '@lumi/capability-registry'
 import { DshAdapter, MockDshAdapter } from '@lumi/dsh-adapter'
-import { DefaultPolicyEngine, type PolicyEngine } from '@lumi/policy'
-import { SqliteTaskLedger, type TaskLedger } from '@lumi/task-ledger'
+import {
+  LocalIdentityAuthority,
+  type IdentityAuthority,
+} from '@lumi/identity'
+import {
+  LocalArtifactProvider,
+  type ArtifactProvider,
+} from '@lumi/local-artifact'
+import {
+  DefaultActionPolicyEngine,
+  DefaultPolicyEngine,
+  type ActionPolicyEngine,
+  type PolicyEngine,
+} from '@lumi/policy'
+import {
+  SqliteTaskLedger,
+  type ActionLedger,
+  type TaskLedger,
+} from '@lumi/task-ledger'
 
 export interface AssistantRuntime {
+  actions: ActionService
   capabilities: CapabilityRegistry
   core: AssistantCore
   executorKind: 'custom' | 'dsh' | 'mock'
-  ledger: TaskLedger
+  identity: IdentityAuthority
+  ledger: ActionLedger & TaskLedger
   close(): Promise<void>
 }
 
 export interface RuntimeOptions {
+  actionPolicy?: ActionPolicyEngine
+  actionService?: Pick<ActionServiceOptions, 'afterProviderWrite' | 'authorizationTtlMs' | 'now'>
+  artifactProvider?: ArtifactProvider
+  artifactRoot?: string
   cwd?: string
   dbPath?: string
   executor?: TaskExecutor
+  httpToken?: string
+  identity?: IdentityAuthority
+  ownerId?: string
   policy?: PolicyEngine
+  principalId?: string
 }
 
 export interface DshModelConfiguration {
@@ -48,6 +76,22 @@ export function createAssistantRuntime(options: RuntimeOptions = {}): AssistantR
   const capabilities = createDefaultCapabilityRegistry()
   const router = new RuleBasedRouter(capabilities)
   const policy = options.policy ?? new DefaultPolicyEngine()
+  const actionPolicy = options.actionPolicy ?? new DefaultActionPolicyEngine()
+  const httpToken = options.httpToken ?? process.env.PA_HTTP_TOKEN
+  const identity = options.identity ?? new LocalIdentityAuthority({
+    ...(httpToken ? { httpToken } : {}),
+    ownerId: options.ownerId ?? process.env.PA_OWNER_ID ?? 'local-owner',
+    principalId: options.principalId ?? process.env.PA_PRINCIPAL_ID ?? 'local-user',
+  })
+  const provider = options.artifactProvider ?? new LocalArtifactProvider(
+    resolve(options.artifactRoot ?? process.env.PA_ARTIFACT_ROOT ?? `${dataDir}/artifacts`),
+  )
+  const actions = new ActionService({
+    ledger,
+    policy: actionPolicy,
+    provider,
+    ...options.actionService,
+  })
   const configured = options.executor
     ? { executor: options.executor, kind: 'custom' as const }
     : createConfiguredExecutor(cwd, dataDir)
@@ -55,9 +99,11 @@ export function createAssistantRuntime(options: RuntimeOptions = {}): AssistantR
   const core = new AssistantCore(ledger, router, policy, executor)
 
   return {
+    actions,
     capabilities,
     core,
     executorKind: configured.kind,
+    identity,
     ledger,
     close: () => core.close(),
   }

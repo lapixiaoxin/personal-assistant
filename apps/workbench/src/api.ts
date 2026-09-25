@@ -45,7 +45,10 @@ export interface LumiApiClient {
 }
 
 export class LumiApi implements LumiApiClient {
-  constructor(private readonly fetcher: Fetcher = globalThis.fetch.bind(globalThis)) {}
+  constructor(
+    private readonly fetcher: Fetcher = globalThis.fetch.bind(globalThis),
+    private readonly token: string | undefined = resolveBrowserToken(),
+  ) {}
 
   health(): Promise<HealthStatus> {
     return this.request<HealthStatus>('/health')
@@ -81,7 +84,6 @@ export class LumiApi implements LumiApiClient {
   submitTask(content: string, id: string): Promise<TaskDetail> {
     return this.request<DataEnvelope<TaskDetail>>('/v1/tasks', {
       body: JSON.stringify({
-        actorId: 'local-user',
         channel: 'web',
         content,
         id,
@@ -107,7 +109,7 @@ export class LumiApi implements LumiApiClient {
     return this.request<DataEnvelope<TaskRecord>>(
       `/v1/tasks/${encodeURIComponent(taskId)}/${decision}`,
       {
-        body: JSON.stringify({ actorId: 'local-user' }),
+        body: JSON.stringify({}),
         headers: { 'content-type': 'application/json' },
         method: 'POST',
       },
@@ -115,7 +117,12 @@ export class LumiApi implements LumiApiClient {
   }
 
   private async request<T>(path: string, init?: RequestInit): Promise<T> {
-    const response = await this.fetcher(path, init)
+    const headers = new Headers(init?.headers)
+    if (this.token) headers.set('authorization', `Bearer ${this.token}`)
+    const response = await this.fetcher(path, {
+      ...init,
+      headers,
+    })
     const body = await response.json() as T & ErrorEnvelope
     if (!response.ok) {
       throw new ApiError(
@@ -136,4 +143,16 @@ export function isTaskActive(task: TaskRecord): boolean {
   return task.state === 'queued'
     || task.state === 'running'
     || task.state === 'waiting_approval'
+}
+
+function resolveBrowserToken(): string | undefined {
+  if (typeof window === 'undefined') return undefined
+  const fragment = new URLSearchParams(window.location.hash.replace(/^#/, ''))
+  const supplied = fragment.get('token')?.trim()
+  if (supplied) {
+    window.sessionStorage.setItem('lumi.httpToken', supplied)
+    window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}`)
+    return supplied
+  }
+  return window.sessionStorage.getItem('lumi.httpToken') ?? undefined
 }

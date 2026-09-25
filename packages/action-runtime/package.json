@@ -1,0 +1,13 @@
+{
+  "name": "@lumi/action-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@lumi/contracts": "workspace:*",
+    "@lumi/local-artifact": "workspace:*",
+    "@lumi/policy": "workspace:*",
+    "@lumi/task-ledger": "workspace:*"
+  }
+}

@@ -28,7 +28,7 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   webServer: {
-    command: 'PA_EXECUTOR=mock PA_PORT=4312 PA_DATA_DIR=./data/workbench-e2e node dist/gateway/main.js',
+    command: 'PA_EXECUTOR=mock PA_HTTP_TOKEN=e2e.token.not.a.secret.0123456789 PA_PORT=4312 PA_DATA_DIR=./data/workbench-e2e node dist/gateway/main.js',
     reuseExistingServer: false,
     timeout: 15_000,
     url: 'http://127.0.0.1:4312/health',

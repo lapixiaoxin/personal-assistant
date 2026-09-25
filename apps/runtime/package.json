@@ -5,9 +5,12 @@
   "type": "module",
   "exports": "./src/index.ts",
   "dependencies": {
+    "@lumi/action-runtime": "workspace:*",
     "@lumi/assistant-core": "workspace:*",
     "@lumi/capability-registry": "workspace:*",
     "@lumi/dsh-adapter": "workspace:*",
+    "@lumi/identity": "workspace:*",
+    "@lumi/local-artifact": "workspace:*",
     "@lumi/policy": "workspace:*",
     "@lumi/task-ledger": "workspace:*"
   }

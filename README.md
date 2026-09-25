@@ -11,7 +11,9 @@
 - CLI 与 HTTP 共用同一份 `TaskRequest`、Assistant Core 和 SQLite Task Ledger。
 - 任务状态覆盖 `queued`、`running`、`waiting_approval`、`completed`、`failed`、`cancelled`。
 - 规则路由可将编程请求委派给 `coding-agent`。
-- 规则识别出的外部发送、支付、删除和设备控制等高风险任务进入显式审批；尚无工具动作级强制门禁。
+- 规则识别出的外部发送、支付、删除和设备控制等高风险任务进入任务级审批。
+- v2 动作 API 对一个受控 `artifact.write` 能力执行参数摘要绑定、一次性授权、原子额度消费、独占文件创建、读回核验和崩溃后显式对账。
+- Gateway 使用本地 Bearer token 派生 owner/principal；请求体中的 `actorId` 不能用于切换身份。
 - 任务事件、工具调用摘要、审批动作和执行结果可查询，服务重启后仍保留。
 - DSH 通过独立 adapter 接入，固定为 `0.1.7-rc.1`；核心层不导入 DSH。
 - 默认通过 DSH SDK 执行；`PA_EXECUTOR=mock` 仅用于离线开发和故障隔离。
@@ -102,11 +104,24 @@ pnpm cli -- submit "发送这份报告给团队" --id task-demo
 pnpm cli -- approve task-demo
 ```
 
+受控本地产物使用独立的 v2 动作命令。正文进入动作输入存储，不进入普通审计日志；目标只能是 artifact ID，不能传文件路径：
+
+```bash
+pnpm cli -- action prepare daily-note "verified content" --key daily-note-001
+pnpm cli -- action authorize <action-id>
+pnpm cli -- action execute <action-id>
+pnpm cli -- action get <action-id>
+pnpm cli -- action reconcile <action-id>
+```
+
+`execute` 只消费一次授权并在独立读回通过后完成关联任务。若文件可能已经写入但回执未提交，动作保持不确定状态，必须运行 `reconcile`，不能再次执行。
+
 同一个 ID 只能绑定完全相同的任务请求，冲突复用会被拒绝。当前比较包含 `createdAt`，CLI 重新提交会生成新时间，因此仅复用 `--id` 不保证重传成功；语义幂等修正列入首个 SDD 规范。
 
 ## HTTP
 
 ```bash
+export PA_HTTP_TOKEN="$(openssl rand -hex 32)"
 pnpm dev
 ```
 
@@ -114,6 +129,7 @@ pnpm dev
 
 ```bash
 curl -sS http://127.0.0.1:4310/v1/tasks \
+  -H "authorization: Bearer $PA_HTTP_TOKEN" \
   -H 'content-type: application/json' \
   -d '{
     "id": "task-http-demo",
@@ -122,9 +138,13 @@ curl -sS http://127.0.0.1:4310/v1/tasks \
     "content": "实现一个 TypeScript API"
   }'
 
-curl -sS http://127.0.0.1:4310/v1/tasks/task-http-demo/events
-curl -sS http://127.0.0.1:4310/v1/tasks/task-http-demo/audit
+curl -sS http://127.0.0.1:4310/v1/tasks/task-http-demo/events \
+  -H "authorization: Bearer $PA_HTTP_TOKEN"
+curl -sS http://127.0.0.1:4310/v1/tasks/task-http-demo/audit \
+  -H "authorization: Bearer $PA_HTTP_TOKEN"
 ```
+
+除 `/health` 和 Workbench 静态资源外，API 均要求 `Authorization: Bearer <token>`。默认 owner/principal 为 `local-owner/local-user`，可通过 `PA_OWNER_ID`、`PA_PRINCIPAL_ID` 配置；Gateway 不记录 token。
 
 端点：
 
@@ -140,6 +160,12 @@ curl -sS http://127.0.0.1:4310/v1/tasks/task-http-demo/audit
 | `POST` | `/v1/tasks/:id/approve` | 批准并继续执行 |
 | `POST` | `/v1/tasks/:id/reject` | 拒绝执行 |
 | `POST` | `/v1/tasks/:id/cancel` | 取消任务 |
+| `POST` | `/v2/actions` | 准备受控动作 |
+| `GET` | `/v2/actions`、`/v2/actions/:id` | 查询当前 principal 的动作 |
+| `POST` | `/v2/actions/:id/authorize` | 授予一次性参数绑定授权 |
+| `POST` | `/v2/actions/:id/execute` | 执行动作并读回核验 |
+| `POST` | `/v2/actions/:id/reconcile` | 对账不确定结果 |
+| `POST` | `/v2/actions/:id/cancel` | 撤销未执行动作或记录剩余影响 |
 
 当前 HTTP 提交会等待任务完成后返回。流式响应和 WebSocket 属于下一阶段。
 
@@ -157,7 +183,7 @@ PA_EXECUTOR=mock pnpm dev
 pnpm dev:web
 ```
 
-打开 `http://127.0.0.1:4311`。根目录 `.env` 会由 CLI 和 Gateway 自动加载；不要将密钥提交到仓库。
+打开 `http://127.0.0.1:4311/#token=<PA_HTTP_TOKEN>`。页面会移除 fragment 并仅在当前 tab 的 `sessionStorage` 保存 token。根目录 `.env` 会由 CLI 和 Gateway 自动加载；不要将密钥提交到仓库。
 
 生产方式先构建，再由 Gateway 同源托管：
 
@@ -166,7 +192,7 @@ pnpm build
 PA_EXECUTOR=mock pnpm start
 ```
 
-打开 `http://127.0.0.1:4310`。将 `PA_EXECUTOR=mock` 移除或改为 `dsh` 后使用配置好的真实模型。当前 Gateway 仍只应监听 loopback。
+打开 `http://127.0.0.1:4310/#token=<PA_HTTP_TOKEN>`。将 `PA_EXECUTOR=mock` 移除或改为 `dsh` 后使用配置好的真实模型。当前 Gateway 仍只应监听 loopback。
 
 ## 接入真实 DSH
 
@@ -230,8 +256,8 @@ pnpm dsh:web:minimax-cn
 
 ## 安全边界
 
-- Gateway 默认只监听 loopback；当前版本没有远程身份认证，不应直接暴露到公网。
-- 被任务级规则识别为 `external` 和 `critical` 的任务在执行前进入审批；审批尚未绑定执行中产生的具体工具参数，不能据此认定所有危险工具动作均被阻止。
+- Gateway 默认只监听 loopback，并使用单 owner 的本地 Bearer token；这不是公网所需的多用户认证、TLS、限流或来源控制。
+- `artifact.write` 已使用参数级授权和受控 provider；DSH 任意 Shell、网络和文件工具仍未接入该门禁，任务级审批不能据此认定所有危险工具动作均被阻止。
 - 工具审计只保存工具名、调用 ID 和成功状态，不复制参数或返回正文。
 - Personal Memory 当前只提供显式候选、确认和撤回模型，不会自动从对话写入长期记忆。
 

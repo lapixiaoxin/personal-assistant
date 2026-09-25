@@ -4,6 +4,9 @@ import { buildGateway } from './server.ts'
 import { loadLocalEnvironment } from '@lumi/runtime'
 
 loadLocalEnvironment()
+if (!process.env.PA_HTTP_TOKEN) {
+  throw new Error('PA_HTTP_TOKEN is required to start the lumi Gateway')
+}
 const host = process.env.PA_HOST ?? '127.0.0.1'
 const port = parsePort(process.env.PA_PORT)
 const workbenchDir = resolve(process.cwd(), 'dist/workbench')

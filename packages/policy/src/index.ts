@@ -1,4 +1,10 @@
-import type { CapabilityDescriptor, RiskLevel, TaskRequest } from '@lumi/contracts'
+import type {
+  ActionProposal,
+  CapabilityDescriptor,
+  Principal,
+  RiskLevel,
+  TaskRequest,
+} from '@lumi/contracts'
 
 export type PolicyAction = 'allow' | 'require_approval' | 'deny'
 
@@ -11,6 +17,22 @@ export interface PolicyDecision {
 
 export interface PolicyEngine {
   evaluate(request: TaskRequest, capability: CapabilityDescriptor): PolicyDecision
+}
+
+export interface ActionPolicyDecision {
+  action: PolicyAction
+  policyVersion: string
+  reason: string
+  riskLevel: RiskLevel
+  ruleId: string
+}
+
+export interface ActionPolicyEngine {
+  evaluateAction(
+    principal: Principal,
+    proposal: ActionProposal,
+    now: string,
+  ): ActionPolicyDecision
 }
 
 const RISK_WEIGHT: Record<RiskLevel, number> = {
@@ -59,5 +81,50 @@ export class DefaultPolicyEngine implements PolicyEngine {
       riskLevel,
       ruleId: 'risk.allow-read-write',
     }
+  }
+}
+
+export class DefaultActionPolicyEngine implements ActionPolicyEngine {
+  evaluateAction(
+    principal: Principal,
+    proposal: ActionProposal,
+    now: string,
+  ): ActionPolicyDecision {
+    if (principal.kind !== 'owner') {
+      return denyAction('identity.owner-required', 'Only the configured owner may authorize actions.')
+    }
+    if (proposal.operation !== 'artifact.write') {
+      return denyAction('operation.unsupported', 'The requested operation is not enabled.')
+    }
+    if (
+      proposal.capability.id !== 'local-artifact'
+      || proposal.capability.version !== '1.0.0'
+    ) {
+      return denyAction(
+        'capability.incompatible',
+        'The requested capability version is not enabled.',
+      )
+    }
+    if (proposal.deadline && Date.parse(proposal.deadline) <= Date.parse(now)) {
+      return denyAction('deadline.expired', 'The action deadline has expired.')
+    }
+
+    return {
+      action: 'require_approval',
+      policyVersion: 'local-action-policy/1',
+      reason: 'Approval is required for this concrete local artifact write.',
+      riskLevel: 'write',
+      ruleId: 'artifact.write.confirm',
+    }
+  }
+}
+
+function denyAction(ruleId: string, reason: string): ActionPolicyDecision {
+  return {
+    action: 'deny',
+    policyVersion: 'local-action-policy/1',
+    reason,
+    riskLevel: 'write',
+    ruleId,
   }
 }

@@ -14,12 +14,12 @@
 | 建设自我升级 | [进化工厂](design/06-evolution.md)、[里程碑](design/07-roadmap.md) |
 | Agent 开始工作 | [AGENTS](../AGENTS.md)、[SDD](design/08-sdd.md)、[模板](templates/README.md) |
 | 工程命名与测试布局 | [SPEC-0002](../specs/0002-lumi-workspace/spec.md)、[测试约定](../tests/README.md) |
-| 选择下一开发切片 | [首个 M1 规范](../specs/0001-action-boundary/spec.md) |
+| 查看可信动作闭环 | [SPEC-0001](../specs/0001-action-boundary/spec.md)、[动作门禁 SOP](runbooks/action-boundary.md) |
 | 理解关键取舍 | [ADR](adr/README.md) |
 | 运行和验证 | [SOP](runbooks/README.md)、[评测](design/09-evaluation.md)、[本次证据](evidence/2026-09-24-design-baseline.md) |
 | 升级 DSH | [现有上游策略](upstream-strategy.md) |
 
-设计 v0.2 与 DSH 专题 v0.3 状态均为 Proposed；首个 SDD 包为 Specified / 待审，尚未实现。DSH 职责、插件装配和多端技术路线以 v0.3 及 ADR-003 为最新提案，产品与验收原则继续沿用。数量阈值是首轮建议，不能当作已测成绩或既有授权。
+设计 v0.2 与 DSH 专题 v0.3 状态均为 Proposed；首个 SDD 包已完成本地实现与验证，但仅覆盖内置 `artifact.write`。DSH 职责、插件装配和多端技术路线以 v0.3 及 ADR-003 为最新提案，产品与验收原则继续沿用。数量阈值是首轮建议，不能当作已测成绩或既有授权。
 
 后续讨论与源码分析将 DSH 的适用范围明确为“复杂任务的主要 Harness”；实时对话、感知和物理控制可使用独立运行时。v0.3 中较宽的核心定位尚待对应设计修订。源码报告同时补充 rc.2 调度器变化，不代表 lumi 已升级或新能力已启用。
 

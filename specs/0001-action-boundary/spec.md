@@ -1,6 +1,6 @@
 # SPEC-0001：最小动作门禁与可核验交付
 
-状态：Specified / 待审 · v0.2 · 2026-09-24。设计已写清，尚未 Accepted、Implemented 或 Released。本轮仅授权方案设计；后续实施遵循具体开发命令。
+状态：Implemented / locally verified · v0.2 · 2026-09-25。已实现并通过本机验收，未远端发布；范围仍仅限受控 `artifact.write`，不代表 DSH 任意工具已接入门禁。
 
 关联：[M1 路线](../../docs/design/07-roadmap.md)、[ADR-002](../../docs/adr/0002-actions-and-evolution.md)。
 

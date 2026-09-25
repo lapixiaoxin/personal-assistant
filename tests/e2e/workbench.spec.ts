@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { expect, test } from '@playwright/test'
 
 test.describe.configure({ mode: 'serial' })
+const token = 'e2e.token.not.a.secret.0123456789'
 
 test('runs the task approval flow without layout overflow', async ({ page, request }, testInfo) => {
   const consoleErrors: string[] = []
@@ -19,6 +20,7 @@ test('runs the task approval flow without layout overflow', async ({ page, reque
       content: `整理 ${suffix} 的工作简报`,
       id: `task-brief-${suffix}`,
     },
+    headers: { authorization: `Bearer ${token}` },
   })
   const approvalResponse = await request.post('/v1/tasks', {
     data: {
@@ -27,10 +29,11 @@ test('runs the task approval flow without layout overflow', async ({ page, reque
       content: `发送 ${suffix} 的项目进展给团队`,
       id: `task-approval-${suffix}`,
     },
+    headers: { authorization: `Bearer ${token}` },
   })
   expect(approvalResponse.status()).toBe(202)
 
-  await page.goto('/')
+  await page.goto(`/#token=${token}`)
   await expect(page).toHaveTitle('lumi')
   await expect(page.locator('.user-message p')).toHaveText(`发送 ${suffix} 的项目进展给团队`)
   await expect(page.getByText('需要确认')).toBeVisible()
