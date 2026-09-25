@@ -1,8 +1,8 @@
 # 系统架构与插件机制
 
-状态：Proposed v0.2 · 2026-09-24。现有实现与目标组件的对应见 [工程基线](../current-state.md)。
+状态：长期架构 Proposed v0.2 · 2026-09-25；v0.1 已实现边界见 [工程基线](../current-state.md) 与 [ADR-004](../adr/0004-host-ownership-and-module-boundaries.md)。
 
-2026-09-25 补充：DSH 的核心 Harness 职责、Cordis 接线与多端路线已由 [v0.3 图解方案](10-dsh-centered-architecture.md) 和 [ADR-003](../adr/0003-dsh-centered-harness.md) 细化；下文同步消除重复 Planner / plugin-host 的歧义。方案仍未实施。
+2026-09-25 补充：DSH 的主要 Harness 职责、Cordis 接线与多端路线已由 [v0.3 图解方案](10-dsh-centered-architecture.md) 和 [ADR-003](../adr/0003-dsh-centered-harness.md) 细化。v0.1 已实现其中的单机 Host、DSH adapter/受控 bridge、动作门禁、持久记忆、重启恢复与一次性本地提醒；多设备、通用 Connector、分布式调度和自主发布仍是提案。
 
 ## 架构决策
 
@@ -33,18 +33,19 @@ flowchart TB
 | 模块 / 建议路径 | 唯一职责与拥有的数据 | 公开端口 | 不能做什么 | 建设阶段 |
 | --- | --- | --- | --- | --- |
 | `packages/contracts` | 领域协议及版本 | Schema、DTO、错误语义 | 引入 DSH、数据库实现 | 已有，逐步扩展 |
-| `packages/assistant-core` | Task / Run 生命周期与协调 | TaskService、Runner | 内嵌领域工具、插件安装 | 已有，M1–M3 |
-| `packages/task-ledger` | 状态、事件、动作与审计事务 | Ledger、Outbox、Lease | 向模型自行推断业务事实 | 已有，M1–M3 |
-| `packages/policy` | 委托、动作决策、预算预留 | authorize、revalidate、revoke | 依赖模型决定最终允许 | 已有基础，M1 |
-| `packages/capability-registry` | 能力元数据、兼容及健康 | discover、resolve | 安装即启用、隐式提权 | 已有基础，M1–M3 |
-| `packages/personal-memory` | 记忆版本、来源、撤回 | propose、confirm、retrieve、erase | 直接从外部材料写确认事实 | 已有内存模型，M2 |
-| `packages/identity` | principal、设备、认证绑定 | authenticate、resolveOwner | 信任请求体中的身份 | M1 |
-| `packages/action-runtime` | 动作准备、门禁、执行、对账 | prepare、execute、reconcile | 未经策略调用外部能力 | M1 |
-| `packages/verification` | 结果检查和证据判定 | verify | 仅采纳执行者自报成功 | M1 |
+| `packages/assistant-core` | Task 生命周期与协调 | TaskService、Runner | 内嵌领域工具、插件安装 | v0.1 已有六态 Task 协调 |
+| `packages/task-ledger` | Task、Action、Recovery、事件与审计事务 | TaskLedger、ActionLedger、RecoveryLedger | 向模型自行推断业务事实 | v0.1 已有 SQLite v3 migration |
+| `packages/policy` | 任务风险与动作决策 | evaluate、authorize | 依赖模型决定最终允许 | v0.1 已有基础规则 |
+| `packages/capability-registry` | 能力元数据与路由 | discover、resolve | 安装即启用、隐式提权 | v0.1 已有规则注册 |
+| `packages/personal-memory` | 记忆版本、来源、撤回与删除 | create、confirm、retrieve、correct、erase | 直接从外部材料写确认事实 | v0.1 已有 SQLite 显式记忆 |
+| `packages/identity` | principal 与本地认证绑定 | authenticate、resolveOwner | 信任请求体中的身份 | v0.1 已有 local process/bearer |
+| `packages/action-runtime` | 动作准备、门禁、执行、对账 | prepare、execute、reconcile | 未经策略调用外部能力 | v0.1 已有 `artifact.write` |
+| `packages/task-recovery` | 重启后的 Task/Action 分类与恢复编排 | initialize、retry、acknowledge | 把进程退出当作动作撤销 | v0.1 已有单机恢复 |
+| `packages/reminders` | 一次性触发与本地通知原子投递 | schedule、cancel、acknowledge | 调用 DSH 或外部推送 | v0.1 已有本地能力 |
+| `packages/verification`（拟设） | 通用结果检查和证据判定 | verify | 仅采纳执行者自报成功 | 当前分散在 action/workflow |
 | `packages/context` | 有预算且有来源的上下文视图 | buildContext | 全量复制个人数据给专家 | M2 |
 | `packages/goals` | Goal / Commitment / Decision | GoalService | 直接修改 Task 表 | M2 |
-| `packages/scheduler` | 持久触发、去重、补偿与唤醒 | schedule、claim、ack | 依赖活跃聊天会话存活 | M3 |
-| `packages/notifications` | 优先级、去重、安静时间 | enqueue、deliver、ack | 每条内部事件都通知用户 | M3 |
+| `packages/scheduler`、`packages/notifications`（条件拆分） | 周期触发、外部投递、安静时间等扩展 | schedule、deliver、ack | 为目录整齐拆散当前原子边界 | 出现独立部署/策略需求后评估 |
 | `plugins/dsh-lumi`（拟设） | 将 Host 端口桥接为 DSH 服务与工具；装配复用 Cordis | register tools/services、生命周期释放 | 重复实现通用 plugin-host、持有生产写凭据 | M1 接线，M3 扩展 |
 | `evolution/` | 变更提案、证据与发布流程编排 | proposeChange、evaluate | 直接写线上进程或数据 | M5；规范现在建立 |
 | `adapters/*` | 外部协议、SDK、引擎映射 | 实现本仓端口 | 泄漏上游类型到领域层 | DSH 已有，持续扩展 |
@@ -56,9 +57,9 @@ flowchart TB
 
 目标规则：应用装配依赖模块端口；领域模块依赖 contracts 或显式端口；adapter 实现端口；provider 之间不互相引用实现。跨模块写入只能走拥有者的服务，不直接访问对方表。
 
-当前 `TaskExecutor` 在 `assistant-core` 中、Core 依赖 registry / policy / ledger 包的接口，这是已有事实。未来在实际变更时提取端口，避免为“纯净架构”一次性搬迁。`TaskRecord.dshSessionId` 已经泄漏执行器命名，迁移为中性 `ExecutionRef` 时保留旧 API 映射，不突删字段。
+当前 `TaskExecutor` 在 `assistant-core` 中、Core 依赖 registry / policy / ledger 包的接口，这是已有事实。`apps/runtime` 是 composition root；Gateway、CLI 和 Workbench 不直接访问 SQLite。未来在实际变更时提取端口，避免为“纯净架构”一次性搬迁。`TaskRecord.dshSessionId` 已经泄漏执行器命名，迁移为中性 `ExecutionRef` 时保留旧 API 映射，不突删字段。
 
-CI 后续检查禁止依赖边界、循环依赖、外部 SDK 泄漏、入口绕过控制层。CI 检查目前尚未全部实现。
+当前 CI 已执行 lint、typecheck、DSH 版本对齐、Vitest 与 build；文档检查和依赖边界还不是完整自动门禁。后续检查禁止循环依赖、外部 SDK 泄漏和入口绕过控制层。
 
 ## “一切皆插件”的采用边界
 
@@ -79,7 +80,7 @@ Skill 是可版本化的程序知识，Tool 是具体动作，Connector 是身�
 
 ## 注册清单与生命周期
 
-每个插件声明 id、版本、接口版本、提供服务、所需服务、能力域、动作、输入输出 Schema、权限、网络目的地、文件范围、数据出境类别、成本和限额、隔离级别、健康检查、关闭方式、许可证与来源摘要。清单设计见协议文档，尚未被当前 registry 加载。
+目标插件清单声明 id、版本、接口版本、提供服务、所需服务、能力域、动作、输入输出 Schema、权限、网络目的地、文件范围、数据出境类别、成本和限额、隔离级别、健康检查、关闭方式、许可证与来源摘要。该目标格式尚未被当前 registry 加载；v0.1 registry 只承载固定能力描述与规则路由。
 
 生命周期：`discovered → validated → installed_disabled → enabled → draining → disabled`；校验失败或行为异常进入 `quarantined`。安装、启用和授权是三个不同动作。
 
@@ -99,7 +100,7 @@ Skill 是可版本化的程序知识，Tool 是具体动作，Connector 是身�
 
 不是所有数据都需要完整事件溯源。当前状态表 + 同事务领域事件 + 可重建投影已足够。审批及动作需要不可歧义的审计记录；聊天、模型内容和工具正文采用单独访问与保留政策。
 
-数据库迁移采用 expand → backfill → dual-read/兼容窗口 → contract。版本化迁移必须可重复检验；当前 `CREATE TABLE IF NOT EXISTS` 加固定 `user_version=1` 不是完整迁移框架。
+数据库迁移采用 expand → backfill → dual-read/兼容窗口 → contract。Task Ledger 当前按 `user_version` 执行 v1→v2→v3 expand migration 并记录 `migration_history`；Personal Memory 与 Reminders 使用各自 migration 表，不争用 Task Ledger 版本。自动 contract migration、回滚控制器和跨进程数据库升级仍未实现。
 
 ## 执行位置与多设备
 

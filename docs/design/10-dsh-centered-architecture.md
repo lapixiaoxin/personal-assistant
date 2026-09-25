@@ -1,8 +1,8 @@
 # lumi：以 DSH 为核心 Harness 的工程架构
 
-状态：Proposed v0.3 · 2026-09-25。面向产品所有者与建设 Agent 的设计审阅版；本次交付为架构、图示和技术选择，运行时能力未因此启用。
+状态：长期路线 Proposed v0.3 · 2026-09-25；v0.1 已实现子集见 [MVP 验收](../evidence/2026-09-25-mvp-acceptance.md)。
 
-本方案细化 v0.2 的执行与插件边界：**DSH 是唯一的 Agent 执行与编排环境；lumi Host 持有长期个人状态，并提供确定性的服务。** 涉及 DSH 职责、插件装配和多端技术路线时，以本文及 ADR-003 为最新提案；产品宪章、授权原则和阶段验收继续沿用。原始方向见 [超级个人助手](https://bytedance.larkoffice.com/wiki/ScpuwoQA9iDEdmkTMNacHUAvnHd)，既有专题见 [长期设计总纲](https://bytedance.larkoffice.com/wiki/DnYJwYk8iiijjykyqHqc4xAYnke)。
+本方案细化 v0.2 的执行与插件边界：**DSH 是复杂任务的主要 Agent 执行与编排环境；lumi Host 持有长期个人状态，并提供确定性的服务。** 实时对话、持续感知和物理控制可按延迟与设备约束使用独立运行时，但必须共享 Host 的身份、任务、动作和证据语义。涉及 DSH 职责、插件装配和多端技术路线时，以本文及 ADR-003 为最新提案；已实现的数据所有权以 [ADR-004](../adr/0004-host-ownership-and-module-boundaries.md) 为准。
 
 ## 1. 判断：赞同，而且值得围绕 DSH 深度建设
 
@@ -24,7 +24,7 @@ DSH 当前仍为实验阶段，会带来升级适配工作；这值得固定版�
 
 ![图1：DSH 与 lumi Host 的职责及真实动作路径](assets/dsh-centered/01-architecture.svg)
 
-图中为目标结构。当前已有 CLI / HTTP、基础 Core / Ledger / Policy / Registry 和 DSH adapter；动作 Broker、身份绑定、持久恢复、设备服务与通知尚待实现。
+图中包含 v0.1 现状与长期目标。当前已有 CLI / HTTP / Workbench、Core / Ledger / Policy / Registry、DSH adapter 与 protected profile、单 owner 身份、`artifact.write` Action Broker、显式持久记忆、单机恢复和一次性本地通知。通用 Connector、远程身份、多设备服务、周期调度和外部通知尚待实现。
 
 “任务分发”拆成两个明确步骤：**DSH 决定任务怎么做、调用什么工具和专家；Host 根据已声明能力、在线情况与授权范围，决定这次执行允许落在哪个节点，并记录生命周期。** Host 不运行第二套 Planner，也不复制 DSH 的工具循环。
 
@@ -33,7 +33,7 @@ DSH 当前仍为实验阶段，会带来升级适配工作；这值得固定版�
 | Channel Adapter | 平台验签、输入规范化、账户绑定、回复呈现 | 输入经 Host 建立任务；输出消费同一任务事件 |
 | lumi Host | Identity、Conversation、Task / Run / Action、Policy、验证与事件账本 | 提供稳定服务端口，启动或恢复 DSH Run |
 | 个人资产服务 | 目标、承诺、偏好、记忆、证据和 Context | DSH 通过插件取得任务所需视图、提交候选与反馈 |
-| DSH + lumi profile | coordinator、模型、规划、Tools、Skills、Subagents、MCP、压缩 | 唯一的认知与 Agent 编排环境 |
+| DSH + lumi profile | coordinator、模型、规划、Tools、Skills、Subagents、MCP、压缩 | 复杂任务的主要自主 Harness，不承载实时控制回路 |
 | lumi Cordis 插件 | 将 Host 端口注册为类型明确的 DSH 服务与工具 | 接线和参数映射；策略及账本由 Host 决定 |
 | Connector / Device Agent | 凭据、平台协议、设备权限、执行与结果读回 | 接受 Host 允许的动作，返回可核验回执 |
 
@@ -152,9 +152,9 @@ Context Builder 按任务、时效、范围、相关性与 token 预算组合信
 | `apps/runtime`、`apps/gateway`、`apps/local-runner` | 装配 lumi Host、统一 HTTP 与 CLI；以后 PWA 和设备端放独立 app |
 | `channels/feishu` 等 | 平台身份化事件与回复适配，调用相同 Host 服务 |
 | `packages/assistant-core`、`task-ledger`、`policy`、`contracts` | 继续承接任务、状态、策略和公共契约；Core 不增加第二套 Agent Loop |
-| `packages/action-runtime`、`identity`、`verification` | M1 增量建设的确定性服务 |
-| `packages/personal-memory`、`context`、`goals` | M2 的个人资产服务 |
-| `packages/scheduler`、`notifications` | M3 的持久唤醒、恢复、通知投递 |
+| `packages/action-runtime`、`identity` | v0.1 已实现的本地动作与身份服务；通用 `verification` 仍是建议边界 |
+| `packages/personal-memory` | v0.1 已实现显式记忆；`context`、`goals` 仍是建议边界 |
+| `packages/task-recovery`、`reminders` | v0.1 已实现单机恢复、一次性唤醒和本地通知；周期/外部投递出现独立需求后再拆 |
 | `adapters/dsh`、`profiles/dsh-lumi`、拟设 `plugins/dsh-lumi` | SDK 生命周期、profile、Cordis 接线；上游类型局限于此 |
 | `adapters/connectors/*`、`adapters/devices/*`、`evolution/` | 外部业务、设备协议、隔离进化，按实际场景新增 |
 
@@ -162,13 +162,13 @@ Context Builder 按任务、时效、范围、相关性与 token 预算组合信
 
 ## 8. 建设顺序与设计验收
 
-SPEC-0001 已证明内置 `artifact.write` 经过 Host 能授权、阻断、读回和故障对账。SPEC-0005 进一步在固定 DSH `0.1.7-rc.1` 的 `personal-assistant` profile 中接入每 Run bridge：模型可准备 Action，批准后的新 Run 只能凭显式 Action 引用执行同一摘要；默认文件写、Shell、网络、workflow/`run_code` 和未知工具由单调 guard 失败关闭。该证据不覆盖开发态 `coding-agent`、敏感读取或 OS 级恶意代码隔离。
+SPEC-0001 已证明内置 `artifact.write` 经过 Host 能授权、阻断、读回和故障对账。SPEC-0005 进一步在固定 DSH `0.1.7-rc.1` 的 `personal-assistant` profile 中接入每 Run bridge：模型可准备 Action，批准后的新 Run 只能凭显式 Action 引用执行同一摘要；默认文件写、Shell、网络、workflow/`run_code` 和未知工具由单调 guard 失败关闭。SPEC-0009 至 0011 已补入显式持久记忆、单机重启恢复和一次性本地提醒。该证据不覆盖开发态 `coding-agent`、敏感读取、OS 级恶意代码隔离、分布式恢复或外部通知。
 
 | 切片 | 要证明的场景 | 实现前保留的约束 |
 | --- | --- | --- |
-| M1：DSH + Host 动作闭环 | 一次可逆本地动作：允许、拒绝、参数变更、超时未知、恢复读回 | 不先铺满插件；未验证的 Shell 旁路不进入生产 |
-| M2：会话外个人资产 | 换 DSH Run 后继续任务、记住已确认偏好，纠正/撤回实际生效 | 记忆不是权限，全文索引先行 |
-| M3：常驻跟进与首个 IM | 定时触发、休眠/重启恢复、飞书投递；专家委派共用预算 | DSH 内提醒不承担无人值守承诺 |
+| M1：DSH + Host 动作闭环 | 已完成一个可逆本地 `artifact.write`；通用外部 Connector 未完成 | 不先铺满插件；未验证的 Shell 旁路不进入生产 |
+| M2：会话外个人资产 | 已完成显式记忆及跨 Run 注入；Goal、产品级会话和自动抽取未完成 | 记忆不是权限，全文/语义检索按真实缺口增加 |
+| M3：常驻跟进与首个 IM | 已完成单机重启分类和一次性本地提醒；周期触发、外部推送、飞书入口未完成 | DSH 内提醒不承担无人值守承诺 |
 | M4：第二设备与跨端审批 | 电脑生成产物，手机批准；离线重连、撤销与过期指令正确 | 同一 Host、同一 Action，无第二授权主节点 |
 | M5：有限自主升级 | 一次 Skill / Connector 改进从 spec 到验证、授权发布、回滚 | 受保护验收与发布权限独立于开发者 |
 
@@ -180,4 +180,4 @@ SPEC-0001 已证明内置 `artifact.write` 经过 Host 能授权、阻断、读�
 
 2026-09-25 核验了本仓 `22f4548` 的实现、安装的 DSH `0.1.7-rc.1` SDK / tools / schedule / MCP 产物，以及上游当日 master `477b4f420553e8a52c2fbccc464d7561b239c443` 的 [架构说明](https://github.com/deepseek-ai/deepseek-harness/blob/477b4f420553e8a52c2fbccc464d7561b239c443/docs/architecture.md) 与 [安全说明](https://github.com/deepseek-ai/deepseek-harness/blob/477b4f420553e8a52c2fbccc464d7561b239c443/SAFETY.md)。上游 master 用于设计机制依据，具体接线以固定发行版验证为准。
 
-本轮验证文档一致性、图示渲染与发布读回；未实现或实测图中的长期恢复、动作拦截、跨端审批、设备接入和自主发布。工程交接见 [SPEC-0003](../../specs/0003-dsh-centered-design/spec.md)、[ADR-003](../adr/0003-dsh-centered-harness.md)。
+原始设计轮只验证文档一致性、图示渲染与发布读回；此后 v0.1 已按 SPEC-0001、0005、0009、0010、0011 实现并验证受控动作、持久记忆、单机恢复和一次性本地提醒。跨端审批、设备接入、分布式恢复和自主发布仍未实现。设计交接见 [SPEC-0003](../../specs/0003-dsh-centered-design/spec.md)，当前边界收敛见 [SPEC-0012](../../specs/0012-architecture-consolidation/spec.md) 与 [ADR-004](../adr/0004-host-ownership-and-module-boundaries.md)。
