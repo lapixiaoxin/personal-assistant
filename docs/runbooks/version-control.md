@@ -14,6 +14,12 @@
 
 远端 push 与部署需要具体目标及相应授权；不把本地提交成功写成已发布。现有 hooks 保持启用，发现问题先修复；不得通过关闭 hooks 或删验收绕过失败。
 
+## 已合并 worktree 清理
+
+仅在以下三个条件同时满足时移除临时 worktree：`git -C <path> status --short --branch` 无工作区改动；`git merge-base --is-ancestor <branch> main` 退出码为 0；路径不承载运行数据库、服务或未纳入 Git 的必要产物。
+
+先执行 `git worktree remove <path>`，再用 `git worktree list --porcelain` 确认登记已删除，最后以 `git branch -d <branch>` 删除已合并分支。禁止使用 `--force` 掩盖未提交内容；不直接 `rm -rf` 已登记 worktree。SPEC-0012 已按此流程移除两个 clean worktree 并释放约 1.5 GB，提交历史仍可从 main 到达。
+
 ## 首次基线的成功记录
 
 起点：无初始 commit 的 `feat/initial-mvp`。用户明确授权提交当前工程后，执行 `git branch -m main`，按明确目录暂存 83 个工程文件；`.env`、data、node_modules、dist、draft 目录均未入库。

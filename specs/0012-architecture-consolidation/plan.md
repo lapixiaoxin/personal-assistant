@@ -1,6 +1,6 @@
 # SPEC-0012 实现计划
 
-状态：Ready · 对应 spec v0.1。
+状态：Done · 对应 spec v0.1。
 
 ## 边界
 
@@ -26,8 +26,7 @@
 - `errors.ts`：公开错误。
 - `mappers.ts`：SQLite row → contract 与 Action digest 纯函数。
 - `migrations.ts`：v1→v2→v3 migration。
-- `sqlite-task-ledger.ts`：单一实现类与事务编排。
-- `index.ts`：保持原公开导出面。
+- `index.ts`：保持原公开导出面，并保留单一 `SqliteTaskLedger` 实现类与事务编排。
 
 ## 数据与兼容
 

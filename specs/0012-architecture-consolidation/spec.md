@@ -1,6 +1,6 @@
 # SPEC-0012: v0.1 架构与仓库规范收敛
 
-状态：Specified · v0.1 · 2026-09-25。
+状态：Implemented / verified_once · v0.1 · 2026-09-25。
 
 负责人：lumi Agent。关联 Goal：MVP 后的可维护性基线。关联 ADR：[ADR-004](../../docs/adr/0004-host-ownership-and-module-boundaries.md)。
 

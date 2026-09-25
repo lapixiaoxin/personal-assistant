@@ -165,6 +165,14 @@ runtime owner 在线时只维护一个最早 timer；启动前错过的 latest �
 
 Gateway、CLI 和 Workbench 支持创建/取消提醒、查看计划、读取和确认本地通知。本机真实 timer 与独立 CLI 进程 catch-up 已验证；`pnpm check` 通过 25 个测试文件、195 项，Playwright 桌面/320px 移动共 14 项通过。该能力不包含系统通知、移动 push、周期任务、自然语言时间解析、安静时间或离线唤醒。细节见 [SPEC-0011 证据](../specs/0011-reminders/evidence.md) 与 [提醒 SOP](runbooks/reminders.md)。
 
+## 2026-09-25 · v0.1 架构与模块边界收敛
+
+`SPEC-0012` 校正了长期 Proposed 设计与 v0.1 已实现能力之间的状态漂移，并以 [ADR-004](adr/0004-host-ownership-and-module-boundaries.md) 记录当前 Host 数据所有权：Task/Action/Recovery 的 SQLite 状态与跨对象事务仍由 `packages/task-ledger` 统一拥有；Memory、Reminder/Notification 分别由独立模块拥有；`apps/runtime` 只负责装配。
+
+`packages/contracts` 已按 common/task/action/recovery/reminder 拆分，根 package import 不变。Task Ledger 将公开端口、错误、row mapping/action digest 和 v1→v3 migration 从中央实现文件抽离；`SqliteTaskLedger` 仍保留单连接、单时钟和单一 `BEGIN IMMEDIATE` 事务入口。没有新增 Schema、表、migration、API 或依赖。
+
+两个 clean 且已合并的历史 worktree/分支已删除，释放约 1.5 GB；其他 `data/` 内容和运行中 4310/4313 服务未处理。Node 22.19.0 下 `pnpm check` 继续通过 25 个测试文件、195 项测试和完整构建；文档检查通过 95 个 Markdown、202 个本地链接。源码提交为 `9aad4dc`，完整证据见 [SPEC-0012](../specs/0012-architecture-consolidation/evidence.md)。
+
 ## 状态标注规则
 
 `Proposed`：设计建议；`Specified`：验收和边界已写清；`Implemented`：代码存在；`Verified`：指定环境和版本有证据；`Enabled`：部署配置已启用。后一个状态不能由前一个自动推断。

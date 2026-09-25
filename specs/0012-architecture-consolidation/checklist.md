@@ -9,15 +9,15 @@
 
 ## Done
 
-- [ ] 架构文档准确区分 v0.1 已实现与长期 Proposed。
-- [ ] contracts 根入口导出与消费者 import 保持兼容。
-- [ ] task-ledger 保持单连接、单实现类和跨对象事务。
-- [ ] `user_version=3` 与 v1→v2→v3 migration 行为不变。
-- [ ] 包 README 说明责任、公开入口和禁止边界。
-- [ ] 聚焦测试、docs checker 与完整 `pnpm check` 通过。
-- [ ] 用户 SVG 未进入暂存/提交，4310/4313 服务仍在。
+- [x] 架构文档准确区分 v0.1 已实现与长期 Proposed。
+- [x] contracts 根入口导出与消费者 import 保持兼容。
+- [x] task-ledger 保持单连接、单实现类和跨对象事务。
+- [x] `user_version=3` 与 v1→v2→v3 migration 行为不变。
+- [x] 包 README 说明责任、公开入口和禁止边界。
+- [x] 聚焦测试、docs checker 与完整 `pnpm check` 通过。
+- [x] 用户 SVG 未进入暂存/提交，4310/4313 服务仍在。
 
 ## 发布
 
-- [ ] 变更与证据已提交本地 `main`。
+- [x] 变更与证据已提交本地 `main`。
 - [ ] 远端 push 或部署具有独立授权和记录。
