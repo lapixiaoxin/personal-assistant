@@ -1,34 +1,26 @@
-import { createHash } from 'node:crypto'
 import { mkdirSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, resolve } from 'node:path'
 import type { DatabaseSync as DatabaseSyncType } from 'node:sqlite'
 import {
   ActionReceiptSchema,
-  ActionRecordSchema,
   ApprovalRecordSchema,
   AuditRecordSchema,
   AuthorizationRecordSchema,
   createId,
   RecoveryRecordSchema,
   TaskEventSchema,
-  TaskRecordSchema,
   VerificationRecordSchema,
   type ActionReceipt,
   type ActionRecord,
-  type ActionStatus,
   type ApprovalRecord,
   type ApprovalStatus,
-  type AuditOutcome,
   type AuditRecord,
   type AuthorizationRecord,
   type JsonValue,
   type Principal,
-  type RecoveryDisposition,
-  type RecoveryReasonCode,
   type RecoveryRecord,
   type RecoveryResolution,
-  type RecoveryStatus,
   type RiskLevel,
   type TaskEvent,
   type TaskEventType,
@@ -38,356 +30,87 @@ import {
   type TaskState,
   type VerificationRecord,
 } from '@lumi/contracts'
+import {
+  ActionAuthorizationError,
+  ActionConflictError,
+  ActionNotFoundError,
+  ActionStateConflictError,
+  DuplicateTaskError,
+  RecoveryNotFoundError,
+  RecoveryStateConflictError,
+  TaskNotFoundError,
+  TaskStateConflictError,
+} from './errors.ts'
+import {
+  computeActionDigest,
+  digest,
+  mapAction,
+  mapApproval,
+  mapAudit,
+  mapAuthorization,
+  mapEvent,
+  mapReceipt,
+  mapRecovery,
+  mapTask,
+  mapVerification,
+} from './mappers.ts'
+import { migrateTaskLedger } from './migrations.ts'
+import type {
+  ActionLedger,
+  ActionPreparationInput,
+  ActionReceiptInput,
+  ActionRow,
+  ApprovalRow,
+  AuditInput,
+  AuditRow,
+  AuthorizationRow,
+  EventRow,
+  ReceiptRow,
+  RecoveryLedger,
+  RecoveryListOptions,
+  RecoveryRetryClaimInput,
+  RecoveryRow,
+  RuntimeRecoveryLease,
+  RuntimeRecoveryLeaseClaim,
+  RuntimeRecoveryLeaseRow,
+  SqliteTaskLedgerOptions,
+  TaskLedger,
+  TaskPatch,
+  TaskRecoveryInput,
+  TaskRow,
+  VerificationInput,
+  VerificationRow,
+} from './types.ts'
+
+export {
+  ActionAuthorizationError,
+  ActionConflictError,
+  ActionNotFoundError,
+  ActionStateConflictError,
+  DuplicateTaskError,
+  RecoveryNotFoundError,
+  RecoveryStateConflictError,
+  TaskNotFoundError,
+  TaskStateConflictError,
+} from './errors.ts'
+export type {
+  ActionLedger,
+  ActionPreparationInput,
+  ActionReceiptInput,
+  RecoveryLedger,
+  RecoveryListOptions,
+  RecoveryRetryClaimInput,
+  RuntimeRecoveryLease,
+  RuntimeRecoveryLeaseClaim,
+  SqliteTaskLedgerOptions,
+  TaskLedger,
+  TaskRecoveryInput,
+  VerificationInput,
+} from './types.ts'
 
 // Keep the specifier intact when bundlers use an older built-in module table.
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite') as {
   DatabaseSync: new (path: string) => DatabaseSyncType
-}
-
-export interface SqliteTaskLedgerOptions {
-  filename: string
-  now?: () => string
-}
-
-export interface ActionPreparationInput {
-  action: ActionRecord
-  content: string
-  task: TaskRequest
-}
-
-export interface ActionReceiptInput {
-  actionId: string
-  artifactRef: string
-  contentDigest: string
-  providerVersion: string
-  recovered?: boolean
-}
-
-export interface VerificationInput {
-  actionId: string
-  evidenceRefs: string[]
-  expectedDigest: string
-  observedDigest: string | null
-  reason: string
-  status: VerificationRecord['status']
-  verifierVersion: string
-}
-
-export interface TaskRecoveryInput {
-  actionId?: string
-  disposition: RecoveryDisposition
-  ownerId: string
-  principalId: string
-  reasonCode: RecoveryReasonCode
-  safeToRetry: boolean
-  taskId: string
-}
-
-export interface RecoveryRetryClaimInput {
-  recoveryId: string
-  replacementCreatedAt: string
-  replacementTaskId: string
-}
-
-export interface RecoveryListOptions {
-  limit?: number
-  status?: RecoveryStatus
-  taskId?: string
-}
-
-export interface RuntimeRecoveryLease {
-  pid: number
-  runtimeId: string
-  startedAt: string
-}
-
-export interface RuntimeRecoveryLeaseClaim extends RuntimeRecoveryLease {
-  expectedRuntimeId: string | null
-}
-
-interface TaskPatch {
-  capabilityId?: string | null
-  dshSessionId?: string | null
-  error?: string | null
-  result?: string | null
-}
-
-interface AuditInput {
-  action: string
-  actorId: string
-  detail?: Record<string, JsonValue>
-  outcome: AuditOutcome
-  targetId: string
-  targetType?: string
-}
-
-interface TaskRow {
-  actor_id: string
-  capability_id: string | null
-  channel: string
-  content: string
-  context_refs: string
-  created_at: string
-  dsh_session_id: string | null
-  error: string | null
-  id: string
-  result: string | null
-  state: string
-  updated_at: string
-}
-
-interface EventRow {
-  id: string
-  occurred_at: string
-  payload: string
-  sequence: number
-  task_id: string
-  type: string
-}
-
-interface AuditRow {
-  action: string
-  actor_id: string
-  created_at: string
-  detail: string
-  id: string
-  outcome: string
-  target_id: string
-  target_type: string
-}
-
-interface ApprovalRow {
-  decided_at: string | null
-  decided_by: string | null
-  id: string
-  reason: string
-  requested_at: string
-  risk_level: string
-  status: string
-  task_id: string
-}
-
-interface ActionRow {
-  action_digest: string
-  authorization_id: string | null
-  cancellation_requested_at: string | null
-  capability: string
-  created_at: string
-  deadline: string | null
-  effect: string
-  id: string
-  idempotency_key: string
-  input_digest: string
-  input_ref: string
-  operation: string
-  owner_id: string
-  principal_id: string
-  receipt_id: string | null
-  revocation_epoch: number
-  schema_version: string
-  status: string
-  target: string
-  task_id: string
-  updated_at: string
-  verification_id: string | null
-}
-
-interface AuthorizationRow {
-  action_digest: string
-  action_id: string
-  capability_version: string
-  created_at: string
-  expires_at: string
-  id: string
-  max_uses: number
-  owner_id: string
-  policy_version: string
-  principal_id: string
-  remaining_uses: number
-  revocation_epoch: number
-  schema_version: string
-  status: string
-  updated_at: string
-}
-
-interface ReceiptRow {
-  action_id: string
-  artifact_ref: string
-  content_digest: string
-  created_at: string
-  id: string
-  provider_version: string
-  recovered: number
-  schema_version: string
-  status: string
-}
-
-interface VerificationRow {
-  action_id: string
-  created_at: string
-  evidence_refs: string
-  expected_digest: string
-  id: string
-  observed_digest: string | null
-  reason: string
-  schema_version: string
-  status: string
-  task_id: string
-  verifier_version: string
-}
-
-interface RecoveryRow {
-  action_id: string | null
-  detected_at: string
-  disposition: string
-  id: string
-  owner_id: string
-  principal_id: string
-  reason_code: string
-  replacement_created_at: string | null
-  replacement_task_id: string | null
-  resolution: string | null
-  resolved_at: string | null
-  safe_to_retry: number
-  schema_version: string
-  status: string
-  task_id: string
-}
-
-interface RuntimeRecoveryLeaseRow {
-  pid: number
-  runtime_id: string
-  started_at: string
-}
-
-export class DuplicateTaskError extends Error {
-  constructor(readonly taskId: string) {
-    super(`Task already exists: ${taskId}`)
-    this.name = 'DuplicateTaskError'
-  }
-}
-
-export class TaskNotFoundError extends Error {
-  constructor(readonly taskId: string) {
-    super(`Task not found: ${taskId}`)
-    this.name = 'TaskNotFoundError'
-  }
-}
-
-export class TaskStateConflictError extends Error {
-  constructor(readonly taskId: string, readonly actual: TaskState, readonly expected: readonly TaskState[]) {
-    super(`Task ${taskId} is ${actual}; expected ${expected.join(' or ')}`)
-    this.name = 'TaskStateConflictError'
-  }
-}
-
-export class ActionConflictError extends Error {
-  constructor(readonly actionId: string, message: string) {
-    super(message)
-    this.name = 'ActionConflictError'
-  }
-}
-
-export class ActionNotFoundError extends Error {
-  constructor(readonly actionId: string) {
-    super(`Action not found: ${actionId}`)
-    this.name = 'ActionNotFoundError'
-  }
-}
-
-export class ActionStateConflictError extends Error {
-  constructor(
-    readonly actionId: string,
-    readonly actual: ActionStatus,
-    readonly expected: readonly ActionStatus[],
-  ) {
-    super(`Action ${actionId} is ${actual}; expected ${expected.join(' or ')}`)
-    this.name = 'ActionStateConflictError'
-  }
-}
-
-export class ActionAuthorizationError extends Error {
-  constructor(
-    readonly code: 'APPROVAL_EXPIRED' | 'APPROVAL_REQUIRED' | 'CANCELLED' | 'PERMISSION_DENIED',
-    message: string,
-  ) {
-    super(message)
-    this.name = 'ActionAuthorizationError'
-  }
-}
-
-export class RecoveryNotFoundError extends Error {
-  constructor(readonly recoveryId: string) {
-    super(`Recovery not found: ${recoveryId}`)
-    this.name = 'RecoveryNotFoundError'
-  }
-}
-
-export class RecoveryStateConflictError extends Error {
-  constructor(readonly recoveryId: string, message: string) {
-    super(message)
-    this.name = 'RecoveryStateConflictError'
-  }
-}
-
-export interface TaskLedger {
-  appendAudit(input: AuditInput): AuditRecord
-  appendEvent(taskId: string, type: TaskEventType, payload?: Record<string, JsonValue>): TaskEvent
-  close(): void
-  createApproval(taskId: string, riskLevel: RiskLevel, reason: string): ApprovalRecord
-  createTask(request: TaskRequest): TaskRecord
-  getApprovalForTask(taskId: string): ApprovalRecord | undefined
-  getTask(taskId: string): TaskRecord | undefined
-  listAudit(taskId: string): AuditRecord[]
-  listEvents(taskId: string): TaskEvent[]
-  listTasks(query?: Partial<TaskListQuery>): TaskRecord[]
-  resolveApproval(taskId: string, status: Exclude<ApprovalStatus, 'pending'>, decidedBy: string): ApprovalRecord
-  transitionTask(
-    taskId: string,
-    expected: readonly TaskState[],
-    nextState: TaskState,
-    patch?: TaskPatch,
-  ): TaskRecord
-}
-
-export interface ActionLedger {
-  authorizeAction(
-    actionId: string,
-    principal: Principal,
-    expiresAt: string,
-    policyVersion: string,
-  ): AuthorizationRecord
-  cancelAction(actionId: string, principal: Principal): ActionRecord
-  claimActionExecution(actionId: string, principal: Principal): ActionRecord
-  getAction(actionId: string): ActionRecord | undefined
-  getActionForTask(taskId: string): ActionRecord | undefined
-  getActionContent(actionId: string): string
-  getAuthorizationForAction(actionId: string): AuthorizationRecord | undefined
-  getReceiptForAction(actionId: string): ActionReceipt | undefined
-  getVerificationForAction(actionId: string): VerificationRecord | undefined
-  listActions(ownerId: string, limit?: number): ActionRecord[]
-  markActionOutcomeUnknown(actionId: string): ActionRecord
-  prepareAction(input: ActionPreparationInput): ActionRecord
-  recordActionSucceeded(input: ActionReceiptInput): ActionReceipt
-  recordVerification(input: VerificationInput): VerificationRecord
-}
-
-export interface RecoveryLedger {
-  claimRuntimeRecoveryLease(input: RuntimeRecoveryLeaseClaim): boolean
-  claimRecoveryRetry(input: RecoveryRetryClaimInput, principal: Principal): RecoveryRecord
-  getRecovery(recoveryId: string, principal: Principal): RecoveryRecord | undefined
-  getRecoveryForTask(taskId: string, principal: Principal): RecoveryRecord | undefined
-  listRecoveries(principal: Principal, options?: RecoveryListOptions): RecoveryRecord[]
-  listTasksForRecovery(principalId: string): TaskRecord[]
-  getRuntimeRecoveryLease(): RuntimeRecoveryLease | undefined
-  recordTaskRecovery(input: TaskRecoveryInput): RecoveryRecord
-  releaseRecoveryRetry(recoveryId: string, principal: Principal): RecoveryRecord
-  releaseRuntimeRecoveryLease(runtimeId: string): void
-  resolveRecovery(
-    recoveryId: string,
-    principal: Principal,
-    resolution: RecoveryResolution,
-  ): RecoveryRecord
 }
 
 export class SqliteTaskLedger implements TaskLedger, ActionLedger, RecoveryLedger {
@@ -1398,221 +1121,11 @@ export class SqliteTaskLedger implements TaskLedger, ActionLedger, RecoveryLedge
   }
 
   #migrate(): void {
-    this.#db.exec(`
-      PRAGMA journal_mode = WAL;
-      PRAGMA foreign_keys = ON;
-      PRAGMA busy_timeout = 5000;
-    `)
-    const versionRow = this.#db.prepare('PRAGMA user_version').get() as { user_version: number }
-    if (versionRow.user_version > 3) {
-      throw new Error(`Database schema version ${versionRow.user_version} is newer than supported version 3`)
-    }
-    if (versionRow.user_version < 1) {
-      this.#transaction(() => {
-        this.#db.exec(`
-          CREATE TABLE IF NOT EXISTS tasks (
-            id TEXT PRIMARY KEY,
-            actor_id TEXT NOT NULL,
-            channel TEXT NOT NULL,
-            content TEXT NOT NULL,
-            context_refs TEXT NOT NULL,
-            state TEXT NOT NULL,
-            capability_id TEXT,
-            result TEXT,
-            error TEXT,
-            dsh_session_id TEXT,
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
-          );
-
-          CREATE TABLE IF NOT EXISTS task_events (
-            id TEXT PRIMARY KEY,
-            task_id TEXT NOT NULL REFERENCES tasks(id),
-            sequence INTEGER NOT NULL,
-            type TEXT NOT NULL,
-            payload TEXT NOT NULL,
-            occurred_at TEXT NOT NULL,
-            UNIQUE(task_id, sequence)
-          );
-
-          CREATE INDEX IF NOT EXISTS task_events_task_idx
-            ON task_events(task_id, sequence);
-
-          CREATE TABLE IF NOT EXISTS audit_records (
-            id TEXT PRIMARY KEY,
-            actor_id TEXT NOT NULL,
-            action TEXT NOT NULL,
-            target_type TEXT NOT NULL,
-            target_id TEXT NOT NULL,
-            outcome TEXT NOT NULL,
-            detail TEXT NOT NULL,
-            created_at TEXT NOT NULL
-          );
-
-          CREATE INDEX IF NOT EXISTS audit_target_idx
-            ON audit_records(target_id, created_at);
-
-          CREATE TABLE IF NOT EXISTS approvals (
-            id TEXT PRIMARY KEY,
-            task_id TEXT NOT NULL REFERENCES tasks(id),
-            risk_level TEXT NOT NULL,
-            reason TEXT NOT NULL,
-            status TEXT NOT NULL,
-            requested_at TEXT NOT NULL,
-            decided_at TEXT,
-            decided_by TEXT
-          );
-
-          CREATE INDEX IF NOT EXISTS approvals_task_idx
-            ON approvals(task_id, requested_at);
-
-          PRAGMA user_version = 1;
-        `)
-      })
-    }
-    if (versionRow.user_version < 2) {
-      this.#transaction(() => {
-        this.#db.exec(`
-          CREATE TABLE IF NOT EXISTS migration_history (
-            version INTEGER PRIMARY KEY,
-            name TEXT NOT NULL,
-            applied_at TEXT NOT NULL
-          );
-
-          CREATE TABLE IF NOT EXISTS actions (
-            id TEXT PRIMARY KEY,
-            task_id TEXT NOT NULL UNIQUE REFERENCES tasks(id),
-            schema_version TEXT NOT NULL,
-            owner_id TEXT NOT NULL,
-            principal_id TEXT NOT NULL,
-            operation TEXT NOT NULL,
-            target TEXT NOT NULL,
-            input_digest TEXT NOT NULL,
-            input_ref TEXT NOT NULL,
-            action_digest TEXT NOT NULL,
-            capability TEXT NOT NULL,
-            effect TEXT NOT NULL,
-            idempotency_key TEXT NOT NULL,
-            deadline TEXT,
-            status TEXT NOT NULL,
-            authorization_id TEXT,
-            receipt_id TEXT,
-            verification_id TEXT,
-            cancellation_requested_at TEXT,
-            revocation_epoch INTEGER NOT NULL DEFAULT 0,
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL,
-            UNIQUE(owner_id, operation, idempotency_key)
-          );
-
-          CREATE INDEX IF NOT EXISTS actions_owner_idx
-            ON actions(owner_id, created_at);
-
-          CREATE TABLE IF NOT EXISTS action_inputs (
-            action_id TEXT PRIMARY KEY REFERENCES actions(id),
-            content TEXT NOT NULL
-          );
-
-          CREATE TABLE IF NOT EXISTS authorizations (
-            id TEXT PRIMARY KEY,
-            action_id TEXT NOT NULL UNIQUE REFERENCES actions(id),
-            schema_version TEXT NOT NULL,
-            action_digest TEXT NOT NULL,
-            owner_id TEXT NOT NULL,
-            principal_id TEXT NOT NULL,
-            capability_version TEXT NOT NULL,
-            max_uses INTEGER NOT NULL,
-            remaining_uses INTEGER NOT NULL,
-            expires_at TEXT NOT NULL,
-            revocation_epoch INTEGER NOT NULL,
-            policy_version TEXT NOT NULL,
-            status TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL
-          );
-
-          CREATE TABLE IF NOT EXISTS action_receipts (
-            id TEXT PRIMARY KEY,
-            action_id TEXT NOT NULL UNIQUE REFERENCES actions(id),
-            schema_version TEXT NOT NULL,
-            status TEXT NOT NULL,
-            artifact_ref TEXT NOT NULL,
-            content_digest TEXT NOT NULL,
-            provider_version TEXT NOT NULL,
-            recovered INTEGER NOT NULL,
-            created_at TEXT NOT NULL
-          );
-
-          CREATE TABLE IF NOT EXISTS verifications (
-            id TEXT PRIMARY KEY,
-            action_id TEXT NOT NULL UNIQUE REFERENCES actions(id),
-            task_id TEXT NOT NULL REFERENCES tasks(id),
-            schema_version TEXT NOT NULL,
-            verifier_version TEXT NOT NULL,
-            status TEXT NOT NULL,
-            expected_digest TEXT NOT NULL,
-            observed_digest TEXT,
-            evidence_refs TEXT NOT NULL,
-            reason TEXT NOT NULL,
-            created_at TEXT NOT NULL
-          );
-
-          PRAGMA user_version = 2;
-        `)
-        const appliedAt = this.#now()
-        this.#db.prepare(`
-          INSERT OR IGNORE INTO migration_history (version, name, applied_at)
-          VALUES (1, 'initial-task-ledger', ?)
-        `).run(appliedAt)
-        this.#db.prepare(`
-          INSERT OR IGNORE INTO migration_history (version, name, applied_at)
-          VALUES (2, 'action-boundary', ?)
-        `).run(appliedAt)
-      })
-    }
-    if (versionRow.user_version < 3) {
-      this.#transaction(() => {
-        this.#db.exec(`
-          CREATE TABLE IF NOT EXISTS task_recoveries (
-            id TEXT PRIMARY KEY,
-            schema_version TEXT NOT NULL,
-            owner_id TEXT NOT NULL,
-            principal_id TEXT NOT NULL,
-            task_id TEXT NOT NULL UNIQUE REFERENCES tasks(id),
-            action_id TEXT REFERENCES actions(id),
-            disposition TEXT NOT NULL,
-            reason_code TEXT NOT NULL,
-            safe_to_retry INTEGER NOT NULL,
-            status TEXT NOT NULL,
-            replacement_task_id TEXT,
-            replacement_created_at TEXT,
-            resolution TEXT,
-            detected_at TEXT NOT NULL,
-            resolved_at TEXT
-          );
-
-          CREATE INDEX IF NOT EXISTS task_recoveries_owner_status_idx
-            ON task_recoveries(owner_id, principal_id, status, detected_at);
-
-          CREATE UNIQUE INDEX IF NOT EXISTS task_recoveries_action_idx
-            ON task_recoveries(action_id)
-            WHERE action_id IS NOT NULL;
-
-          CREATE TABLE IF NOT EXISTS runtime_recovery_lease (
-            singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
-            runtime_id TEXT NOT NULL,
-            pid INTEGER NOT NULL,
-            started_at TEXT NOT NULL
-          );
-
-          PRAGMA user_version = 3;
-        `)
-        this.#db.prepare(`
-          INSERT OR IGNORE INTO migration_history (version, name, applied_at)
-          VALUES (3, 'task-recovery', ?)
-        `).run(this.#now())
-      })
-    }
+    migrateTaskLedger(
+      this.#db,
+      this.#now,
+      operation => this.#transaction(operation),
+    )
   }
 
   #transaction<T>(operation: () => T): T {
@@ -1626,185 +1139,4 @@ export class SqliteTaskLedger implements TaskLedger, ActionLedger, RecoveryLedge
       throw error
     }
   }
-}
-
-function mapTask(row: TaskRow): TaskRecord {
-  return TaskRecordSchema.parse({
-    actorId: row.actor_id,
-    capabilityId: row.capability_id,
-    channel: row.channel,
-    content: row.content,
-    contextRefs: JSON.parse(row.context_refs),
-    createdAt: row.created_at,
-    dshSessionId: row.dsh_session_id,
-    error: row.error,
-    id: row.id,
-    result: row.result,
-    state: row.state,
-    updatedAt: row.updated_at,
-  })
-}
-
-function mapEvent(row: EventRow): TaskEvent {
-  return TaskEventSchema.parse({
-    id: row.id,
-    occurredAt: row.occurred_at,
-    payload: JSON.parse(row.payload),
-    sequence: row.sequence,
-    taskId: row.task_id,
-    type: row.type,
-  })
-}
-
-function mapAudit(row: AuditRow): AuditRecord {
-  return AuditRecordSchema.parse({
-    action: row.action,
-    actorId: row.actor_id,
-    createdAt: row.created_at,
-    detail: JSON.parse(row.detail),
-    id: row.id,
-    outcome: row.outcome,
-    targetId: row.target_id,
-    targetType: row.target_type,
-  })
-}
-
-function mapApproval(row: ApprovalRow): ApprovalRecord {
-  return ApprovalRecordSchema.parse({
-    decidedAt: row.decided_at,
-    decidedBy: row.decided_by,
-    id: row.id,
-    reason: row.reason,
-    requestedAt: row.requested_at,
-    riskLevel: row.risk_level,
-    status: row.status,
-    taskId: row.task_id,
-  })
-}
-
-function mapAction(row: ActionRow): ActionRecord {
-  return ActionRecordSchema.parse({
-    actionDigest: row.action_digest,
-    authorizationId: row.authorization_id,
-    cancellationRequestedAt: row.cancellation_requested_at,
-    capability: JSON.parse(row.capability),
-    createdAt: row.created_at,
-    deadline: row.deadline,
-    effect: row.effect,
-    id: row.id,
-    idempotencyKey: row.idempotency_key,
-    inputDigest: row.input_digest,
-    inputRef: row.input_ref,
-    operation: row.operation,
-    ownerId: row.owner_id,
-    principalId: row.principal_id,
-    receiptId: row.receipt_id,
-    revocationEpoch: row.revocation_epoch,
-    schemaVersion: row.schema_version,
-    status: row.status,
-    target: JSON.parse(row.target),
-    taskId: row.task_id,
-    updatedAt: row.updated_at,
-    verificationId: row.verification_id,
-  })
-}
-
-function mapAuthorization(row: AuthorizationRow): AuthorizationRecord {
-  return AuthorizationRecordSchema.parse({
-    actionDigest: row.action_digest,
-    actionId: row.action_id,
-    capabilityVersion: row.capability_version,
-    createdAt: row.created_at,
-    expiresAt: row.expires_at,
-    id: row.id,
-    maxUses: row.max_uses,
-    ownerId: row.owner_id,
-    policyVersion: row.policy_version,
-    principalId: row.principal_id,
-    remainingUses: row.remaining_uses,
-    revocationEpoch: row.revocation_epoch,
-    schemaVersion: row.schema_version,
-    status: row.status,
-    updatedAt: row.updated_at,
-  })
-}
-
-function mapReceipt(row: ReceiptRow): ActionReceipt {
-  return ActionReceiptSchema.parse({
-    actionId: row.action_id,
-    artifactRef: row.artifact_ref,
-    contentDigest: row.content_digest,
-    createdAt: row.created_at,
-    id: row.id,
-    providerVersion: row.provider_version,
-    recovered: row.recovered === 1,
-    schemaVersion: row.schema_version,
-    status: row.status,
-  })
-}
-
-function mapVerification(row: VerificationRow): VerificationRecord {
-  return VerificationRecordSchema.parse({
-    actionId: row.action_id,
-    createdAt: row.created_at,
-    evidenceRefs: JSON.parse(row.evidence_refs),
-    expectedDigest: row.expected_digest,
-    id: row.id,
-    observedDigest: row.observed_digest,
-    reason: row.reason,
-    schemaVersion: row.schema_version,
-    status: row.status,
-    taskId: row.task_id,
-    verifierVersion: row.verifier_version,
-  })
-}
-
-function mapRecovery(row: RecoveryRow): RecoveryRecord {
-  return RecoveryRecordSchema.parse({
-    actionId: row.action_id,
-    detectedAt: row.detected_at,
-    disposition: row.disposition,
-    id: row.id,
-    ownerId: row.owner_id,
-    principalId: row.principal_id,
-    reasonCode: row.reason_code,
-    replacementCreatedAt: row.replacement_created_at,
-    replacementTaskId: row.replacement_task_id,
-    resolution: row.resolution,
-    resolvedAt: row.resolved_at,
-    safeToRetry: row.safe_to_retry === 1,
-    schemaVersion: row.schema_version,
-    status: row.status,
-    taskId: row.task_id,
-  })
-}
-
-function computeActionDigest(action: ActionRecord, inputDigest: string): string {
-  return digest(JSON.stringify(sortJson({
-    capability: action.capability,
-    deadline: action.deadline,
-    effect: action.effect,
-    idempotencyKey: action.idempotencyKey,
-    inputDigest,
-    operation: action.operation,
-    ownerId: action.ownerId,
-    principalId: action.principalId,
-    target: action.target,
-  })))
-}
-
-function digest(content: string): string {
-  return `sha256:${createHash('sha256').update(content).digest('hex')}`
-}
-
-function sortJson(value: JsonValue): JsonValue {
-  if (Array.isArray(value)) return value.map(sortJson)
-  if (value !== null && typeof value === 'object') {
-    return Object.fromEntries(
-      Object.entries(value)
-        .sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0)
-        .map(([key, child]) => [key, sortJson(child)]),
-    )
-  }
-  return value
 }
