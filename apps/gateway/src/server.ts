@@ -17,6 +17,10 @@ import {
   ResearchBriefSubmissionSchema,
   ResearchWorkflowError,
 } from '@lumi/research-workflow'
+import {
+  MeetingBriefSubmissionSchema,
+  MeetingWorkflowError,
+} from '@lumi/meeting-workflow'
 import { createAssistantRuntime, type AssistantRuntime } from '@lumi/runtime'
 import {
   ActionAuthorizationError,
@@ -218,6 +222,19 @@ export function buildGateway(options: GatewayOptions = {}): FastifyInstance {
     }
   })
 
+  app.post('/v2/workflows/meeting-brief', async (request, reply) => {
+    const principal = authenticate(runtime, request)
+    const submission = MeetingBriefSubmissionSchema.parse(request.body)
+    const task = await runtime.meeting.submit(principal, submission)
+    reply.code(task.state === 'waiting_approval' ? 202 : 201)
+    return {
+      data: {
+        approval: runtime.ledger.getApprovalForTask(task.id) ?? null,
+        task,
+      },
+    }
+  })
+
   if (options.workbenchDir) {
     const root = resolve(options.workbenchDir)
     if (!existsSync(root)) {
@@ -277,6 +294,17 @@ export function buildGateway(options: GatewayOptions = {}): FastifyInstance {
           message: error.message,
           retryable: error.code === 'DEPENDENCY_UNAVAILABLE',
           safeToRetry: error.code === 'DEPENDENCY_UNAVAILABLE',
+        },
+      })
+      return
+    }
+    if (error instanceof MeetingWorkflowError) {
+      reply.code(error.code === 'PERMISSION_DENIED' ? 403 : 422).send({
+        error: {
+          code: error.code,
+          message: error.message,
+          retryable: false,
+          safeToRetry: false,
         },
       })
       return

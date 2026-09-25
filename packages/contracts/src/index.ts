@@ -53,7 +53,7 @@ export const TaskRequestSchema = z.object({
 })
 export type TaskRequest = z.infer<typeof TaskRequestSchema>
 
-export const TaskSubmissionSchema = TaskRequestSchema.pick({
+const TaskCreationSchema = TaskRequestSchema.pick({
   content: true,
 }).extend({
   actorId: IdentifierSchema.optional(),
@@ -61,6 +61,17 @@ export const TaskSubmissionSchema = TaskRequestSchema.pick({
   contextRefs: z.array(z.string().trim().min(1).max(2_048)).max(64).default([]),
   createdAt: TimestampSchema.optional(),
   id: IdentifierSchema.optional(),
+})
+export const TaskSubmissionSchema = TaskCreationSchema.superRefine((value, context) => {
+  value.contextRefs.forEach((reference, index) => {
+    if (reference.startsWith('lumi-workflow:')) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Workflow context references are reserved for structured lumi workflows',
+        path: ['contextRefs', index],
+      })
+    }
+  })
 })
 export type TaskSubmission = z.input<typeof TaskSubmissionSchema>
 
@@ -322,8 +333,10 @@ export const ActionErrorSchema = z.object({
 })
 export type ActionError = z.infer<typeof ActionErrorSchema>
 
-export function createTaskRequest(input: TaskSubmission & { actorId: string }): TaskRequest {
-  const parsed = TaskSubmissionSchema.parse(input)
+export function createTaskRequest(
+  input: z.input<typeof TaskCreationSchema> & { actorId: string },
+): TaskRequest {
+  const parsed = TaskCreationSchema.parse(input)
   return TaskRequestSchema.parse({
     ...parsed,
     id: parsed.id ?? `task_${randomUUID()}`,

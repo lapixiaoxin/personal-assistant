@@ -14,11 +14,11 @@
 export PA_EXECUTOR=mock
 export PA_ARTIFACT_ROOT=./data/action-check/artifacts
 
-pnpm cli -- --db ./data/action-check/assistant.db \
+pnpm cli --db ./data/action-check/assistant.db \
   action prepare acceptance-note "verified content" --key acceptance-001
-pnpm cli -- --db ./data/action-check/assistant.db action authorize <action-id>
-pnpm cli -- --db ./data/action-check/assistant.db action execute <action-id>
-pnpm cli -- --db ./data/action-check/assistant.db action get <action-id>
+pnpm cli --db ./data/action-check/assistant.db action authorize <action-id>
+pnpm cli --db ./data/action-check/assistant.db action execute <action-id>
+pnpm cli --db ./data/action-check/assistant.db action get <action-id>
 ```
 
 预期顺序：
@@ -60,7 +60,7 @@ GET  /v2/actions/:id
 如果 provider 已返回成功但 receipt 未提交，`execute` 返回 `OUTCOME_UNKNOWN`、`safeToRetry=false`。不要再次执行，使用：
 
 ```bash
-pnpm cli -- --db ./data/action-check/assistant.db action reconcile <action-id>
+pnpm cli --db ./data/action-check/assistant.db action reconcile <action-id>
 ```
 
 对账只读确定性目标。摘要匹配时补 recovered receipt 并核验；缺失或不匹配时失败，不自动重写。

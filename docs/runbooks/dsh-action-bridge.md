@@ -36,26 +36,26 @@ pnpm check
 真实模型准备动作后，先查看封存对象：
 
 ```bash
-pnpm cli -- action list
-pnpm cli -- action get <action-id>
+pnpm cli action list
+pnpm cli action get <action-id>
 ```
 
 确认目标、`actionDigest`、`inputDigest`、capability version 和 deadline 后授权：
 
 ```bash
-pnpm cli -- action authorize <action-id>
+pnpm cli action authorize <action-id>
 ```
 
 可直接由 Host 确定性执行：
 
 ```bash
-pnpm cli -- action execute <action-id>
+pnpm cli action execute <action-id>
 ```
 
 或新建 DSH Run，显式携带原 Action 引用：
 
 ```bash
-pnpm cli -- submit "执行我已批准的动作" --context "lumi-action:<action-id>"
+pnpm cli submit "执行我已批准的动作" --context "lumi-action:<action-id>"
 ```
 
 后者仍由 ActionService 重验并原子消费同一授权。未授权、引用缺失、过期、撤销或已消费均不得产生第二份文件。

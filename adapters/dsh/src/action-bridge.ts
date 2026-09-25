@@ -46,7 +46,7 @@ export interface DshActionBridgeRun {
 }
 
 export interface DshActionBridgeOptions {
-  broker: DshActionBroker
+  broker?: DshActionBroker
   contextRefs: readonly string[]
   enableActions?: boolean
   researchBroker?: DshResearchBroker
@@ -56,6 +56,10 @@ export interface DshActionBridgeOptions {
 export async function startDshActionBridge(
   options: DshActionBridgeOptions,
 ): Promise<DshActionBridgeRun> {
+  const actionsEnabled = options.enableActions !== false
+  if (actionsEnabled && !options.broker) {
+    throw new Error('An action broker is required when DSH action access is enabled')
+  }
   const token = randomBytes(32).toString('base64url')
   const tokenDigest = digestToken(token)
   const allowedActionIds = actionIdsFromContextRefs(options.contextRefs)
@@ -74,8 +78,8 @@ export async function startDshActionBridge(
       activeRequests.delete(controller)
     })
     void handleRequest({
-      actionBroker: options.broker,
-      actionsEnabled: options.enableActions !== false,
+      ...(options.broker ? { actionBroker: options.broker } : {}),
+      actionsEnabled,
       allowedActionIds,
       allowedResearchSources,
       invocation: { sourceTaskId: options.taskId },
@@ -103,7 +107,7 @@ export async function startDshActionBridge(
     environment: {
       LUMI_ACTION_BRIDGE_TOKEN: token,
       LUMI_ACTION_BRIDGE_URL: url,
-      ...(options.enableActions === false ? { LUMI_ACTION_BRIDGE_ENABLED: '0' } : {}),
+      ...(!actionsEnabled ? { LUMI_ACTION_BRIDGE_ENABLED: '0' } : {}),
       ...(options.researchBroker ? { LUMI_RESEARCH_BRIDGE_ENABLED: '1' } : {}),
     },
     url,
@@ -151,7 +155,7 @@ export function createDshChildEnvironment(
 }
 
 interface BridgeRequestContext {
-  actionBroker: DshActionBroker
+  actionBroker?: DshActionBroker
   actionsEnabled: boolean
   allowedActionIds: ReadonlySet<string>
   allowedResearchSources: ReadonlySet<string>
@@ -185,7 +189,7 @@ async function handleRequest(context: BridgeRequestContext): Promise<void> {
 
     if (path === '/v1/actions/prepare') {
       requireMethod(request, 'POST')
-      if (context.actionsEnabled === false) {
+      if (context.actionsEnabled === false || !context.actionBroker) {
         throw new BridgeRequestError(
           403,
           'PERMISSION_DENIED',
@@ -229,7 +233,7 @@ async function handleRequest(context: BridgeRequestContext): Promise<void> {
       .exec(path)
     if (executeMatch?.[1]) {
       requireMethod(request, 'POST')
-      if (context.actionsEnabled === false) {
+      if (context.actionsEnabled === false || !context.actionBroker) {
         throw new BridgeRequestError(
           403,
           'PERMISSION_DENIED',

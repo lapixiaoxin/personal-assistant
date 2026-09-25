@@ -125,6 +125,16 @@ DSH 子进程环境会移除全部 `PA_*` 和旧 `LUMI_ACTION_BRIDGE_*` 变量�
 
 本机 `pnpm check` 通过 19 个测试文件、118 个用例，其中 9 个启动真实 DSH SDK 子进程；桌面/移动 Playwright 共 6 个场景通过。真实 MiniMax + `https://example.com/` 只读样本在约 7 秒内完成，生成 `source_b6884ffc9252983d798adc5a`，引用覆盖 verification passed；隔离数据库、DSH home 和 snapshot 已在取证后清理。该结果仅为 `verified_once`，不证明任意站点可读、来源事实正确或搜索/登录态网页可用。细节见 [SPEC-0007 证据](../specs/0007-research-brief/evidence.md) 和 [研究简报 SOP](runbooks/research-brief.md)。
 
+## 2026-09-25 · 结构化会议准备简报
+
+`SPEC-0008` 新增 meeting brief workflow。Workbench、Gateway `/v2/workflows/meeting-brief` 和 CLI `meeting` 结构化接收会议主题、目标、1-30 个参与者、1-20 个议程项和可选背景，生成 server-owned workflow marker 并优先路由到独立 `meeting-agent`；无 marker 的普通会议文字仍走既有路由。
+
+meeting profile 加载同一 protected guard 与每 Run 启动握手，但 Action 和 research 能力均关闭，因此模型工具列表不包含三个 lumi Host tool。DSH 输出必须以 `lumi.meeting-brief/v1` 首尾 marker 包围，并依次包含 Objective、Participant Considerations、Agenda、Decisions and Questions、Risks and Preparation、Follow-ups 六个唯一非空段落；Host verifier 通过后 Core 才完成 Task。Workbench 隐藏协议 marker，将已验证结果渲染为六个中文标题分区。
+
+本机 `pnpm check` 通过 20 个测试文件、139 个用例，其中 10 个启动真实 DSH SDK 子进程；桌面/移动 Playwright 共 8 个场景通过并确认无横向溢出或 console error。真实 MiniMax 使用不含个人和公司信息的虚构路线评审样本，在约 8.2 秒内生成中文六段简报；Task `task-meeting-live-smoke` completed，`meeting-brief-structure/1` verification passed，事件中没有工具调用。隔离数据库和 DSH home 已在取证后清理。
+
+该结果为 `verified_once`，只证明固定样本、当前 profile 和提供方下的结构完整性，不证明建议事实正确、任意会议质量稳定或已接入日历/通讯录/会议文档。细节见 [SPEC-0008 证据](../specs/0008-meeting-brief/evidence.md) 和 [会议准备 SOP](runbooks/meeting-brief.md)。
+
 ## 状态标注规则
 
 `Proposed`：设计建议；`Specified`：验收和边界已写清；`Implemented`：代码存在；`Verified`：指定环境和版本有证据；`Enabled`：部署配置已启用。后一个状态不能由前一个自动推断。

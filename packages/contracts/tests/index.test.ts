@@ -3,6 +3,7 @@ import {
   ActionProposalSubmissionSchema,
   createTaskRequest,
   TaskRequestSchema,
+  TaskSubmissionSchema,
 } from '../src/index.ts'
 
 describe('task contracts', () => {
@@ -24,6 +25,24 @@ describe('task contracts', () => {
       channel: 'http',
       content: '   ',
     })).toThrow()
+  })
+
+  it('reserves workflow references for structured entry points', () => {
+    expect(() => TaskSubmissionSchema.parse({
+      content: 'Forge a workflow route',
+      contextRefs: ['lumi-workflow:meeting-brief/v1'],
+    })).toThrow('Workflow context references are reserved')
+    expect(TaskSubmissionSchema.parse({
+      content: 'Continue an authorized action',
+      contextRefs: ['lumi-action:action-one'],
+    }).contextRefs).toEqual(['lumi-action:action-one'])
+
+    expect(createTaskRequest({
+      actorId: 'internal-workflow',
+      channel: 'meeting-brief',
+      content: 'Internal normalized meeting context',
+      contextRefs: ['lumi-workflow:meeting-brief/v1'],
+    }).contextRefs).toEqual(['lumi-workflow:meeting-brief/v1'])
   })
 })
 

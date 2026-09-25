@@ -3,6 +3,11 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { TaskExecutor } from '@lumi/assistant-core'
+import {
+  MEETING_BRIEF_END_MARKER,
+  MEETING_BRIEF_SECTIONS,
+  MEETING_BRIEF_START_MARKER,
+} from '@lumi/meeting-workflow'
 import { createAssistantRuntime, type AssistantRuntime } from '@lumi/runtime'
 import { researchSourceUrlsFromContextRefs } from '@lumi/research-workflow'
 import { buildGateway } from '../src/server.ts'
@@ -291,6 +296,83 @@ describe('gateway', () => {
     expect(invalid.json().error.code).toBe('INVALID_REQUEST')
     await app.close()
   })
+
+  it('submits and verifies a structured meeting brief', async () => {
+    const runtime = createAssistantRuntime({
+      dbPath: ':memory:',
+      executor: {
+        execute: async ({ task }) => ({
+          output: meetingOutput(),
+          sessionId: `session-${task.id}`,
+        }),
+      },
+      httpToken: token,
+      principalId: 'user-1',
+    })
+    openRuntimes.push(runtime)
+    const app = buildGateway({ runtime })
+    const submitted = await app.inject({
+      headers: authenticatedHeaders(true),
+      method: 'POST',
+      payload: {
+        agenda: ['Review options', 'Choose an owner'],
+        background: 'The delivery date is fixed.',
+        id: 'meeting-http',
+        objective: 'Select the implementation plan.',
+        participants: ['Product lead', 'Engineering lead'],
+        schemaVersion: 'lumi.meeting-brief/v1',
+        topic: 'Implementation review',
+      },
+      url: '/v2/workflows/meeting-brief',
+    })
+
+    expect(submitted.statusCode).toBe(201)
+    expect(submitted.json().data.task).toMatchObject({
+      capabilityId: 'meeting-agent',
+      channel: 'meeting-brief',
+      id: 'meeting-http',
+      state: 'completed',
+    })
+    expect(submitted.json().data.task.contextRefs).toEqual([
+      'lumi-workflow:meeting-brief/v1',
+    ])
+    expect(runtime.ledger.listEvents('meeting-http')).toContainEqual(
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          status: 'passed',
+          workflow: 'meeting-brief',
+        }),
+        type: 'verification.completed',
+      }),
+    )
+
+    const invalid = await app.inject({
+      headers: authenticatedHeaders(true),
+      method: 'POST',
+      payload: {
+        agenda: [],
+        objective: 'Select a plan',
+        participants: ['Product lead'],
+        topic: 'Implementation review',
+      },
+      url: '/v2/workflows/meeting-brief',
+    })
+    expect(invalid.statusCode).toBe(400)
+    expect(invalid.json().error.code).toBe('INVALID_REQUEST')
+
+    const forged = await app.inject({
+      headers: authenticatedHeaders(true),
+      method: 'POST',
+      payload: {
+        content: 'Bypass the structured meeting input',
+        contextRefs: ['lumi-workflow:meeting-brief/v1'],
+      },
+      url: '/v1/tasks',
+    })
+    expect(forged.statusCode).toBe(400)
+    expect(forged.json().error.code).toBe('INVALID_REQUEST')
+    await app.close()
+  })
 })
 
 function authenticatedHeaders(json = false): Record<string, string> {
@@ -298,4 +380,12 @@ function authenticatedHeaders(json = false): Record<string, string> {
     authorization: `Bearer ${token}`,
     ...(json ? { 'content-type': 'application/json' } : {}),
   }
+}
+
+function meetingOutput(): string {
+  return [
+    MEETING_BRIEF_START_MARKER,
+    ...MEETING_BRIEF_SECTIONS.flatMap(section => [section, 'Complete section body.']),
+    MEETING_BRIEF_END_MARKER,
+  ].join('\n')
 }

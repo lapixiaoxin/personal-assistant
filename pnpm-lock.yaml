@@ -111,6 +111,9 @@ importers:
       '@lumi/identity':
         specifier: workspace:*
         version: link:../../packages/identity
+      '@lumi/meeting-workflow':
+        specifier: workspace:*
+        version: link:../../packages/meeting-workflow
       '@lumi/research-workflow':
         specifier: workspace:*
         version: link:../../packages/research-workflow
@@ -159,6 +162,9 @@ importers:
       '@lumi/local-artifact':
         specifier: workspace:*
         version: link:../../adapters/local-artifact
+      '@lumi/meeting-workflow':
+        specifier: workspace:*
+        version: link:../../packages/meeting-workflow
       '@lumi/policy':
         specifier: workspace:*
         version: link:../../packages/policy
@@ -238,6 +244,21 @@ importers:
       '@lumi/contracts':
         specifier: workspace:*
         version: link:../contracts
+
+  packages/meeting-workflow:
+    dependencies:
+      '@lumi/assistant-core':
+        specifier: workspace:*
+        version: link:../assistant-core
+      '@lumi/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@lumi/task-ledger':
+        specifier: workspace:*
+        version: link:../task-ledger
+      zod:
+        specifier: 4.1.11
+        version: 4.1.11
 
   packages/personal-memory:
     dependencies:

@@ -18,6 +18,11 @@ import { DshAdapter } from '../../adapters/dsh/src/index.ts'
 import { buildGateway } from '../../apps/gateway/src/server.ts'
 import { createAssistantRuntime, type AssistantRuntime } from '../../apps/runtime/src/index.ts'
 import { createTaskRequest } from '../../packages/contracts/src/index.ts'
+import {
+  MEETING_BRIEF_END_MARKER,
+  MEETING_BRIEF_SECTIONS,
+  MEETING_BRIEF_START_MARKER,
+} from '../../packages/meeting-workflow/src/index.ts'
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const testDataRoot = join(projectRoot, 'data')
@@ -318,6 +323,67 @@ describe('DSH runtime contract', () => {
       .not.toContain('"name":"lumi_action_execute"')
   }, 30_000)
 
+  it('generates and verifies a meeting brief without exposing Host tools', async () => {
+    const modelServer = await startMockLlmServer({
+      apiKey: 'contract-key',
+      sequence: ['tool_call_success', 'success'],
+      successText: meetingOutput(),
+      toolArguments: JSON.stringify({
+        command: 'printf should-not-run',
+        description: 'Attempt a meeting profile shell bypass.',
+      }),
+      toolName: 'bash',
+    })
+    servers.push(modelServer)
+    vi.stubEnv('DEEPSEEK_API_KEY', 'contract-key')
+    vi.stubEnv('DEEPSEEK_BASE_URL', `${modelServer.baseURL}/v1`)
+    vi.stubEnv('PA_EXECUTOR', 'dsh')
+
+    const directory = temporaryDirectory('dsh-meeting-')
+    directories.push(directory)
+    vi.stubEnv('PA_DATA_DIR', directory)
+    const runtime = createAssistantRuntime({
+      cwd: projectRoot,
+      dbPath: join(directory, 'assistant.db'),
+      httpToken: 'contract-token-0123456789abcdef12',
+      principalId: 'contract-test',
+    })
+    runtimes.push(runtime)
+
+    const task = await runtime.meeting.submit(runtime.identity.localPrincipal(), {
+      agenda: ['Review options', 'Choose the owner'],
+      background: 'The delivery date is fixed.',
+      id: 'task-dsh-meeting',
+      objective: 'Select an implementation plan.',
+      participants: ['Product lead', 'Engineering lead'],
+      schemaVersion: 'lumi.meeting-brief/v1',
+      topic: 'Implementation review',
+    })
+    const events = runtime.ledger.listEvents(task.id)
+    const firstRequest = JSON.stringify(modelServer.requests[0]?.body)
+
+    expect(task).toMatchObject({
+      capabilityId: 'meeting-agent',
+      result: meetingOutput(),
+      state: 'completed',
+    })
+    expect(events).toContainEqual(expect.objectContaining({
+      payload: expect.objectContaining({ isError: true }),
+      type: 'tool.completed',
+    }))
+    expect(events).toContainEqual(expect.objectContaining({
+      payload: expect.objectContaining({
+        status: 'passed',
+        workflow: 'meeting-brief',
+      }),
+      type: 'verification.completed',
+    }))
+    expect(firstRequest).toContain('meeting preparation specialist for lumi')
+    expect(firstRequest).not.toContain('"name":"lumi_artifact_prepare"')
+    expect(firstRequest).not.toContain('"name":"lumi_action_execute"')
+    expect(firstRequest).not.toContain('"name":"lumi_public_web_fetch"')
+  }, 30_000)
+
   it('continues an authorized referenced action through the same Host broker', async () => {
     vi.stubEnv('PA_EXECUTOR', 'dsh')
     const directory = temporaryDirectory('dsh-bridge-execute-')
@@ -451,4 +517,12 @@ describe('DSH runtime contract', () => {
 function temporaryDirectory(prefix: string): string {
   mkdirSync(testDataRoot, { recursive: true })
   return mkdtempSync(join(testDataRoot, prefix))
+}
+
+function meetingOutput(): string {
+  return [
+    MEETING_BRIEF_START_MARKER,
+    ...MEETING_BRIEF_SECTIONS.flatMap(section => [section, 'Complete section body.']),
+    MEETING_BRIEF_END_MARKER,
+  ].join('\n')
 }

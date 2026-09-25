@@ -157,3 +157,41 @@ test('submits a bounded research brief and reports offline verification failure'
   })
   expect(consoleErrors).toEqual([])
 })
+
+test('submits and verifies a structured meeting brief', async ({ page }, testInfo) => {
+  const consoleErrors: string[] = []
+  page.on('console', (message) => {
+    if (message.type() === 'error') consoleErrors.push(message.text())
+  })
+  page.on('pageerror', error => consoleErrors.push(error.message))
+
+  const suffix = `${testInfo.project.name}-${Date.now()}`
+  await page.goto(`/#token=${token}`)
+  await page.getByRole('tab', { name: '会议准备' }).click()
+  await page.getByLabel('会议主题').fill(`路线评审 ${suffix}`)
+  await page.getByLabel('会议目标').fill('确定下一阶段优先级')
+  await page.getByLabel('参与者').fill('产品负责人\n研发负责人')
+  await page.getByLabel('会议议程').fill('回顾目标\n比较候选项\n确认责任人')
+  await page.getByLabel('会议背景').fill('交付日期保持不变')
+  await page.getByRole('button', { name: '提交会议准备' }).click()
+
+  await expect(page.locator('.conversation-header .eyebrow')).toHaveText('meeting-agent')
+  await expect(page.locator('.state-badge')).toHaveText('已完成')
+  await expect(page.getByRole('heading', { name: '决策与问题' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: '跟进事项' })).toBeVisible()
+  await expect(page.getByText('<!-- lumi.meeting-brief/v1 -->')).toHaveCount(0)
+  await expect(page.getByText('verification / completed')).toBeVisible()
+
+  const noHorizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth <= window.innerWidth,
+  )
+  expect(noHorizontalOverflow).toBe(true)
+
+  const screenshotDir = join(process.cwd(), 'data', 'workbench-evidence')
+  await mkdir(screenshotDir, { recursive: true })
+  await page.screenshot({
+    fullPage: true,
+    path: join(screenshotDir, `meeting-${testInfo.project.name}.png`),
+  })
+  expect(consoleErrors).toEqual([])
+})

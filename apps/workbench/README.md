@@ -16,7 +16,7 @@ PA_EXECUTOR=mock pnpm dev
 pnpm dev:web
 ```
 
-打开 `http://127.0.0.1:4311`。Vite 将 `/health` 和 `/v1` 代理到 `http://127.0.0.1:4310`。
+打开 `http://127.0.0.1:4311`。Vite 将 `/health`、`/v1` 和 `/v2` 代理到 `http://127.0.0.1:4310`。
 
 ## 生产构建
 
@@ -30,5 +30,5 @@ pnpm start
 ## 当前边界
 
 - 当前提交 API 会等待任务完成；页面预先生成 task ID，并在请求期间轮询任务状态。
-- 当前审批是任务级审批，不是 SPEC-0001 设计的参数级 Action Authorization。
+- 任务 composer 支持普通任务、受控研究简报和结构化会议准备；Action 使用独立收件箱与参数级授权。
 - 页面没有产品级多轮 Conversation、流式 token 或远程身份认证；Gateway 只应监听 loopback。

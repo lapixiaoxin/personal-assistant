@@ -167,4 +167,38 @@ describe('DSH action bridge plugin', () => {
     expect(result).toContain('Untrusted source text')
     expect(result).not.toContain('bridge-secret')
   })
+
+  it('registers no Host tools for a guard-only protected Run', async () => {
+    vi.stubEnv('LUMI_ACTION_BRIDGE_TOKEN', 'bridge-secret-'.padEnd(43, 'x'))
+    vi.stubEnv('LUMI_ACTION_BRIDGE_URL', 'http://127.0.0.1:4312')
+    vi.stubEnv('LUMI_ACTION_BRIDGE_ENABLED', '0')
+    const definitions: BridgeToolDefinition[] = []
+    const guards: Array<(execution: { readonly name: string }) => string | undefined> = []
+    const context: BridgeContext = {
+      tools: {
+        guard(callback) {
+          guards.push(callback)
+          return () => undefined
+        },
+        register(definition) {
+          definitions.push(definition)
+          return () => undefined
+        },
+      },
+    }
+    const fetcher = vi.fn(async () => new Response(JSON.stringify({
+      data: { ready: true },
+    }), {
+      headers: { 'content-type': 'application/json' },
+      status: 200,
+    }))
+    vi.stubGlobal('fetch', fetcher)
+
+    await apply(context)
+
+    expect(definitions).toEqual([])
+    expect(guards).toHaveLength(1)
+    expect(guards[0]?.({ name: 'bash' })).toContain('disabled')
+    expect(fetcher).toHaveBeenCalledOnce()
+  })
 })

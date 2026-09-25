@@ -231,6 +231,45 @@ describe('DSH per-Run action bridge', () => {
     }
   })
 
+  it('supports a protected Run with readiness but no Host capability', async () => {
+    const bridge = await startDshActionBridge({
+      contextRefs: [],
+      enableActions: false,
+      taskId: 'task-protected-only',
+    })
+    const token = bridge.environment.LUMI_ACTION_BRIDGE_TOKEN ?? ''
+    try {
+      expect(bridge.environment).toMatchObject({
+        LUMI_ACTION_BRIDGE_ENABLED: '0',
+      })
+      expect(bridge.environment.LUMI_RESEARCH_BRIDGE_ENABLED).toBeUndefined()
+
+      const readySignal = bridge.waitUntilReady()
+      const ready = await fetch(`${bridge.url}/v1/ready`, {
+        body: '{}',
+        headers: tokenHeader(token),
+        method: 'POST',
+      })
+      expect(ready.status).toBe(200)
+      await expect(readySignal).resolves.toBeUndefined()
+
+      const actionDenied = await fetch(`${bridge.url}/v1/actions/prepare`, {
+        body: '{}',
+        headers: tokenHeader(token),
+        method: 'POST',
+      })
+      const researchDenied = await fetch(`${bridge.url}/v1/research/fetch`, {
+        body: '{}',
+        headers: tokenHeader(token),
+        method: 'POST',
+      })
+      expect(actionDenied.status).toBe(403)
+      expect(researchDenied.status).toBe(403)
+    } finally {
+      await bridge.close()
+    }
+  })
+
   it('isolates concurrent tokens and closes the listener with the Run', async () => {
     const first = await startDshActionBridge({
       broker: fakeBroker(),

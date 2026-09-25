@@ -18,6 +18,7 @@
       "@lumi/dsh-adapter": ["./adapters/dsh/src/index.ts"],
       "@lumi/identity": ["./packages/identity/src/index.ts"],
       "@lumi/local-artifact": ["./adapters/local-artifact/src/index.ts"],
+      "@lumi/meeting-workflow": ["./packages/meeting-workflow/src/index.ts"],
       "@lumi/personal-memory": ["./packages/personal-memory/src/index.ts"],
       "@lumi/policy": ["./packages/policy/src/index.ts"],
       "@lumi/research-sources": ["./adapters/research-sources/src/index.ts"],

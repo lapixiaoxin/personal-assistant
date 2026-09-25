@@ -18,6 +18,10 @@ import {
   type IdentityAuthority,
 } from '@lumi/identity'
 import {
+  MeetingBriefExecutor,
+  MeetingBriefWorkflow,
+} from '@lumi/meeting-workflow'
+import {
   LocalArtifactProvider,
   type ArtifactProvider,
 } from '@lumi/local-artifact'
@@ -51,6 +55,7 @@ export interface AssistantRuntime {
   executorKind: 'custom' | 'dsh' | 'mock'
   identity: IdentityAuthority
   ledger: ActionLedger & TaskLedger
+  meeting: MeetingBriefWorkflow
   research: ResearchBriefWorkflow
   close(): Promise<void>
 }
@@ -127,8 +132,12 @@ export function createAssistantRuntime(options: RuntimeOptions = {}): AssistantR
         createDshActionBroker(actions, ledger, identity),
         createDshResearchBroker(researchSources, identity),
       )
-  const executor = new ResearchEvidenceExecutor(configured.executor, ledger)
+  const executor = new MeetingBriefExecutor(
+    new ResearchEvidenceExecutor(configured.executor, ledger),
+    ledger,
+  )
   const core = new AssistantCore(ledger, router, policy, executor)
+  const meeting = new MeetingBriefWorkflow(core)
   const research = new ResearchBriefWorkflow(core)
 
   return {
@@ -138,6 +147,7 @@ export function createAssistantRuntime(options: RuntimeOptions = {}): AssistantR
     executorKind: configured.kind,
     identity,
     ledger,
+    meeting,
     research,
     close: () => core.close(),
   }
@@ -261,10 +271,11 @@ function createConfiguredExecutor(
 
   return {
     executor: new DshAdapter({
-      actionBridgeCapabilities: ['personal-assistant', 'research-agent'],
+      actionBridgeCapabilities: ['personal-assistant'],
       actionBroker,
       capabilityPatchFiles: {
         'coding-agent': ['profiles/dsh-coding/cordis.patch.yml'],
+        'meeting-agent': ['profiles/dsh-meeting/cordis.patch.yml'],
         'personal-assistant': ['profiles/dsh-lumi/cordis.patch.yml'],
         'research-agent': ['profiles/dsh-research/cordis.patch.yml'],
       },
@@ -274,6 +285,11 @@ function createConfiguredExecutor(
       model: modelConfiguration.model,
       patchFiles: modelConfiguration.providerPatchFiles,
       ...(process.env.PA_DSH_PROFILE ? { profile: process.env.PA_DSH_PROFILE } : {}),
+      protectedBridgeCapabilities: [
+        'meeting-agent',
+        'personal-assistant',
+        'research-agent',
+      ],
       provider: modelConfiguration.provider,
       researchBridgeCapabilities: ['research-agent'],
       researchBroker,

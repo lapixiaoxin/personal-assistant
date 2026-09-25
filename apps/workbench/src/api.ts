@@ -23,6 +23,14 @@ interface ErrorEnvelope {
   }
 }
 
+export interface MeetingBriefInput {
+  agenda: string[]
+  background?: string
+  objective: string
+  participants: string[]
+  topic: string
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -50,6 +58,7 @@ export interface LumiApiClient {
   listTasks(): Promise<TaskRecord[]>
   reconcileAction(actionId: string): Promise<ActionDetail>
   reject(taskId: string): Promise<TaskRecord>
+  submitMeetingBrief(input: MeetingBriefInput, id: string): Promise<TaskDetail>
   submitResearchBrief(question: string, sources: string[], id: string): Promise<TaskDetail>
   submitTask(content: string, id: string): Promise<TaskDetail>
 }
@@ -121,6 +130,18 @@ export class LumiApi implements LumiApiClient {
         question,
         schemaVersion: 'lumi.research-brief/v1',
         sources,
+      }),
+      headers: { 'content-type': 'application/json' },
+      method: 'POST',
+    }).then(response => response.data)
+  }
+
+  submitMeetingBrief(input: MeetingBriefInput, id: string): Promise<TaskDetail> {
+    return this.request<DataEnvelope<TaskDetail>>('/v2/workflows/meeting-brief', {
+      body: JSON.stringify({
+        ...input,
+        id,
+        schemaVersion: 'lumi.meeting-brief/v1',
       }),
       headers: { 'content-type': 'application/json' },
       method: 'POST',

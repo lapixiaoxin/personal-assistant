@@ -15,6 +15,7 @@
 - v2 动作 API 对一个受控 `artifact.write` 能力执行参数摘要绑定、一次性授权、原子额度消费、独占文件创建、读回核验和崩溃后显式对账。
 - `personal-assistant` 的 DSH profile 通过每 Run loopback bridge 提议/执行同一 v2 Action；未知工具以及直接文件写、Shell、网络、workflow/`run_code` 在工具主体前失败关闭。
 - 结构化研究简报接收 1-8 个用户声明的公开 HTTPS 来源；`research-agent` 只能抓取本次 Task 绑定的 URL，保存不可变来源快照，并在全部来源已抓取且 source ID 引用覆盖通过后完成。
+- 结构化会议准备接收主题、目标、参与者、议程和背景；`meeting-agent` 不获得 Host 工具，只有固定六段简报通过确定性结构校验后才完成。
 - 本地 Web 工作台提供任务与动作双视图；用户可审阅参数摘要、授权或取消动作、执行已授权动作，并读取回执和独立验证。
 - Gateway 使用本地 Bearer token 派生 owner/principal；请求体中的 `actorId` 不能用于切换身份。
 - 任务事件、工具调用摘要、审批动作和执行结果可查询，服务重启后仍保留。
@@ -49,10 +50,12 @@ packages/task-ledger/          SQLite persistence
 packages/policy/               Risk classification and approval policy
 packages/capability-registry/  Capability discovery and routing
 packages/personal-memory/      Explicit candidate/confirm/retract model
+packages/meeting-workflow/     Meeting input normalization and structure verification
 packages/research-workflow/    Research submission, source records, citation verification
 adapters/dsh/                  DSH-only types and event mapping
 adapters/research-sources/     Public HTTPS fetch and immutable source snapshots
 profiles/dsh-lumi/             lumi DSH SDK profile overlay
+profiles/dsh-meeting/          Protected meeting preparation profile
 profiles/dsh-research/         Protected public-source research profile
 tests/contract/                Cross-module DSH runtime contracts
 ```
@@ -89,38 +92,44 @@ pnpm install --registry=https://registry.npmjs.org
 仅验证个人助手控制层时，可显式切换到 mock：
 
 ```bash
-PA_EXECUTOR=mock pnpm cli -- submit "总结今天的工作"
+PA_EXECUTOR=mock pnpm cli submit "总结今天的工作"
 ```
 
 真实 DSH：
 
 ```bash
-pnpm cli -- submit "总结今天的工作"
-pnpm cli -- submit "实现一个 TypeScript API"
-pnpm cli -- research "比较这两个方案" \
+pnpm cli submit "总结今天的工作"
+pnpm cli submit "实现一个 TypeScript API"
+pnpm cli research "比较这两个方案" \
   --source https://example.com/a \
   --source https://example.com/b
-pnpm cli -- list
-pnpm cli -- get <task-id>
-pnpm cli -- events <task-id>
-pnpm cli -- audit <task-id>
+pnpm cli meeting "季度路线评审" \
+  --objective "确定下一季度三项优先级" \
+  --participant "产品负责人" \
+  --participant "研发负责人" \
+  --agenda "回顾目标" \
+  --agenda "确认优先级"
+pnpm cli list
+pnpm cli get <task-id>
+pnpm cli events <task-id>
+pnpm cli audit <task-id>
 ```
 
 高风险任务会停在 `waiting_approval`：
 
 ```bash
-pnpm cli -- submit "发送这份报告给团队" --id task-demo
-pnpm cli -- approve task-demo
+pnpm cli submit "发送这份报告给团队" --id task-demo
+pnpm cli approve task-demo
 ```
 
 受控本地产物使用独立的 v2 动作命令。正文进入动作输入存储，不进入普通审计日志；目标只能是 artifact ID，不能传文件路径：
 
 ```bash
-pnpm cli -- action prepare daily-note "verified content" --key daily-note-001
-pnpm cli -- action authorize <action-id>
-pnpm cli -- action execute <action-id>
-pnpm cli -- action get <action-id>
-pnpm cli -- action reconcile <action-id>
+pnpm cli action prepare daily-note "verified content" --key daily-note-001
+pnpm cli action authorize <action-id>
+pnpm cli action execute <action-id>
+pnpm cli action get <action-id>
+pnpm cli action reconcile <action-id>
 ```
 
 `execute` 只消费一次授权并在独立读回通过后完成关联任务。若文件可能已经写入但回执未提交，动作保持不确定状态，必须运行 `reconcile`，不能再次执行。
@@ -176,12 +185,13 @@ curl -sS http://127.0.0.1:4310/v1/tasks/task-http-demo/audit \
 | `POST` | `/v2/actions/:id/reconcile` | 对账不确定结果 |
 | `POST` | `/v2/actions/:id/cancel` | 撤销未执行动作或记录剩余影响 |
 | `POST` | `/v2/workflows/research-brief` | 提交绑定公开 HTTPS 来源的研究简报 |
+| `POST` | `/v2/workflows/meeting-brief` | 提交结构化会议准备简报 |
 
 当前 HTTP 提交会等待任务完成后返回。流式响应和 WebSocket 属于下一阶段。
 
 ## Web 工作台
 
-电脑端入口位于 `apps/workbench`。任务视图提供普通任务与研究简报两种 composer 模式、状态与结果查看、任务级审批、取消、事件和审计记录；研究模式要求逐行填写公开 HTTPS 来源，并在任务消息中显示服务端绑定的来源。动作视图列出 DSH 或 API 提议的受控 Action，展示目标、参数摘要、期限、授权、回执和 verification，并按服务端状态提供授权、执行、取消或对账。它只调用 lumi Gateway，不直接连接 DSH、数据库、source snapshot 或 artifact 目录。
+电脑端入口位于 `apps/workbench`。任务视图提供普通任务、研究简报和会议准备三种 composer 模式、状态与结果查看、任务级审批、取消、事件和审计记录；研究模式要求逐行填写公开 HTTPS 来源，会议模式收集主题、目标、参与者、议程和背景，并把已验证结果渲染为六个简报分区。动作视图列出 DSH 或 API 提议的受控 Action，展示目标、参数摘要、期限、授权、回执和 verification，并按服务端状态提供授权、执行、取消或对账。它只调用 lumi Gateway，不直接连接 DSH、数据库、source snapshot 或 artifact 目录。
 
 开发时分别启动 Gateway 和 Vite：
 
@@ -216,7 +226,7 @@ PA_EXECUTOR=mock pnpm start
 export MINIMAX_CN_API_KEY='<your-key>'
 export PA_DSH_PROVIDER=minimax-cn
 export PA_DSH_MODEL=MiniMax-M3
-pnpm cli -- submit "分析当前仓库并运行测试"
+pnpm cli submit "分析当前仓库并运行测试"
 ```
 
 国际区将变量改为 `MINIMAX_API_KEY`、provider 改为 `minimax`。未显式设置 `PA_DSH_PROVIDER` 时，runtime 也会根据这两个 Key 自动选择对应 MiniMax provider。
@@ -229,7 +239,7 @@ export PA_DSH_PROVIDER=deepseek-official
 export PA_DSH_MODEL=deepseek-v4-flash
 export PA_DSH_MAX_TOKENS=8192
 
-pnpm cli -- submit "分析当前仓库并运行测试"
+pnpm cli submit "分析当前仓库并运行测试"
 ```
 
 DSH 凭据由 DSH 自己的配置或环境变量提供。默认 DSH home 是 `./data/dsh`，可通过 `PA_DSH_HOME` 覆盖；adapter 每个任务启动一个独立 SDK runtime，使运行中取消能够回收对应子进程。启动时会应用
@@ -240,17 +250,19 @@ DSH 凭据由 DSH 自己的配置或环境变量提供。默认 DSH home 是 `./
 
 `research-agent` 使用独立的 [`profiles/dsh-research/cordis.patch.yml`](profiles/dsh-research/cordis.patch.yml)。该 Run 只注册 `lumi_public_web_fetch`，不注册 Action 工具；Host 对 URL 做精确 Task allowlist、HTTPS/DNS 公网地址、重定向、大小、类型与超时检查。来源快照默认位于 `data/research/sources`，可用 `PA_RESEARCH_ROOT` 覆盖。
 
+`meeting-agent` 使用独立的 [`profiles/dsh-meeting/cordis.patch.yml`](profiles/dsh-meeting/cordis.patch.yml)。该 Run 加载同一 protected guard 和启动握手，但 Action 与 research 均关闭，因此不注册任何 lumi Host tool；输出必须满足 `lumi.meeting-brief/v1` 的首尾 marker、六个固定标题及非空段落，Host verifier 通过后 Task 才完成。
+
 DSH 准备动作后不会自动授权或执行。用户通过 `action get/authorize` 审阅并批准；后续任务必须显式携带同一个 Action 引用：
 
 ```bash
-pnpm cli -- action get <action-id>
-pnpm cli -- action authorize <action-id>
-pnpm cli -- submit "执行我已批准的动作" --context "lumi-action:<action-id>"
+pnpm cli action get <action-id>
+pnpm cli action authorize <action-id>
+pnpm cli submit "执行我已批准的动作" --context "lumi-action:<action-id>"
 ```
 
-也可以继续使用 `pnpm cli -- action execute <action-id>` 直接走确定性的 Host 路径。两条路径都消费同一份参数绑定授权和 Verification。
+也可以继续使用 `pnpm cli action execute <action-id>` 直接走确定性的 Host 路径。两条路径都消费同一份参数绑定授权和 Verification。
 
-`pnpm test:dsh` 是不需要真实凭据的 DSH runtime contract test：它启动真正的 DSH SDK 子进程，通过官方本地模拟模型端点验证 coding 兼容、MiniMax catalog、插件握手、Action prepare/execute、research source capture/citation，以及 `write`/`bash`/`web_fetch` 旁路阻断。该测试也包含在 `pnpm test` 中。真实提供方 smoke 仍需对应的 API Key。
+`pnpm test:dsh` 是不需要真实凭据的 DSH runtime contract test：它启动真正的 DSH SDK 子进程，通过官方本地模拟模型端点验证 coding 兼容、MiniMax catalog、插件握手、Action prepare/execute、research source capture/citation、meeting structure verification，以及 `write`/`bash`/`web_fetch` 旁路阻断。该测试也包含在 `pnpm test` 中。真实提供方 smoke 仍需对应的 API Key。
 
 上游依赖和升级规则见 [`docs/upstream-strategy.md`](docs/upstream-strategy.md)。
 

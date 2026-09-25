@@ -59,6 +59,7 @@ export interface DshAdapterOptions {
   patchFiles?: readonly string[]
   patchFile?: string
   profile?: string
+  protectedBridgeCapabilities?: readonly string[]
   provider?: string
   researchBridgeCapabilities?: readonly string[]
   researchBroker?: DshResearchBroker
@@ -164,7 +165,7 @@ export class MockDshAdapter implements TaskExecutor {
 
     return {
       output: this.options.response?.(input)
-        ?? `[mock:${input.capability.id}] ${input.task.content}`,
+        ?? mockResponse(input),
       sessionId: `mock-${input.task.id}`,
     }
   }
@@ -177,11 +178,17 @@ function createDshHarnessFactory(options: DshAdapterOptions): HarnessFactory {
   )
   const actionBridgeCapabilities = new Set(options.actionBridgeCapabilities ?? [])
   const researchBridgeCapabilities = new Set(options.researchBridgeCapabilities ?? [])
+  const protectedBridgeCapabilities = new Set([
+    ...(options.protectedBridgeCapabilities ?? []),
+    ...actionBridgeCapabilities,
+    ...researchBridgeCapabilities,
+  ])
   return async (input) => {
-    const bridge = actionBridgeCapabilities.has(input.capability.id)
-      ? await createActionBridge(
+    const bridge = protectedBridgeCapabilities.has(input.capability.id)
+      ? await createProtectedBridge(
           options,
           input,
+          actionBridgeCapabilities.has(input.capability.id),
           researchBridgeCapabilities.has(input.capability.id),
         )
       : undefined
@@ -228,25 +235,53 @@ function createDshHarnessFactory(options: DshAdapterOptions): HarnessFactory {
   }
 }
 
-async function createActionBridge(
+async function createProtectedBridge(
   options: DshAdapterOptions,
   input: ExecutionInput,
+  enableActions: boolean,
   enableResearch: boolean,
 ) {
-  if (!options.actionBroker) {
+  if (enableActions && !options.actionBroker) {
     throw new DshExecutionError(
       `DSH capability ${input.capability.id} requires a configured lumi action broker`,
     )
   }
+  if (enableResearch && !options.researchBroker) {
+    throw new DshExecutionError(
+      `DSH capability ${input.capability.id} requires a configured lumi research broker`,
+    )
+  }
   return startDshActionBridge({
-    broker: options.actionBroker,
+    ...(options.actionBroker ? { broker: options.actionBroker } : {}),
     contextRefs: input.task.contextRefs,
-    enableActions: !enableResearch,
+    enableActions,
     ...(enableResearch && options.researchBroker
       ? { researchBroker: options.researchBroker }
       : {}),
     taskId: input.task.id,
   })
+}
+
+function mockResponse(input: ExecutionInput): string {
+  if (input.capability.id !== 'meeting-agent') {
+    return `[mock:${input.capability.id}] ${input.task.content}`
+  }
+  return [
+    '<!-- lumi.meeting-brief/v1 -->',
+    '## Objective',
+    'Align on the stated meeting objective.',
+    '## Participant Considerations',
+    'Give each listed participant a clear contribution point.',
+    '## Agenda',
+    'Follow the submitted agenda in order.',
+    '## Decisions and Questions',
+    'Capture the decision, owner, and unresolved questions.',
+    '## Risks and Preparation',
+    'Review assumptions and prepare supporting facts.',
+    '## Follow-ups',
+    'Record owners and due dates before closing.',
+    '<!-- /lumi.meeting-brief/v1 -->',
+  ].join('\n')
 }
 
 function buildPrompt(input: ExecutionInput): string {

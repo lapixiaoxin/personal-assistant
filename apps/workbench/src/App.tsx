@@ -4,6 +4,7 @@ import {
   Ban,
   BookOpenText,
   Bot,
+  CalendarDays,
   Check,
   CheckCircle2,
   CircleDashed,
@@ -49,7 +50,7 @@ interface AppProps {
 }
 
 type DetailTab = 'events' | 'audit'
-type ComposerMode = 'task' | 'research'
+type ComposerMode = 'meeting' | 'research' | 'task'
 type TaskFilter = 'all' | 'active' | 'done'
 
 const stateLabels: Record<TaskState, string> = {
@@ -120,6 +121,10 @@ function TaskWorkspace({
   const [composerMode, setComposerMode] = useState<ComposerMode>('task')
   const [draft, setDraft] = useState('')
   const [sourceDraft, setSourceDraft] = useState('')
+  const [meetingObjective, setMeetingObjective] = useState('')
+  const [participantDraft, setParticipantDraft] = useState('')
+  const [agendaDraft, setAgendaDraft] = useState('')
+  const [meetingBackground, setMeetingBackground] = useState('')
   const [pendingTaskId, setPendingTaskId] = useState<string>()
   const [pendingAction, setPendingAction] = useState<string>()
   const [error, setError] = useState<string>()
@@ -213,20 +218,41 @@ function TaskWorkspace({
 
   const submit = (): void => {
     const content = draft.trim()
-    const sources = sourceDraft
-      .split('\n')
-      .map(source => source.trim())
-      .filter(Boolean)
-    if (!content || pendingTaskId || (composerMode === 'research' && sources.length === 0)) return
+    const sources = nonEmptyLines(sourceDraft)
+    const participants = nonEmptyLines(participantDraft)
+    const agenda = nonEmptyLines(agendaDraft)
+    const meetingReady = meetingObjective.trim() !== ''
+      && participants.length > 0
+      && agenda.length > 0
+    if (
+      !content
+      || pendingTaskId
+      || (composerMode === 'research' && sources.length === 0)
+      || (composerMode === 'meeting' && !meetingReady)
+    ) return
     const taskId = createTaskId()
     setDraft('')
     setSourceDraft('')
+    setMeetingObjective('')
+    setParticipantDraft('')
+    setAgendaDraft('')
+    setMeetingBackground('')
     setError(undefined)
     setSelectedId(taskId)
     setPendingTaskId(taskId)
     const submission = composerMode === 'research'
       ? api.submitResearchBrief(content, sources, taskId)
-      : api.submitTask(content, taskId)
+      : composerMode === 'meeting'
+        ? api.submitMeetingBrief({
+            agenda,
+            ...(meetingBackground.trim()
+              ? { background: meetingBackground.trim() }
+              : {}),
+            objective: meetingObjective.trim(),
+            participants,
+            topic: content,
+          }, taskId)
+        : api.submitTask(content, taskId)
     void submission
       .then(async (created) => {
         setDetail(created)
@@ -269,6 +295,10 @@ function TaskWorkspace({
           setDetail(undefined)
           setDraft('')
           setSourceDraft('')
+          setMeetingObjective('')
+          setParticipantDraft('')
+          setAgendaDraft('')
+          setMeetingBackground('')
         }}>
           <Plus aria-hidden="true" size={17} />
           新任务
@@ -391,7 +421,7 @@ function TaskWorkspace({
               <article className="message assistant-message">
                 <div className="message-author"><Bot aria-hidden="true" size={15} />lumi</div>
                 {selectedTask.result
-                  ? <p className="result-copy">{selectedTask.result}</p>
+                  ? <TaskResult task={selectedTask} />
                   : selectedTask.error
                     ? <p className="error-copy">{selectedTask.error}</p>
                     : <p>{progressCopy(selectedTask.state)}</p>}
@@ -410,7 +440,7 @@ function TaskWorkspace({
           </div>
         )}
 
-        <form className={composerMode === 'research' ? 'composer research-composer' : 'composer'} onSubmit={(event) => {
+        <form className={`composer ${composerMode}-composer`} onSubmit={(event) => {
           event.preventDefault()
           submit()
         }}>
@@ -435,9 +465,25 @@ function TaskWorkspace({
               <BookOpenText aria-hidden="true" size={14} />
               研究简报
             </button>
+            <button
+              aria-selected={composerMode === 'meeting'}
+              className={composerMode === 'meeting' ? 'composer-mode active' : 'composer-mode'}
+              onClick={() => setComposerMode('meeting')}
+              role="tab"
+              type="button"
+            >
+              <CalendarDays aria-hidden="true" size={14} />
+              会议准备
+            </button>
           </div>
           <textarea
-            aria-label={composerMode === 'research' ? '研究问题' : '任务内容'}
+            aria-label={
+              composerMode === 'research'
+                ? '研究问题'
+                : composerMode === 'meeting'
+                  ? '会议主题'
+                  : '任务内容'
+            }
             maxLength={50_000}
             onChange={event => setDraft(event.target.value)}
             onKeyDown={(event) => {
@@ -446,9 +492,13 @@ function TaskWorkspace({
                 submit()
               }
             }}
-            placeholder={composerMode === 'research'
-              ? '输入要回答的研究问题'
-              : '交代一个需要完成的任务'}
+            placeholder={
+              composerMode === 'research'
+                ? '输入要回答的研究问题'
+                : composerMode === 'meeting'
+                  ? '会议主题'
+                  : '交代一个需要完成的任务'
+            }
             rows={2}
             value={draft}
           />
@@ -463,15 +513,73 @@ function TaskWorkspace({
               value={sourceDraft}
             />
           )}
+          {composerMode === 'meeting' && (
+            <div className="meeting-fields">
+              <textarea
+                aria-label="会议目标"
+                className="meeting-objective-input"
+                maxLength={2_000}
+                onChange={event => setMeetingObjective(event.target.value)}
+                placeholder="希望会议达成什么结果"
+                rows={2}
+                value={meetingObjective}
+              />
+              <textarea
+                aria-label="参与者"
+                maxLength={6_000}
+                onChange={event => setParticipantDraft(event.target.value)}
+                placeholder="参与者或角色，每行一个"
+                rows={3}
+                value={participantDraft}
+              />
+              <textarea
+                aria-label="会议议程"
+                maxLength={10_000}
+                onChange={event => setAgendaDraft(event.target.value)}
+                placeholder="议程项，每行一个"
+                rows={3}
+                value={agendaDraft}
+              />
+              <textarea
+                aria-label="会议背景"
+                className="meeting-background-input"
+                maxLength={6_000}
+                onChange={event => setMeetingBackground(event.target.value)}
+                placeholder="补充背景（可选）"
+                rows={2}
+                value={meetingBackground}
+              />
+            </div>
+          )}
           <button
-            aria-label={composerMode === 'research' ? '提交研究简报' : '提交任务'}
+            aria-label={
+              composerMode === 'research'
+                ? '提交研究简报'
+                : composerMode === 'meeting'
+                  ? '提交会议准备'
+                  : '提交任务'
+            }
             className="icon-button primary"
             disabled={
               !draft.trim()
               || pendingTaskId !== undefined
               || (composerMode === 'research' && !sourceDraft.trim())
+              || (
+                composerMode === 'meeting'
+                && (
+                  !meetingObjective.trim()
+                  || !participantDraft.trim()
+                  || !agendaDraft.trim()
+                )
+              )
             }
-            title={composerMode === 'research' ? '提交研究简报' : '提交任务'}
+            title={
+              composerMode === 'research'
+                ? '提交研究简报'
+                : composerMode === 'meeting'
+                  ? '提交会议准备'
+                  : '提交任务'
+            }
             type="submit"
           >
             {pendingTaskId ? <CircleDashed className="spin" aria-hidden="true" size={18} /> : <Send aria-hidden="true" size={18} />}
@@ -564,6 +672,24 @@ function TaskWorkspace({
           ))}
         </div>
       </aside>
+    </div>
+  )
+}
+
+function TaskResult({ task }: { task: TaskRecord }) {
+  const meetingSections = task.capabilityId === 'meeting-agent' && task.result
+    ? parseMeetingBrief(task.result)
+    : undefined
+  if (!meetingSections) return <p className="result-copy">{task.result}</p>
+
+  return (
+    <div className="meeting-brief-result">
+      {meetingSections.map(section => (
+        <section key={section.heading}>
+          <h3>{meetingSectionLabel(section.heading)}</h3>
+          <p>{section.body}</p>
+        </section>
+      ))}
     </div>
   )
 }
@@ -686,6 +812,64 @@ function formatRelativeTime(value: string): string {
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
+}
+
+interface MeetingResultSection {
+  body: string
+  heading: string
+}
+
+const meetingResultHeadings = [
+  '## Objective',
+  '## Participant Considerations',
+  '## Agenda',
+  '## Decisions and Questions',
+  '## Risks and Preparation',
+  '## Follow-ups',
+] as const
+
+function parseMeetingBrief(value: string): MeetingResultSection[] | undefined {
+  const lines = value.trim().split(/\r?\n/)
+  if (
+    lines[0]?.trim() !== '<!-- lumi.meeting-brief/v1 -->'
+    || lines.at(-1)?.trim() !== '<!-- /lumi.meeting-brief/v1 -->'
+  ) return undefined
+
+  const indexes = meetingResultHeadings.map(heading =>
+    lines.findIndex(line => line.trim() === heading),
+  )
+  if (indexes.some((index, position) =>
+    index < 1 || (position > 0 && index <= (indexes[position - 1] ?? -1)),
+  )) return undefined
+
+  return meetingResultHeadings.map((heading, position) => {
+    const start = (indexes[position] ?? 0) + 1
+    const end = position + 1 < indexes.length
+      ? indexes[position + 1] ?? lines.length - 1
+      : lines.length - 1
+    return {
+      body: lines.slice(start, end).join('\n').trim(),
+      heading,
+    }
+  })
+}
+
+function meetingSectionLabel(heading: string): string {
+  return ({
+    '## Agenda': '议程',
+    '## Decisions and Questions': '决策与问题',
+    '## Follow-ups': '跟进事项',
+    '## Objective': '会议目标',
+    '## Participant Considerations': '参与者关注点',
+    '## Risks and Preparation': '风险与准备',
+  } as Record<string, string>)[heading] ?? heading.replace(/^##\s+/, '')
+}
+
+function nonEmptyLines(value: string): string[] {
+  return value
+    .split('\n')
+    .map(line => line.trim())
+    .filter(Boolean)
 }
 
 function researchSourcesFromContextRefs(references: readonly string[]): string[] {

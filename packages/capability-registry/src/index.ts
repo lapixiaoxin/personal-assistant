@@ -40,12 +40,19 @@ export class CapabilityRegistry {
 
 const CODING_INTENT =
   /\b(code|coding|repository|repo|commit|pull request|typescript|javascript|python|golang|rust|java|debug|test|refactor|implement|fix)\b|代码|编码|仓库|单测|测试|调试|重构|实现|修复|提交/i
+const MEETING_WORKFLOW_REFERENCE = 'lumi-workflow:meeting-brief/v1'
 const RESEARCH_WORKFLOW_REFERENCE = 'lumi-workflow:research-brief/v1'
 
 export class RuleBasedRouter implements TaskRouter {
   constructor(private readonly registry: CapabilityRegistry) {}
 
   route(request: TaskRequest): RoutingDecision {
+    if (request.contextRefs.includes(MEETING_WORKFLOW_REFERENCE)) {
+      return {
+        capability: this.registry.require('meeting-agent'),
+        reason: 'Matched the explicit meeting brief workflow marker.',
+      }
+    }
     if (request.contextRefs.includes(RESEARCH_WORKFLOW_REFERENCE)) {
       return {
         capability: this.registry.require('research-agent'),
@@ -87,6 +94,13 @@ export function createDefaultCapabilityRegistry(): CapabilityRegistry {
     id: 'research-agent',
     kind: 'agent',
     operations: ['fetch_declared_public_source', 'synthesize_cited_brief'],
+    riskLevel: 'read',
+  })
+  registry.register({
+    description: 'Builds structured meeting preparation briefs from user-provided context.',
+    id: 'meeting-agent',
+    kind: 'agent',
+    operations: ['synthesize_meeting_brief'],
     riskLevel: 'read',
   })
   return registry

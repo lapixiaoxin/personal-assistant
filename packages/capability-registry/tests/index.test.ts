@@ -22,6 +22,20 @@ describe('capability routing', () => {
     })
   })
 
+  it('routes an explicit meeting workflow before coding content heuristics', () => {
+    const decision = router.route(createTaskRequest({
+      actorId: 'owner',
+      channel: 'meeting-brief',
+      content: 'Review the TypeScript implementation in the planning meeting',
+      contextRefs: ['lumi-workflow:meeting-brief/v1'],
+    }))
+
+    expect(decision).toMatchObject({
+      capability: { id: 'meeting-agent' },
+      reason: 'Matched the explicit meeting brief workflow marker.',
+    })
+  })
+
   it('keeps free-form coding and personal routing compatible', () => {
     expect(router.route(createTaskRequest({
       actorId: 'owner',

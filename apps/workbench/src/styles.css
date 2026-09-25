@@ -614,6 +614,32 @@ textarea:focus-visible {
   color: var(--ink);
 }
 
+.meeting-brief-result {
+  display: grid;
+  gap: 0;
+}
+
+.meeting-brief-result section {
+  padding: 11px 0;
+  border-top: 1px solid var(--line);
+}
+
+.meeting-brief-result section:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.meeting-brief-result h3 {
+  margin: 0 0 4px;
+  color: var(--accent-deep);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.meeting-brief-result p {
+  color: var(--ink);
+}
+
 .error-copy {
   color: var(--danger);
 }
@@ -659,7 +685,7 @@ textarea:focus-visible {
   display: inline-grid;
   width: fit-content;
   grid-column: 1 / -1;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 3px;
   padding: 3px;
   background: var(--panel-muted);
@@ -700,6 +726,36 @@ textarea:focus-visible {
 
 .research-composer > textarea:not(.source-input) {
   grid-column: 1 / -1;
+}
+
+.meeting-composer > textarea {
+  grid-column: 1 / -1;
+}
+
+.meeting-fields {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 12px;
+  border-top: 1px solid var(--line);
+}
+
+.meeting-fields textarea {
+  min-width: 0;
+  padding: 9px 0;
+}
+
+.meeting-background-input {
+  border-top: 1px solid var(--line);
+}
+
+.meeting-objective-input,
+.meeting-background-input {
+  grid-column: 1 / -1;
+}
+
+.meeting-composer .icon-button.primary {
+  grid-column: 2;
 }
 
 .composer .source-input {
@@ -1054,6 +1110,26 @@ textarea:focus-visible {
 
   .message {
     width: 94%;
+  }
+
+  .composer-modes {
+    width: 100%;
+  }
+
+  .composer-mode {
+    padding-inline: 5px;
+  }
+
+  .meeting-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .meeting-fields textarea {
+    grid-column: 1;
+  }
+
+  .meeting-fields textarea + textarea {
+    border-top: 1px solid var(--line);
   }
 
   .details-panel {

@@ -2,7 +2,11 @@
 
 import { resolve } from 'node:path'
 import { Command } from 'commander'
-import { createTaskRequest, TaskStateSchema } from '@lumi/contracts'
+import {
+  createTaskRequest,
+  TaskStateSchema,
+  TaskSubmissionSchema,
+} from '@lumi/contracts'
 import {
   createAssistantRuntime,
   loadLocalEnvironment,
@@ -34,12 +38,15 @@ program
   ) => withRuntime(async (runtime) => {
     const principal = runtime.identity.localPrincipal()
     if (options.actor) assertActor(principal.id, options.actor)
-    const request = createTaskRequest({
-      actorId: principal.id,
+    const submission = TaskSubmissionSchema.parse({
       channel: options.channel,
       content: words.join(' '),
       contextRefs: options.context ?? [],
       ...(options.id ? { id: options.id } : {}),
+    })
+    const request = createTaskRequest({
+      ...submission,
+      actorId: principal.id,
     })
     const task = await runtime.core.submit(request)
     print({
@@ -68,6 +75,50 @@ program
       question: words.join(' '),
       schemaVersion: 'lumi.research-brief/v1',
       sources: options.source,
+    })
+    print({
+      approval: runtime.ledger.getApprovalForTask(task.id) ?? null,
+      task,
+    })
+  }))
+
+program
+  .command('meeting')
+  .description('Build a structured meeting preparation brief from explicit context')
+  .argument('<topic...>', 'meeting topic')
+  .requiredOption('--objective <text>', 'meeting objective')
+  .requiredOption(
+    '--participant <name>',
+    'participant or participant role; repeat for multiple participants',
+    collectOption,
+    [],
+  )
+  .requiredOption(
+    '--agenda <item>',
+    'agenda item; repeat for multiple items',
+    collectOption,
+    [],
+  )
+  .option('--background <text>', 'additional meeting background')
+  .option('--id <task-id>', 'caller-provided idempotency key')
+  .action(async (
+    words: string[],
+    options: {
+      agenda: string[]
+      background?: string
+      id?: string
+      objective: string
+      participant: string[]
+    },
+  ) => withRuntime(async (runtime) => {
+    const task = await runtime.meeting.submit(runtime.identity.localPrincipal(), {
+      agenda: options.agenda,
+      ...(options.background ? { background: options.background } : {}),
+      ...(options.id ? { id: options.id } : {}),
+      objective: options.objective,
+      participants: options.participant,
+      schemaVersion: 'lumi.meeting-brief/v1',
+      topic: words.join(' '),
     })
     print({
       approval: runtime.ledger.getApprovalForTask(task.id) ?? null,

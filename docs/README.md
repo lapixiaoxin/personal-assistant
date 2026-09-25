@@ -11,6 +11,7 @@
 | 使用电脑端任务与动作工作台 | [Workbench SOP](runbooks/web-workbench.md)、[SPEC-0004](../specs/0004-web-workbench/spec.md)、[SPEC-0006](../specs/0006-action-inbox/spec.md) |
 | 验证 DSH 受控动作与旁路阻断 | [Action Bridge SOP](runbooks/dsh-action-bridge.md)、[SPEC-0005](../specs/0005-dsh-action-bridge/spec.md) |
 | 使用受控公开来源生成研究简报 | [研究简报 SOP](runbooks/research-brief.md)、[SPEC-0007](../specs/0007-research-brief/spec.md) |
+| 使用结构化上下文生成会议准备简报 | [会议准备 SOP](runbooks/meeting-brief.md)、[SPEC-0008](../specs/0008-meeting-brief/spec.md) |
 | 理解产品与个人模型 | [产品宪章](design/01-product.md)、[记忆与主动性](design/04-personal-model.md) |
 | 实现或接入新能力 | [架构](design/02-architecture.md)、[协议](design/03-protocols.md)、[安全](design/05-safety.md) |
 | 建设自我升级 | [进化工厂](design/06-evolution.md)、[里程碑](design/07-roadmap.md) |

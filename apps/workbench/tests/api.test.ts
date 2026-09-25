@@ -136,6 +136,46 @@ describe('LumiApi', () => {
     })
   })
 
+  it('submits structured meeting context through the workflow endpoint', async () => {
+    const calls: Array<[RequestInfo | URL, RequestInit | undefined]> = []
+    const fetcher: typeof fetch = async (input, init) => {
+      calls.push([input, init])
+      return new Response(JSON.stringify({
+        data: {
+          approval: null,
+          task: {
+            ...task,
+            capabilityId: 'meeting-agent',
+            channel: 'meeting-brief',
+          },
+        },
+      }), {
+        headers: { 'content-type': 'application/json' },
+        status: 201,
+      })
+    }
+    const api = new LumiApi(fetcher, 'test-token')
+
+    await api.submitMeetingBrief({
+      agenda: ['Review options', 'Choose owner'],
+      background: 'Delivery date is fixed.',
+      objective: 'Select a plan.',
+      participants: ['Product lead', 'Engineering lead'],
+      topic: 'Implementation review',
+    }, 'task-one')
+
+    expect(calls[0]?.[0]).toBe('/v2/workflows/meeting-brief')
+    expect(JSON.parse(String(calls[0]?.[1]?.body))).toEqual({
+      agenda: ['Review options', 'Choose owner'],
+      background: 'Delivery date is fixed.',
+      id: 'task-one',
+      objective: 'Select a plan.',
+      participants: ['Product lead', 'Engineering lead'],
+      schemaVersion: 'lumi.meeting-brief/v1',
+      topic: 'Implementation review',
+    })
+  })
+
   it('uses the v2 action lifecycle endpoints without changing the payload', async () => {
     const calls: Array<[RequestInfo | URL, RequestInit | undefined]> = []
     const fetcher: typeof fetch = async (input, init) => {

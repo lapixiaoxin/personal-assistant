@@ -105,6 +105,38 @@ function fakeApiWithActions(
     listTasks: vi.fn(async () => taskRecords),
     reconcileAction: vi.fn(async actionId => replaceAction(actionId, 'succeeded')),
     reject: vi.fn(async () => ({ ...waitingTask, state: 'cancelled' as const })),
+    submitMeetingBrief: vi.fn(async (input, id) => {
+      const task: TaskRecord = {
+        ...waitingTask,
+        capabilityId: 'meeting-agent',
+        channel: 'meeting-brief',
+        content: `Prepare a meeting brief for: ${input.topic}`,
+        contextRefs: ['lumi-workflow:meeting-brief/v1'],
+        id,
+        result: [
+          '<!-- lumi.meeting-brief/v1 -->',
+          '## Objective',
+          input.objective,
+          '## Participant Considerations',
+          input.participants.join(', '),
+          '## Agenda',
+          input.agenda.join(', '),
+          '## Decisions and Questions',
+          'Confirm decisions.',
+          '## Risks and Preparation',
+          input.background ?? 'No background.',
+          '## Follow-ups',
+          'Assign owners.',
+          '<!-- /lumi.meeting-brief/v1 -->',
+        ].join('\n'),
+        state: 'completed',
+      }
+      taskRecords = [task, ...taskRecords]
+      return {
+        approval: null,
+        task,
+      }
+    }),
     submitResearchBrief: vi.fn(async (
       question: string,
       sources: string[],
@@ -221,6 +253,42 @@ describe('Workbench', () => {
     })
     expect(await screen.findByRole('link', { name: 'https://example.com/' })).toBeTruthy()
     expect(screen.getByRole('link', { name: 'https://example.org/report' })).toBeTruthy()
+  })
+
+  it('submits a meeting brief with structured context', async () => {
+    const api = fakeApi()
+    render(<App api={api} />)
+
+    fireEvent.click(await screen.findByRole('tab', { name: '会议准备' }))
+    fireEvent.change(screen.getByLabelText('会议主题'), {
+      target: { value: '季度路线评审' },
+    })
+    fireEvent.change(screen.getByLabelText('会议目标'), {
+      target: { value: '确定三项优先级' },
+    })
+    fireEvent.change(screen.getByLabelText('参与者'), {
+      target: { value: '产品负责人\n研发负责人' },
+    })
+    fireEvent.change(screen.getByLabelText('会议议程'), {
+      target: { value: '回顾目标\n比较候选项' },
+    })
+    fireEvent.change(screen.getByLabelText('会议背景'), {
+      target: { value: '预算保持不变' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '提交会议准备' }))
+
+    await waitFor(() => {
+      expect(api.submitMeetingBrief).toHaveBeenCalledWith({
+        agenda: ['回顾目标', '比较候选项'],
+        background: '预算保持不变',
+        objective: '确定三项优先级',
+        participants: ['产品负责人', '研发负责人'],
+        topic: '季度路线评审',
+      }, expect.stringMatching(/^task_/))
+    })
+    expect(await screen.findByText('meeting-agent')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: '决策与问题' })).toBeTruthy()
+    expect(screen.queryByText('<!-- lumi.meeting-brief/v1 -->')).toBeNull()
   })
 
   it('shows bound action facts and refreshes after authorization', async () => {

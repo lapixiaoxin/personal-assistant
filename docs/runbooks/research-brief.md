@@ -36,13 +36,13 @@ PA_HTTP_TOKEN='<local-token>' pnpm start
 ## CLI
 
 ```bash
-pnpm cli -- research "比较两个公开方案" \
+pnpm cli research "比较两个公开方案" \
   --id research-example \
   --source https://example.com/a \
   --source https://example.com/b
 
-pnpm cli -- events research-example
-pnpm cli -- audit research-example
+pnpm cli events research-example
+pnpm cli audit research-example
 ```
 
 成功判定：
