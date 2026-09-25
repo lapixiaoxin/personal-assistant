@@ -8,6 +8,7 @@
     "@lumi/contracts": "workspace:*",
     "@lumi/identity": "workspace:*",
     "@lumi/meeting-workflow": "workspace:*",
+    "@lumi/personal-memory": "workspace:*",
     "@lumi/research-workflow": "workspace:*",
     "@lumi/runtime": "workspace:*",
     "@lumi/task-ledger": "workspace:*",

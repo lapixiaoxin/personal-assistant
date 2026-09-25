@@ -8,6 +8,11 @@ import {
   TaskSubmissionSchema,
 } from '@lumi/contracts'
 import {
+  PersonalMemoryCorrectionSchema,
+  PersonalMemoryCreateSchema,
+  PersonalMemoryListQuerySchema,
+} from '@lumi/personal-memory'
+import {
   createAssistantRuntime,
   loadLocalEnvironment,
   type AssistantRuntime,
@@ -259,6 +264,129 @@ for (const operation of ['authorize', 'execute', 'reconcile', 'cancel'] as const
           : operation === 'reconcile'
             ? await runtime.actions.reconcile(principal, actionId)
             : runtime.actions.cancel(principal, actionId)
+      print(result)
+    }))
+}
+
+const memory = program
+  .command('memory')
+  .description('Manage persistent, user-controlled personal memories')
+
+memory
+  .command('add')
+  .argument('<content...>', 'memory content')
+  .option('--candidate', 'store as a candidate requiring confirmation')
+  .option('--classification <level>', 'public, personal, sensitive, or secret', 'personal')
+  .option('--kind <kind>', 'fact, preference, relationship, or experience', 'preference')
+  .option(
+    '--purpose <purpose>',
+    'allowed purpose; repeat for multiple purposes',
+    collectOption,
+    [],
+  )
+  .option('--scope <scope>', 'global, general, coding, research, or meeting', 'global')
+  .action(async (
+    words: string[],
+    options: {
+      candidate?: boolean
+      classification: string
+      kind: string
+      purpose: string[]
+      scope: string
+    },
+  ) => withRuntime(async (runtime) => {
+    const input = PersonalMemoryCreateSchema.parse({
+      allowedPurposes: options.purpose.length > 0
+        ? options.purpose
+        : ['general_assistance'],
+      classification: options.classification,
+      content: words.join(' '),
+      kind: options.kind,
+      scope: options.scope,
+      status: options.candidate ? 'candidate' : 'confirmed',
+    })
+    print(runtime.memories.create(runtime.identity.localPrincipal(), input))
+  }))
+
+memory
+  .command('list')
+  .option('--classification <level>')
+  .option('--kind <kind>')
+  .option('--limit <count>', 'maximum rows', '100')
+  .option('--scope <scope>')
+  .option('--status <status>')
+  .action(async (options: {
+    classification?: string
+    kind?: string
+    limit: string
+    scope?: string
+    status?: string
+  }) => withRuntime(async (runtime) => {
+    const query = PersonalMemoryListQuerySchema.parse({
+      ...(options.classification ? { classification: options.classification } : {}),
+      ...(options.kind ? { kind: options.kind } : {}),
+      limit: parseLimit(options.limit),
+      ...(options.scope ? { scope: options.scope } : {}),
+      ...(options.status ? { status: options.status } : {}),
+    })
+    print(runtime.memories.list(runtime.identity.localPrincipal(), query))
+  }))
+
+memory
+  .command('get')
+  .argument('<memory-id>')
+  .action(async (memoryId: string) => withRuntime(async (runtime) => {
+    print(runtime.memories.get(runtime.identity.localPrincipal(), memoryId))
+  }))
+
+memory
+  .command('correct')
+  .argument('<memory-id>')
+  .argument('<content...>', 'replacement memory content')
+  .option('--classification <level>')
+  .option('--kind <kind>')
+  .option(
+    '--purpose <purpose>',
+    'replacement allowed purpose; repeat for multiple purposes',
+    collectOption,
+    [],
+  )
+  .option('--scope <scope>')
+  .action(async (
+    memoryId: string,
+    words: string[],
+    options: {
+      classification?: string
+      kind?: string
+      purpose: string[]
+      scope?: string
+    },
+  ) => withRuntime(async (runtime) => {
+    const correction = PersonalMemoryCorrectionSchema.parse({
+      ...(options.classification
+        ? { classification: options.classification }
+        : {}),
+      content: words.join(' '),
+      ...(options.kind ? { kind: options.kind } : {}),
+      ...(options.purpose.length > 0
+        ? { allowedPurposes: options.purpose }
+        : {}),
+      ...(options.scope ? { scope: options.scope } : {}),
+    })
+    print(runtime.memories.correct(runtime.identity.localPrincipal(), memoryId, correction))
+  }))
+
+for (const operation of ['confirm', 'retract', 'forget'] as const) {
+  memory
+    .command(operation)
+    .argument('<memory-id>')
+    .action(async (memoryId: string) => withRuntime(async (runtime) => {
+      const principal = runtime.identity.localPrincipal()
+      const result = operation === 'confirm'
+        ? runtime.memories.confirm(principal, memoryId)
+        : operation === 'retract'
+          ? runtime.memories.retract(principal, memoryId)
+          : runtime.memories.forget(principal, memoryId)
       print(result)
     }))
 }

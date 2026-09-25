@@ -5,6 +5,7 @@
   "type": "module",
   "dependencies": {
     "@lumi/contracts": "workspace:*",
+    "@lumi/personal-memory": "workspace:*",
     "@lumi/runtime": "workspace:*",
     "commander": "14.0.1"
   }

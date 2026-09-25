@@ -26,6 +26,12 @@ import {
   type ArtifactProvider,
 } from '@lumi/local-artifact'
 import {
+  MemoryContextExecutor,
+  PersonalMemoryService,
+  SqlitePersonalMemoryStore,
+  type PersonalMemoryStore,
+} from '@lumi/personal-memory'
+import {
   DefaultActionPolicyEngine,
   DefaultPolicyEngine,
   type ActionPolicyEngine,
@@ -55,6 +61,7 @@ export interface AssistantRuntime {
   executorKind: 'custom' | 'dsh' | 'mock'
   identity: IdentityAuthority
   ledger: ActionLedger & TaskLedger
+  memories: PersonalMemoryService
   meeting: MeetingBriefWorkflow
   research: ResearchBriefWorkflow
   close(): Promise<void>
@@ -70,6 +77,7 @@ export interface RuntimeOptions {
   executor?: TaskExecutor
   httpToken?: string
   identity?: IdentityAuthority
+  memoryStore?: PersonalMemoryStore
   ownerId?: string
   policy?: PolicyEngine
   principalId?: string
@@ -95,8 +103,9 @@ export function loadLocalEnvironment(cwd: string = process.cwd()): void {
 export function createAssistantRuntime(options: RuntimeOptions = {}): AssistantRuntime {
   const cwd = resolve(options.cwd ?? process.cwd())
   const dataDir = resolve(process.env.PA_DATA_DIR ?? `${cwd}/data`)
+  const dbPath = options.dbPath ?? `${dataDir}/assistant.db`
   const ledger = new SqliteTaskLedger({
-    filename: options.dbPath ?? `${dataDir}/assistant.db`,
+    filename: dbPath,
   })
   const capabilities = createDefaultCapabilityRegistry()
   const router = new RuleBasedRouter(capabilities)
@@ -108,6 +117,10 @@ export function createAssistantRuntime(options: RuntimeOptions = {}): AssistantR
     ownerId: options.ownerId ?? process.env.PA_OWNER_ID ?? 'local-owner',
     principalId: options.principalId ?? process.env.PA_PRINCIPAL_ID ?? 'local-user',
   })
+  const memoryStore = options.memoryStore ?? new SqlitePersonalMemoryStore({
+    filename: dbPath,
+  })
+  const memories = new PersonalMemoryService(memoryStore)
   const provider = options.artifactProvider ?? new LocalArtifactProvider(
     resolve(options.artifactRoot ?? process.env.PA_ARTIFACT_ROOT ?? `${dataDir}/artifacts`),
   )
@@ -132,8 +145,14 @@ export function createAssistantRuntime(options: RuntimeOptions = {}): AssistantR
         createDshActionBroker(actions, ledger, identity),
         createDshResearchBroker(researchSources, identity),
       )
+  const memoryExecutor = new MemoryContextExecutor(
+    configured.executor,
+    memories,
+    ledger,
+    identity.localPrincipal().ownerId,
+  )
   const executor = new MeetingBriefExecutor(
-    new ResearchEvidenceExecutor(configured.executor, ledger),
+    new ResearchEvidenceExecutor(memoryExecutor, ledger),
     ledger,
   )
   const core = new AssistantCore(ledger, router, policy, executor)
@@ -147,9 +166,16 @@ export function createAssistantRuntime(options: RuntimeOptions = {}): AssistantR
     executorKind: configured.kind,
     identity,
     ledger,
+    memories,
     meeting,
     research,
-    close: () => core.close(),
+    close: async () => {
+      try {
+        await core.close()
+      } finally {
+        memories.close()
+      }
+    },
   }
 }
 

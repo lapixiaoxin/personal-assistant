@@ -21,6 +21,13 @@ import {
   MeetingBriefSubmissionSchema,
   MeetingWorkflowError,
 } from '@lumi/meeting-workflow'
+import {
+  MemoryNotFoundError,
+  MemoryStateConflictError,
+  PersonalMemoryCorrectionSchema,
+  PersonalMemoryCreateSchema,
+  PersonalMemoryListQuerySchema,
+} from '@lumi/personal-memory'
 import { createAssistantRuntime, type AssistantRuntime } from '@lumi/runtime'
 import {
   ActionAuthorizationError,
@@ -44,6 +51,9 @@ const ActionParamsSchema = z.object({
 })
 const ActionListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(50),
+})
+const MemoryParamsSchema = z.object({
+  memoryId: z.string().trim().min(1).max(128),
 })
 
 export interface GatewayOptions {
@@ -209,6 +219,50 @@ export function buildGateway(options: GatewayOptions = {}): FastifyInstance {
     return { data: runtime.actions.cancel(principal, actionId) }
   })
 
+  app.post('/v2/memories', async (request, reply) => {
+    const principal = authenticate(runtime, request)
+    const input = PersonalMemoryCreateSchema.parse(request.body)
+    reply.code(201)
+    return { data: runtime.memories.create(principal, input) }
+  })
+
+  app.get('/v2/memories', async (request) => {
+    const principal = authenticate(runtime, request)
+    const query = PersonalMemoryListQuerySchema.parse(request.query)
+    return { data: runtime.memories.list(principal, query) }
+  })
+
+  app.get('/v2/memories/:memoryId', async (request) => {
+    const principal = authenticate(runtime, request)
+    const { memoryId } = MemoryParamsSchema.parse(request.params)
+    return { data: runtime.memories.get(principal, memoryId) }
+  })
+
+  app.post('/v2/memories/:memoryId/confirm', async (request) => {
+    const principal = authenticate(runtime, request)
+    const { memoryId } = MemoryParamsSchema.parse(request.params)
+    return { data: runtime.memories.confirm(principal, memoryId) }
+  })
+
+  app.post('/v2/memories/:memoryId/correct', async (request) => {
+    const principal = authenticate(runtime, request)
+    const { memoryId } = MemoryParamsSchema.parse(request.params)
+    const correction = PersonalMemoryCorrectionSchema.parse(request.body)
+    return { data: runtime.memories.correct(principal, memoryId, correction) }
+  })
+
+  app.post('/v2/memories/:memoryId/retract', async (request) => {
+    const principal = authenticate(runtime, request)
+    const { memoryId } = MemoryParamsSchema.parse(request.params)
+    return { data: runtime.memories.retract(principal, memoryId) }
+  })
+
+  app.delete('/v2/memories/:memoryId', async (request) => {
+    const principal = authenticate(runtime, request)
+    const { memoryId } = MemoryParamsSchema.parse(request.params)
+    return { data: runtime.memories.forget(principal, memoryId) }
+  })
+
   app.post('/v2/workflows/research-brief', async (request, reply) => {
     const principal = authenticate(runtime, request)
     const submission = ResearchBriefSubmissionSchema.parse(request.body)
@@ -300,6 +354,28 @@ export function buildGateway(options: GatewayOptions = {}): FastifyInstance {
     }
     if (error instanceof MeetingWorkflowError) {
       reply.code(error.code === 'PERMISSION_DENIED' ? 403 : 422).send({
+        error: {
+          code: error.code,
+          message: error.message,
+          retryable: false,
+          safeToRetry: false,
+        },
+      })
+      return
+    }
+    if (error instanceof MemoryNotFoundError) {
+      reply.code(404).send({
+        error: {
+          code: error.code,
+          message: error.message,
+          retryable: false,
+          safeToRetry: false,
+        },
+      })
+      return
+    }
+    if (error instanceof MemoryStateConflictError) {
+      reply.code(409).send({
         error: {
           code: error.code,
           message: error.message,

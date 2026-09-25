@@ -117,6 +117,7 @@ export const TaskEventTypeSchema = z.enum([
   'action.cancelled',
   'action.reconciled',
   'research.source_captured',
+  'memory.context_attached',
   'verification.completed',
 ])
 export type TaskEventType = z.infer<typeof TaskEventTypeSchema>

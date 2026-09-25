@@ -195,3 +195,62 @@ test('submits and verifies a structured meeting brief', async ({ page }, testInf
   })
   expect(consoleErrors).toEqual([])
 })
+
+test('manages a persistent personal memory from the memory vault', async ({ page, request }, testInfo) => {
+  const consoleErrors: string[] = []
+  page.on('console', (message) => {
+    if (message.type() === 'error') consoleErrors.push(message.text())
+  })
+  page.on('pageerror', error => consoleErrors.push(error.message))
+
+  const suffix = `${testInfo.project.name}-${Date.now()}`
+  const initialContent = `Prefer concise summaries ${suffix}`
+  const correctedContent = `Prefer decision-first summaries ${suffix}`
+  await page.goto(`/#token=${token}`)
+  await page.getByRole('tab', { name: '记忆' }).click()
+  await page.getByRole('button', { name: '新增记忆' }).click()
+  await page.getByLabel('记忆内容').fill(initialContent)
+  await page.locator('.memory-status-field').getByRole('button', { name: '候选' }).click()
+  await page.getByRole('button', { name: '保存' }).click()
+
+  await expect(page.locator('.state-badge')).toHaveText('候选')
+  const listed = await request.get('/v2/memories?status=candidate', {
+    headers: { authorization: `Bearer ${token}` },
+  })
+  expect(listed.status()).toBe(200)
+  const memory = ((await listed.json()).data as Array<{ content: string; id: string }>)
+    .find(item => item.content === initialContent)
+  expect(memory?.id).toBeTruthy()
+
+  await page.getByRole('button', { name: '确认记忆' }).click()
+  await expect(page.locator('.state-badge')).toHaveText('已确认')
+  await page.getByRole('button', { name: '纠正' }).click()
+  await page.getByLabel('记忆内容').fill(correctedContent)
+  await page.getByRole('button', { name: '保存' }).click()
+  await expect(page.getByText(correctedContent).first()).toBeVisible()
+
+  await page.getByRole('button', { name: '撤回' }).click()
+  await expect(page.locator('.state-badge')).toHaveText('已撤回')
+  await page.getByRole('button', { name: '彻底遗忘' }).click()
+  await page.getByRole('button', { name: '确认彻底遗忘' }).click()
+  await expect(page.getByText(correctedContent)).toHaveCount(0)
+
+  const missing = await request.get(`/v2/memories/${memory?.id}`, {
+    headers: { authorization: `Bearer ${token}` },
+  })
+  expect(missing.status()).toBe(404)
+  expect((await missing.json()).error.code).toBe('MEMORY_NOT_FOUND')
+
+  const noHorizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth <= window.innerWidth,
+  )
+  expect(noHorizontalOverflow).toBe(true)
+
+  const screenshotDir = join(process.cwd(), 'data', 'workbench-evidence')
+  await mkdir(screenshotDir, { recursive: true })
+  await page.screenshot({
+    fullPage: true,
+    path: join(screenshotDir, `memory-${testInfo.project.name}.png`),
+  })
+  expect(consoleErrors).toEqual([])
+})

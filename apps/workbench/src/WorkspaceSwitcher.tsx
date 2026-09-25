@@ -1,6 +1,6 @@
-import { ClipboardList, ShieldCheck } from 'lucide-react'
+import { Brain, ClipboardList, ShieldCheck } from 'lucide-react'
 
-export type WorkspaceView = 'tasks' | 'actions'
+export type WorkspaceView = 'tasks' | 'actions' | 'memories'
 
 export function WorkspaceSwitcher({
   actionCount,
@@ -33,6 +33,16 @@ export function WorkspaceSwitcher({
         <ShieldCheck aria-hidden="true" size={15} />
         动作
         {actionCount > 0 && <span className="workspace-count">{actionCount}</span>}
+      </button>
+      <button
+        aria-selected={value === 'memories'}
+        className={value === 'memories' ? 'workspace-tab active' : 'workspace-tab'}
+        onClick={() => onChange('memories')}
+        role="tab"
+        type="button"
+      >
+        <Brain aria-hidden="true" size={15} />
+        记忆
       </button>
     </div>
   )

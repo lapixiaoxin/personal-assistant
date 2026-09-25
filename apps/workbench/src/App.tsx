@@ -23,6 +23,7 @@ import {
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ActionInbox } from './ActionInbox.tsx'
+import { MemoryVault } from './MemoryVault.tsx'
 import {
   ApiError,
   createTaskId,
@@ -86,6 +87,15 @@ export function App({ api = defaultApi }: AppProps) {
         actionCount={actionCount}
         api={api}
         onActionCountChange={setActionCount}
+        onWorkspaceChange={setWorkspace}
+      />
+    )
+  }
+  if (workspace === 'memories') {
+    return (
+      <MemoryVault
+        actionCount={actionCount}
+        api={api}
         onWorkspaceChange={setWorkspace}
       />
     )

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { ApiError, isTaskActive, LumiApi } from '../src/api.ts'
-import type { ActionDetail, TaskRecord } from '../src/types.ts'
+import { ApiError, isTaskActive, LumiApi, type MemoryInput } from '../src/api.ts'
+import type { ActionDetail, PersonalMemory, TaskRecord } from '../src/types.ts'
 
 const task: TaskRecord = {
   actorId: 'local-user',
@@ -49,6 +49,24 @@ const actionDetail: ActionDetail = {
   receipt: null,
   task,
   verification: null,
+}
+
+const personalMemory: PersonalMemory = {
+  allowedPurposes: ['general_assistance'],
+  classification: 'personal',
+  confidence: 1,
+  confirmedAt: '2026-09-25T09:00:00.000Z',
+  content: 'Prefer concise answers',
+  createdAt: '2026-09-25T09:00:00.000Z',
+  id: 'memory-one',
+  kind: 'preference',
+  ownerId: 'local-owner',
+  retractedAt: null,
+  revision: 1,
+  scope: 'global',
+  source: 'explicit_user_input',
+  status: 'confirmed',
+  updatedAt: '2026-09-25T09:00:00.000Z',
 }
 
 describe('LumiApi', () => {
@@ -217,6 +235,65 @@ describe('LumiApi', () => {
       expect(request?.body).toBe(JSON.stringify({}))
       expect(new Headers(request?.headers).get('authorization')).toBe('Bearer test-token')
     }
+  })
+
+  it('uses the v2 personal memory lifecycle endpoints', async () => {
+    const calls: Array<[RequestInfo | URL, RequestInit | undefined]> = []
+    const fetcher: typeof fetch = async (input, init) => {
+      calls.push([input, init])
+      const path = String(input)
+      const data = path.includes('?limit=')
+        ? [personalMemory]
+        : path.endsWith('/memory-one') && init?.method === 'DELETE'
+          ? {
+              contentDigest: `sha256:${'a'.repeat(64)}`,
+              erasedAt: personalMemory.updatedAt,
+              id: personalMemory.id,
+              lastRevision: personalMemory.revision,
+              ownerId: personalMemory.ownerId,
+            }
+          : personalMemory
+      return new Response(JSON.stringify({ data }), {
+        headers: { 'content-type': 'application/json' },
+        status: path === '/v2/memories' ? 201 : 200,
+      })
+    }
+    const api = new LumiApi(fetcher, 'test-token')
+    const input: MemoryInput = {
+      allowedPurposes: ['general_assistance'],
+      classification: 'personal',
+      content: personalMemory.content,
+      kind: 'preference',
+      scope: 'global',
+      status: 'confirmed',
+    }
+
+    await api.listMemories()
+    await api.createMemory(input)
+    await api.confirmMemory(personalMemory.id)
+    await api.correctMemory(personalMemory.id, {
+      content: 'Prefer direct answers',
+    })
+    await api.retractMemory(personalMemory.id)
+    await api.forgetMemory(personalMemory.id)
+
+    expect(calls.map(([path]) => path)).toEqual([
+      '/v2/memories?limit=100',
+      '/v2/memories',
+      '/v2/memories/memory-one/confirm',
+      '/v2/memories/memory-one/correct',
+      '/v2/memories/memory-one/retract',
+      '/v2/memories/memory-one',
+    ])
+    expect(calls[1]?.[1]).toMatchObject({
+      body: JSON.stringify(input),
+      method: 'POST',
+    })
+    expect(calls[3]?.[1]).toMatchObject({
+      body: JSON.stringify({ content: 'Prefer direct answers' }),
+      method: 'POST',
+    })
+    expect(calls[5]?.[1]?.method).toBe('DELETE')
   })
 })
 

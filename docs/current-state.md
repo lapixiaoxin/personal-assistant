@@ -14,7 +14,7 @@
 | 策略 | 任务文字与 capability 风险等级判定，external/critical 需审批 | `packages/policy` |
 | 执行 | DSH SDK 每任务独立子进程，支持 AbortSignal 取消 | `adapters/dsh` |
 | 上游 | SDK/runtime/mock server 精确固定 0.1.7-rc.1 | `upstream.lock.json`、`pnpm-lock.yaml` |
-| 记忆 | candidate / confirmed / retracted 模型，内存 Map 存储 | `packages/personal-memory` |
+| 记忆 | SQLite 持久化、candidate/confirmed/retracted、纠正、遗忘 tombstone 与受控任务注入 | `packages/personal-memory`、`apps/runtime` |
 | 工程检查 | lint、typecheck、版本对齐、测试、构建 | `pnpm check`、`.github/workflows/ci.yml` |
 
 ## 必须明确的缺口
@@ -26,7 +26,7 @@
 - v1 Core 收到执行器非空结果后仍可标记 completed；v2 `artifact.write` 已要求独立读回核验，其他任务尚无通用验收器。
 - `TaskRecord.dshSessionId` 带有上游命名；需要兼容迁移到中性执行引用。
 - 幂等比较含 `createdAt`；CLI 只重用 `--id` 会重新产生时间，不能据 README 推断任意重传成功。
-- 记忆未接入 runtime / Gateway，没有持久存储、检索或 owner 访问控制闭环。
+- 记忆已接入 runtime / Gateway / CLI / Workbench，但只支持显式写入和确定性 purpose/scope 检索；没有自动抽取、语义索引、字段级加密或跨设备同步。
 - 当前 coding-agent 是路由到另一份 DSH profile，不是已接入 A2A 的独立外部专家。
 - 无产品级多轮会话；DSH Web UI 使用 DSH 会话，绕开助手 Task Ledger。
 - 尚无插件 host、MCP/A2A adapter、持久 scheduler、设备协议、自动学习或自主发布。
@@ -81,7 +81,7 @@ NPM_CONFIG_CACHE=./data/tooling/npm-cache NPM_CONFIG_REGISTRY=https://registry.n
 
 `apps/workbench` 已提供 React + Vite 单页工作台，通过现有 Gateway 提交和查询任务，显示结果、错误、事件与审计，并支持已有任务级审批、拒绝和取消。生产构建输出到 `dist/workbench`，Gateway 在产物存在时从同一 loopback 地址托管页面和哈希资源。
 
-当前 Gateway 的提交与批准调用仍等待执行结束；页面以客户端 task ID 和并发轮询呈现中间状态。它不是产品级多轮对话或流式协议。该初始切片没有 Action 操作面，后续已由 SPEC-0006 补齐；远程身份、重启恢复、记忆接线和真实工作工具仍未实现。
+当前 Gateway 的提交与批准调用仍等待执行结束；页面以客户端 task ID 和并发轮询呈现中间状态。它不是产品级多轮对话或流式协议。该初始切片没有 Action 或 Memory 操作面，后续已分别由 SPEC-0006 和 SPEC-0009 补齐；远程身份、重启恢复和真实工作工具仍未实现。
 
 验证包括 Vitest API/组件/静态托管测试，以及 Playwright 在桌面 Chrome 和移动 Chromium 视口上的 mock 任务与审批流程；细节见 [SPEC-0004 证据](../specs/0004-web-workbench/evidence.md) 和 [Workbench SOP](runbooks/web-workbench.md)。
 
@@ -134,6 +134,16 @@ meeting profile 加载同一 protected guard 与每 Run 启动握手，但 Actio
 本机 `pnpm check` 通过 20 个测试文件、139 个用例，其中 10 个启动真实 DSH SDK 子进程；桌面/移动 Playwright 共 8 个场景通过并确认无横向溢出或 console error。真实 MiniMax 使用不含个人和公司信息的虚构路线评审样本，在约 8.2 秒内生成中文六段简报；Task `task-meeting-live-smoke` completed，`meeting-brief-structure/1` verification passed，事件中没有工具调用。隔离数据库和 DSH home 已在取证后清理。
 
 该结果为 `verified_once`，只证明固定样本、当前 profile 和提供方下的结构完整性，不证明建议事实正确、任意会议质量稳定或已接入日历/通讯录/会议文档。细节见 [SPEC-0008 证据](../specs/0008-meeting-brief/evidence.md) 和 [会议准备 SOP](runbooks/meeting-brief.md)。
+
+## 2026-09-25 · 可控的持久个人记忆
+
+`SPEC-0009` 将 `packages/personal-memory` 接入 runtime、Gateway、CLI 和 Workbench。当前记录使用稳定 memory ID 与递增 revision，支持显式创建 candidate/confirmed、确认、纠正、撤回和彻底遗忘；SQLite 主表只保存当前 revision，遗忘在同一事务删除正文并写入只含 owner、ID、旧摘要、revision 和时间的 tombstone。
+
+Task 执行前的确定性检索按 owner、confirmed 状态、classification、allowed purpose、scope、最多 8 条和 6,000 字符预算过滤。只有 public/personal 可自动注入；candidate、retracted、sensitive 和 secret 不进入模型。注入是带 `lumi.personal-context/v1` marker 的临时 data block，不修改 Task Ledger 中的原请求或 workflow/Action context refs；`memory.context_attached` 事件只记录 ID、revision、purpose 和 count。
+
+本机 `pnpm check` 通过 21 个测试文件、155 个用例，其中 10 个启动真实 DSH SDK 子进程；桌面/移动 Playwright 共 10 个场景通过。独立 CLI 进程验证跨重启的创建、确认、纠正和遗忘。真实 `minimax-cn / MiniMax-M3` 使用非敏感虚构偏好，在约 3.7 秒内返回唯一 token `LUMI_MEMORY_OK`，原 Task content 保持不变，事件无记忆正文；隔离数据库和 DSH home 已精确清理。
+
+该结果为 `verified_once`。当前不会自动从对话抽取记忆，没有语义相关性排序、冲突合并、正文版本历史、字段级加密、备份删除传播或跨设备同步。`personal` 记录会发送给当前模型 provider；不应出境的内容应标为 sensitive/secret。细节见 [SPEC-0009 证据](../specs/0009-personal-memory/evidence.md) 和 [个人记忆 SOP](runbooks/personal-memory.md)。
 
 ## 状态标注规则
 

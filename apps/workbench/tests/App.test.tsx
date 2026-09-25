@@ -4,7 +4,13 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { App } from '../src/App.tsx'
 import type { LumiApiClient } from '../src/api.ts'
-import type { ActionDetail, ActionStatus, ApprovalRecord, TaskRecord } from '../src/types.ts'
+import type {
+  ActionDetail,
+  ActionStatus,
+  ApprovalRecord,
+  PersonalMemory,
+  TaskRecord,
+} from '../src/types.ts'
 
 afterEach(() => cleanup())
 
@@ -34,15 +40,38 @@ const approval: ApprovalRecord = {
   taskId: waitingTask.id,
 }
 
-function fakeApi(tasks: TaskRecord[] = []): LumiApiClient {
-  return fakeApiWithActions(tasks, [])
+const candidateMemory: PersonalMemory = {
+  allowedPurposes: ['general_assistance'],
+  classification: 'personal',
+  confidence: 1,
+  confirmedAt: null,
+  content: 'Prefer concise answers',
+  createdAt: '2026-09-25T09:00:00.000Z',
+  id: 'memory-one',
+  kind: 'preference',
+  ownerId: 'local-owner',
+  retractedAt: null,
+  revision: 1,
+  scope: 'global',
+  source: 'explicit_user_input',
+  status: 'candidate',
+  updatedAt: '2026-09-25T09:00:00.000Z',
+}
+
+function fakeApi(
+  tasks: TaskRecord[] = [],
+  memories: PersonalMemory[] = [],
+): LumiApiClient {
+  return fakeApiWithActions(tasks, [], memories)
 }
 
 function fakeApiWithActions(
   tasks: TaskRecord[] = [],
   initialActions: ActionDetail[] = [],
+  initialMemories: PersonalMemory[] = [],
 ): LumiApiClient {
   let actions = initialActions
+  let memoryRecords = initialMemories
   let taskRecords = tasks
   const replaceAction = (actionId: string, status: ActionStatus): ActionDetail => {
     const current = actions.find(item => item.action.id === actionId)
@@ -88,7 +117,62 @@ function fakeApiWithActions(
       preventedExecution: true,
     })),
     capabilities: vi.fn(async () => []),
+    confirmMemory: vi.fn(async memoryId => {
+      const current = memoryRecords.find(memory => memory.id === memoryId)
+      if (!current) throw new Error(`Memory not found: ${memoryId}`)
+      const next: PersonalMemory = {
+        ...current,
+        confirmedAt: '2026-09-25T09:01:00.000Z',
+        revision: current.revision + 1,
+        status: 'confirmed',
+        updatedAt: '2026-09-25T09:01:00.000Z',
+      }
+      memoryRecords = memoryRecords.map(memory => memory.id === memoryId ? next : memory)
+      return next
+    }),
+    correctMemory: vi.fn(async (memoryId, input) => {
+      const current = memoryRecords.find(memory => memory.id === memoryId)
+      if (!current) throw new Error(`Memory not found: ${memoryId}`)
+      const next: PersonalMemory = {
+        ...current,
+        ...input,
+        confirmedAt: '2026-09-25T09:02:00.000Z',
+        revision: current.revision + 1,
+        status: 'confirmed',
+        updatedAt: '2026-09-25T09:02:00.000Z',
+      }
+      memoryRecords = memoryRecords.map(memory => memory.id === memoryId ? next : memory)
+      return next
+    }),
+    createMemory: vi.fn(async input => {
+      const next: PersonalMemory = {
+        ...input,
+        confidence: 1,
+        confirmedAt: input.status === 'confirmed' ? '2026-09-25T09:00:00.000Z' : null,
+        createdAt: '2026-09-25T09:00:00.000Z',
+        id: 'memory-created',
+        ownerId: 'local-owner',
+        retractedAt: null,
+        revision: 1,
+        source: 'explicit_user_input',
+        updatedAt: '2026-09-25T09:00:00.000Z',
+      }
+      memoryRecords = [next, ...memoryRecords]
+      return next
+    }),
     executeAction: vi.fn(async actionId => replaceAction(actionId, 'succeeded')),
+    forgetMemory: vi.fn(async memoryId => {
+      const current = memoryRecords.find(memory => memory.id === memoryId)
+      if (!current) throw new Error(`Memory not found: ${memoryId}`)
+      memoryRecords = memoryRecords.filter(memory => memory.id !== memoryId)
+      return {
+        contentDigest: `sha256:${'a'.repeat(64)}`,
+        erasedAt: '2026-09-25T09:03:00.000Z',
+        id: memoryId,
+        lastRevision: current.revision,
+        ownerId: current.ownerId,
+      }
+    }),
     getAction: vi.fn(async actionId => {
       const current = actions.find(item => item.action.id === actionId)
       if (!current) throw new Error(`Action not found: ${actionId}`)
@@ -102,9 +186,23 @@ function fakeApiWithActions(
     })),
     health: vi.fn(async () => ({ executor: 'mock', status: 'ok' })),
     listActions: vi.fn(async () => actions),
+    listMemories: vi.fn(async () => memoryRecords),
     listTasks: vi.fn(async () => taskRecords),
     reconcileAction: vi.fn(async actionId => replaceAction(actionId, 'succeeded')),
     reject: vi.fn(async () => ({ ...waitingTask, state: 'cancelled' as const })),
+    retractMemory: vi.fn(async memoryId => {
+      const current = memoryRecords.find(memory => memory.id === memoryId)
+      if (!current) throw new Error(`Memory not found: ${memoryId}`)
+      const next: PersonalMemory = {
+        ...current,
+        retractedAt: '2026-09-25T09:03:00.000Z',
+        revision: current.revision + 1,
+        status: 'retracted',
+        updatedAt: '2026-09-25T09:03:00.000Z',
+      }
+      memoryRecords = memoryRecords.map(memory => memory.id === memoryId ? next : memory)
+      return next
+    }),
     submitMeetingBrief: vi.fn(async (input, id) => {
       const task: TaskRecord = {
         ...waitingTask,
@@ -289,6 +387,62 @@ describe('Workbench', () => {
     expect(await screen.findByText('meeting-agent')).toBeTruthy()
     expect(screen.getByRole('heading', { name: '决策与问题' })).toBeTruthy()
     expect(screen.queryByText('<!-- lumi.meeting-brief/v1 -->')).toBeNull()
+  })
+
+  it('creates a confirmed memory with explicit scope and purpose', async () => {
+    const api = fakeApi()
+    render(<App api={api} />)
+
+    fireEvent.click(await screen.findByRole('tab', { name: '记忆' }))
+    fireEvent.click(await screen.findByRole('button', { name: '新增记忆' }))
+    fireEvent.change(screen.getByLabelText('记忆内容'), {
+      target: { value: 'Prefer direct decision rules' },
+    })
+    fireEvent.change(screen.getByLabelText('适用范围'), {
+      target: { value: 'coding' },
+    })
+    fireEvent.click(screen.getByText('编程', { selector: 'label span' }))
+    fireEvent.click(screen.getByRole('button', { name: '保存' }))
+
+    await waitFor(() => {
+      expect(api.createMemory).toHaveBeenCalledWith({
+        allowedPurposes: ['general_assistance', 'coding'],
+        classification: 'personal',
+        content: 'Prefer direct decision rules',
+        kind: 'preference',
+        scope: 'coding',
+        status: 'confirmed',
+      })
+    })
+    expect(await screen.findAllByText('Prefer direct decision rules')).toHaveLength(2)
+  })
+
+  it('confirms, corrects, retracts, and forgets a memory', async () => {
+    const api = fakeApi([], [candidateMemory])
+    render(<App api={api} />)
+
+    fireEvent.click(await screen.findByRole('tab', { name: '记忆' }))
+    fireEvent.click(await screen.findByRole('button', { name: '确认记忆' }))
+    await waitFor(() => expect(api.confirmMemory).toHaveBeenCalledWith(candidateMemory.id))
+
+    fireEvent.click(screen.getByRole('button', { name: '纠正' }))
+    fireEvent.change(screen.getByLabelText('记忆内容'), {
+      target: { value: 'Prefer concise, decision-first answers' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '保存' }))
+    await waitFor(() => {
+      expect(api.correctMemory).toHaveBeenCalledWith(
+        candidateMemory.id,
+        expect.objectContaining({ content: 'Prefer concise, decision-first answers' }),
+      )
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: '撤回' }))
+    await waitFor(() => expect(api.retractMemory).toHaveBeenCalledWith(candidateMemory.id))
+
+    fireEvent.click(screen.getByRole('button', { name: '彻底遗忘' }))
+    fireEvent.click(screen.getByRole('button', { name: '确认彻底遗忘' }))
+    await waitFor(() => expect(api.forgetMemory).toHaveBeenCalledWith(candidateMemory.id))
   })
 
   it('shows bound action facts and refreshes after authorization', async () => {

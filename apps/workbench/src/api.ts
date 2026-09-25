@@ -5,6 +5,13 @@ import type {
   AuditRecord,
   CapabilityDescriptor,
   HealthStatus,
+  MemoryClassification,
+  MemoryKind,
+  MemoryPurpose,
+  MemoryScope,
+  MemoryStatus,
+  PersonalMemory,
+  PersonalMemoryTombstone,
   TaskDetail,
   TaskEvent,
   TaskRecord,
@@ -31,6 +38,23 @@ export interface MeetingBriefInput {
   topic: string
 }
 
+export interface MemoryInput {
+  allowedPurposes: MemoryPurpose[]
+  classification: MemoryClassification
+  content: string
+  kind: MemoryKind
+  scope: MemoryScope
+  status: Extract<MemoryStatus, 'candidate' | 'confirmed'>
+}
+
+export interface MemoryCorrectionInput {
+  allowedPurposes?: MemoryPurpose[]
+  classification?: MemoryClassification
+  content: string
+  kind?: MemoryKind
+  scope?: MemoryScope
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -48,16 +72,22 @@ export interface LumiApiClient {
   cancel(taskId: string): Promise<TaskRecord>
   cancelAction(actionId: string): Promise<ActionCancellationResult>
   capabilities(): Promise<CapabilityDescriptor[]>
+  confirmMemory(memoryId: string): Promise<PersonalMemory>
+  correctMemory(memoryId: string, input: MemoryCorrectionInput): Promise<PersonalMemory>
+  createMemory(input: MemoryInput): Promise<PersonalMemory>
   executeAction(actionId: string): Promise<ActionDetail>
+  forgetMemory(memoryId: string): Promise<PersonalMemoryTombstone>
   getAction(actionId: string): Promise<ActionDetail>
   getAudit(taskId: string): Promise<AuditRecord[]>
   getEvents(taskId: string): Promise<TaskEvent[]>
   getTask(taskId: string): Promise<TaskDetail>
   health(): Promise<HealthStatus>
   listActions(): Promise<ActionDetail[]>
+  listMemories(): Promise<PersonalMemory[]>
   listTasks(): Promise<TaskRecord[]>
   reconcileAction(actionId: string): Promise<ActionDetail>
   reject(taskId: string): Promise<TaskRecord>
+  retractMemory(memoryId: string): Promise<PersonalMemory>
   submitMeetingBrief(input: MeetingBriefInput, id: string): Promise<TaskDetail>
   submitResearchBrief(question: string, sources: string[], id: string): Promise<TaskDetail>
   submitTask(content: string, id: string): Promise<TaskDetail>
@@ -85,6 +115,11 @@ export class LumiApi implements LumiApiClient {
 
   listActions(): Promise<ActionDetail[]> {
     return this.request<DataEnvelope<ActionDetail[]>>('/v2/actions?limit=100')
+      .then(response => response.data)
+  }
+
+  listMemories(): Promise<PersonalMemory[]> {
+    return this.request<DataEnvelope<PersonalMemory[]>>('/v2/memories?limit=100')
       .then(response => response.data)
   }
 
@@ -148,6 +183,40 @@ export class LumiApi implements LumiApiClient {
     }).then(response => response.data)
   }
 
+  createMemory(input: MemoryInput): Promise<PersonalMemory> {
+    return this.request<DataEnvelope<PersonalMemory>>('/v2/memories', {
+      body: JSON.stringify(input),
+      headers: { 'content-type': 'application/json' },
+      method: 'POST',
+    }).then(response => response.data)
+  }
+
+  confirmMemory(memoryId: string): Promise<PersonalMemory> {
+    return this.memoryCommand(memoryId, 'confirm')
+  }
+
+  correctMemory(memoryId: string, input: MemoryCorrectionInput): Promise<PersonalMemory> {
+    return this.request<DataEnvelope<PersonalMemory>>(
+      `/v2/memories/${encodeURIComponent(memoryId)}/correct`,
+      {
+        body: JSON.stringify(input),
+        headers: { 'content-type': 'application/json' },
+        method: 'POST',
+      },
+    ).then(response => response.data)
+  }
+
+  retractMemory(memoryId: string): Promise<PersonalMemory> {
+    return this.memoryCommand(memoryId, 'retract')
+  }
+
+  forgetMemory(memoryId: string): Promise<PersonalMemoryTombstone> {
+    return this.request<DataEnvelope<PersonalMemoryTombstone>>(
+      `/v2/memories/${encodeURIComponent(memoryId)}`,
+      { method: 'DELETE' },
+    ).then(response => response.data)
+  }
+
   approve(taskId: string): Promise<TaskRecord> {
     return this.decide(taskId, 'approve')
   }
@@ -193,6 +262,20 @@ export class LumiApi implements LumiApiClient {
   ): Promise<T> {
     return this.request<DataEnvelope<T>>(
       `/v2/actions/${encodeURIComponent(actionId)}/${command}`,
+      {
+        body: JSON.stringify({}),
+        headers: { 'content-type': 'application/json' },
+        method: 'POST',
+      },
+    ).then(response => response.data)
+  }
+
+  private memoryCommand(
+    memoryId: string,
+    command: 'confirm' | 'retract',
+  ): Promise<PersonalMemory> {
+    return this.request<DataEnvelope<PersonalMemory>>(
+      `/v2/memories/${encodeURIComponent(memoryId)}/${command}`,
       {
         body: JSON.stringify({}),
         headers: { 'content-type': 'application/json' },

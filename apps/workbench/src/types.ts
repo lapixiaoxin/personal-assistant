@@ -169,3 +169,35 @@ export interface ActionCancellationResult {
   effectMayRemain: boolean
   preventedExecution: boolean
 }
+
+export type MemoryKind = 'fact' | 'preference' | 'relationship' | 'experience'
+export type MemoryScope = 'global' | 'general' | 'coding' | 'research' | 'meeting'
+export type MemoryClassification = 'public' | 'personal' | 'sensitive' | 'secret'
+export type MemoryPurpose = 'general_assistance' | 'coding' | 'research' | 'meeting'
+export type MemoryStatus = 'candidate' | 'confirmed' | 'retracted'
+
+export interface PersonalMemory {
+  allowedPurposes: MemoryPurpose[]
+  classification: MemoryClassification
+  confidence: number
+  confirmedAt: string | null
+  content: string
+  createdAt: string
+  id: string
+  kind: MemoryKind
+  ownerId: string
+  retractedAt: string | null
+  revision: number
+  scope: MemoryScope
+  source: string
+  status: MemoryStatus
+  updatedAt: string
+}
+
+export interface PersonalMemoryTombstone {
+  contentDigest: string
+  erasedAt: string
+  id: string
+  lastRevision: number
+  ownerId: string
+}

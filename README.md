@@ -16,7 +16,8 @@
 - `personal-assistant` 的 DSH profile 通过每 Run loopback bridge 提议/执行同一 v2 Action；未知工具以及直接文件写、Shell、网络、workflow/`run_code` 在工具主体前失败关闭。
 - 结构化研究简报接收 1-8 个用户声明的公开 HTTPS 来源；`research-agent` 只能抓取本次 Task 绑定的 URL，保存不可变来源快照，并在全部来源已抓取且 source ID 引用覆盖通过后完成。
 - 结构化会议准备接收主题、目标、参与者、议程和背景；`meeting-agent` 不获得 Host 工具，只有固定六段简报通过确定性结构校验后才完成。
-- 本地 Web 工作台提供任务与动作双视图；用户可审阅参数摘要、授权或取消动作、执行已授权动作，并读取回执和独立验证。
+- 个人记忆支持 SQLite 持久化、候选确认、纠正、撤回和彻底遗忘；任务只注入 owner、用途、scope 和分级均匹配的已确认 public/personal 记录。
+- 本地 Web 工作台提供任务、动作和记忆三视图；用户可管理个人记忆，或审阅参数摘要、授权/取消动作并读取回执和独立验证。
 - Gateway 使用本地 Bearer token 派生 owner/principal；请求体中的 `actorId` 不能用于切换身份。
 - 任务事件、工具调用摘要、审批动作和执行结果可查询，服务重启后仍保留。
 - DSH 通过独立 adapter 接入，固定为 `0.1.7-rc.1`；核心层不导入 DSH。
@@ -49,7 +50,7 @@ packages/assistant-core/       Task lifecycle and orchestration
 packages/task-ledger/          SQLite persistence
 packages/policy/               Risk classification and approval policy
 packages/capability-registry/  Capability discovery and routing
-packages/personal-memory/      Explicit candidate/confirm/retract model
+packages/personal-memory/      Persistent memory lifecycle and bounded context
 packages/meeting-workflow/     Meeting input normalization and structure verification
 packages/research-workflow/    Research submission, source records, citation verification
 adapters/dsh/                  DSH-only types and event mapping
@@ -109,6 +110,16 @@ pnpm cli meeting "季度路线评审" \
   --participant "研发负责人" \
   --agenda "回顾目标" \
   --agenda "确认优先级"
+pnpm cli memory add "偏好直接、明确的判定规则" \
+  --kind preference \
+  --scope global \
+  --purpose general_assistance
+pnpm cli memory list
+pnpm cli memory correct <memory-id> "仅在编程任务中偏好决策表" \
+  --scope coding \
+  --purpose coding
+pnpm cli memory retract <memory-id>
+pnpm cli memory forget <memory-id>
 pnpm cli list
 pnpm cli get <task-id>
 pnpm cli events <task-id>
@@ -184,6 +195,12 @@ curl -sS http://127.0.0.1:4310/v1/tasks/task-http-demo/audit \
 | `POST` | `/v2/actions/:id/execute` | 执行动作并读回核验 |
 | `POST` | `/v2/actions/:id/reconcile` | 对账不确定结果 |
 | `POST` | `/v2/actions/:id/cancel` | 撤销未执行动作或记录剩余影响 |
+| `POST`、`GET` | `/v2/memories` | 创建或列出当前 owner 的个人记忆 |
+| `GET` | `/v2/memories/:id` | 读取当前 owner 的一条记忆 |
+| `POST` | `/v2/memories/:id/confirm` | 确认候选记忆 |
+| `POST` | `/v2/memories/:id/correct` | 纠正正文或适用边界并递增 revision |
+| `POST` | `/v2/memories/:id/retract` | 撤回记忆并停止后续检索 |
+| `DELETE` | `/v2/memories/:id` | 删除正文并建立最小 tombstone |
 | `POST` | `/v2/workflows/research-brief` | 提交绑定公开 HTTPS 来源的研究简报 |
 | `POST` | `/v2/workflows/meeting-brief` | 提交结构化会议准备简报 |
 
@@ -191,7 +208,7 @@ curl -sS http://127.0.0.1:4310/v1/tasks/task-http-demo/audit \
 
 ## Web 工作台
 
-电脑端入口位于 `apps/workbench`。任务视图提供普通任务、研究简报和会议准备三种 composer 模式、状态与结果查看、任务级审批、取消、事件和审计记录；研究模式要求逐行填写公开 HTTPS 来源，会议模式收集主题、目标、参与者、议程和背景，并把已验证结果渲染为六个简报分区。动作视图列出 DSH 或 API 提议的受控 Action，展示目标、参数摘要、期限、授权、回执和 verification，并按服务端状态提供授权、执行、取消或对账。它只调用 lumi Gateway，不直接连接 DSH、数据库、source snapshot 或 artifact 目录。
+电脑端入口位于 `apps/workbench`。任务视图提供普通任务、研究简报和会议准备三种 composer 模式、状态与结果查看、任务级审批、取消、事件和审计记录；研究模式要求逐行填写公开 HTTPS 来源，会议模式收集主题、目标、参与者、议程和背景，并把已验证结果渲染为六个简报分区。动作视图列出 DSH 或 API 提议的受控 Action，展示目标、参数摘要、期限、授权、回执和 verification，并按服务端状态提供授权、执行、取消或对账。记忆视图提供状态筛选、用途/scope/分级设置、确认、纠正、撤回和二次确认遗忘。它只调用 lumi Gateway，不直接连接 DSH、数据库、source snapshot 或 artifact 目录。
 
 开发时分别启动 Gateway 和 Vite：
 
@@ -298,7 +315,7 @@ pnpm dsh:web:minimax-cn
 - `coding-agent` 仍是本机开发态宽权限 profile；它不属于生产动作边界，不能持有真实 Connector 凭据。进程内 guard 也不是对恶意插件或同机进程的 OS 沙箱。
 - 受控 profile 仍能读取 workspace 内允许的资料；敏感读取、模型出境和通用 secret store 尚未完成。
 - 工具审计只保存工具名、调用 ID 和成功状态，不复制参数或返回正文。
-- Personal Memory 当前只提供显式候选、确认和撤回模型，不会自动从对话写入长期记忆。
+- Personal Memory 只保存用户通过可信入口显式提交的记录，不会自动从对话写入；candidate、retracted、sensitive 和 secret 不会自动进入模型。当前 SQLite 正文尚无字段级加密。
 
 ## 暂未实现
 
@@ -307,5 +324,6 @@ pnpm dsh:web:minimax-cn
 - 自动重试与跨进程运行中任务恢复
 - Desktop、Mobile、Watch、Voice 客户端
 - 自动长期记忆写入
+- 语义/向量记忆检索、冲突合并和跨设备同步
 - 搜索引擎、登录态网页、JavaScript 渲染和跨站爬取
 - 无人确认的外部发送、支付、删除和设备控制

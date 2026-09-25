@@ -227,6 +227,113 @@ describe('gateway', () => {
     await app.close()
   })
 
+  it('exposes the owner-scoped personal memory lifecycle', async () => {
+    const runtime = testRuntime()
+    const app = buildGateway({ runtime })
+    const created = await app.inject({
+      headers: authenticatedHeaders(true),
+      method: 'POST',
+      payload: {
+        allowedPurposes: ['general_assistance', 'meeting'],
+        classification: 'personal',
+        content: 'Prefer concise meeting briefs',
+        kind: 'preference',
+        scope: 'global',
+        status: 'candidate',
+      },
+      url: '/v2/memories',
+    })
+
+    expect(created.statusCode).toBe(201)
+    expect(created.json().data).toMatchObject({
+      ownerId: 'local-owner',
+      revision: 1,
+      status: 'candidate',
+    })
+    const memoryId = created.json().data.id as string
+
+    const listed = await app.inject({
+      headers: authenticatedHeaders(),
+      method: 'GET',
+      url: '/v2/memories?status=candidate',
+    })
+    expect(listed.json().data).toHaveLength(1)
+
+    const confirmed = await app.inject({
+      headers: authenticatedHeaders(),
+      method: 'POST',
+      url: `/v2/memories/${memoryId}/confirm`,
+    })
+    expect(confirmed.json().data).toMatchObject({ revision: 2, status: 'confirmed' })
+
+    const corrected = await app.inject({
+      headers: authenticatedHeaders(true),
+      method: 'POST',
+      payload: {
+        allowedPurposes: ['meeting'],
+        content: 'Prefer decision-first meeting briefs',
+        scope: 'meeting',
+      },
+      url: `/v2/memories/${memoryId}/correct`,
+    })
+    expect(corrected.json().data).toMatchObject({
+      allowedPurposes: ['meeting'],
+      content: 'Prefer decision-first meeting briefs',
+      revision: 3,
+      scope: 'meeting',
+    })
+
+    const retracted = await app.inject({
+      headers: authenticatedHeaders(),
+      method: 'POST',
+      url: `/v2/memories/${memoryId}/retract`,
+    })
+    expect(retracted.json().data).toMatchObject({ revision: 4, status: 'retracted' })
+
+    const forgotten = await app.inject({
+      headers: authenticatedHeaders(),
+      method: 'DELETE',
+      url: `/v2/memories/${memoryId}`,
+    })
+    expect(forgotten.json().data).toMatchObject({
+      id: memoryId,
+      lastRevision: 4,
+    })
+    expect(JSON.stringify(forgotten.json())).not.toContain('decision-first')
+
+    const missing = await app.inject({
+      headers: authenticatedHeaders(),
+      method: 'GET',
+      url: `/v2/memories/${memoryId}`,
+    })
+    expect(missing.statusCode).toBe(404)
+    expect(missing.json().error.code).toBe('MEMORY_NOT_FOUND')
+    await app.close()
+  })
+
+  it('does not expose another owner memory through the authenticated API', async () => {
+    const runtime = testRuntime()
+    const foreign = runtime.memories.create({
+      authStrength: 'local_process',
+      id: 'foreign-user',
+      kind: 'owner',
+      ownerId: 'foreign-owner',
+    }, {
+      content: 'Foreign owner memory',
+    })
+    const app = buildGateway({ runtime })
+
+    const response = await app.inject({
+      headers: authenticatedHeaders(),
+      method: 'GET',
+      url: `/v2/memories/${foreign.id}`,
+    })
+
+    expect(response.statusCode).toBe(404)
+    expect(response.json().error.code).toBe('MEMORY_NOT_FOUND')
+    await app.close()
+  })
+
   it('submits a structured research brief with server-owned workflow refs', async () => {
     const state: { runtime?: AssistantRuntime } = {}
     const executor: TaskExecutor = {
