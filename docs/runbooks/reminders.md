@@ -1,6 +1,6 @@
 # 一次性提醒与本地通知
 
-状态：verified_once。验证日期：2026-09-25。适用版本：SPEC-0011 实现提交（证据绑定时补充 commit）。适用于本机长期运行的 lumi Gateway 或按需启动的 CLI；通知只进入本地 inbox。
+状态：verified_once。验证日期：2026-09-25。适用版本：SPEC-0011 实现提交 `e2386a8`。适用于本机长期运行的 lumi Gateway 或按需启动的 CLI；通知只进入本地 inbox。
 
 ## 前置与边界
 
