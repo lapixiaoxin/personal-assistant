@@ -2,7 +2,7 @@
 
 `lumi` 是面向长期成长的超级个人智能体，名字取意于与“光”有关的词根，短、具有未来感。
 
-当前处于第一阶段 MVP，重点是持久化、可审计的任务闭环与可解释的单机重启恢复。
+本地单 owner `v0.1` MVP 已完成一次总体验收，重点是持久化、可审计的任务闭环、可解释的单机重启恢复和本地提醒；验收范围与未完成边界见 [MVP 验收记录](docs/evidence/2026-09-25-mvp-acceptance.md)。
 
 长期方案与后续建设入口：[设计总纲](docs/design/00-overview.md)、[文档导航](docs/README.md)、[Agent 指南](AGENTS.md)、[首个 SDD 规范](specs/0001-action-boundary/spec.md)。设计为 Proposed，已实现与未实现的边界见 [工程事实基线](docs/current-state.md)。
 

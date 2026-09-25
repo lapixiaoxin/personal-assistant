@@ -21,6 +21,7 @@
 | Agent 开始工作 | [AGENTS](../AGENTS.md)、[SDD](design/08-sdd.md)、[模板](templates/README.md) |
 | 工程命名与测试布局 | [SPEC-0002](../specs/0002-lumi-workspace/spec.md)、[测试约定](../tests/README.md) |
 | 查看可信动作闭环 | [SPEC-0001](../specs/0001-action-boundary/spec.md)、[动作门禁 SOP](runbooks/action-boundary.md) |
+| 查看本地 MVP 总体验收 | [v0.1 验收记录](evidence/2026-09-25-mvp-acceptance.md) |
 | 理解关键取舍 | [ADR](adr/README.md) |
 | 运行和验证 | [SOP](runbooks/README.md)、[评测](design/09-evaluation.md)、[本次证据](evidence/2026-09-24-design-baseline.md) |
 | 升级 DSH | [现有上游策略](upstream-strategy.md) |
