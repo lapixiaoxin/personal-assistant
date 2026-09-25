@@ -1,0 +1,195 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1240" viewBox="0 0 1400 1240" role="img" aria-labelledby="title description">
+  <title id="title">个人资产与上下文 | Proposed v0.3</title>
+  <desc id="description">设计目标，尚未启用。用户明确偏好、目标和纠正，任务证据与反馈，以及不可信外部材料先进入候选记忆，记录来源、置信度、适用范围和有效期。候选按规则确认或经冲突复核后，由 lumi Host 持有版本化身份与偏好、目标承诺、决策记忆、产物证据，使用 SQLite 与文件保存，支持导出和撤回。Context Builder 按 Task、权限、相关性、token 预算与时效构建上下文，交给 DSH 主 agent，子 agent 只获子任务所需子集。结果与反馈重新进入候选。DSH transcript 与 compaction 仅是执行材料；检索和向量索引是可重建投影，均不是唯一事实源。撤回与纠正更新 Host 版本和撤回标记，使索引与缓存失效，并在后续上下文中排除旧版本。记忆和置信度不能充当权限凭证。</desc>
+
+  <g font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" fill="#183047">
+    <rect width="1400" height="1240" fill="#f7fafc"/>
+    <path d="M40 155 H1360" fill="none" stroke="#d9e4ec" stroke-width="1.5"/>
+    <text x="52" y="48" font-size="14" font-weight="700" letter-spacing="2" fill="#62788d">LUMI / DSH-CENTERED / 05</text>
+    <text x="52" y="91" font-size="34" font-weight="700">个人资产与上下文</text>
+    <text x="52" y="124" font-size="18" fill="#526b7f">资产归用户与 Host；上下文按需构建；执行反馈回到候选，而非直接成为记忆。</text>
+    <rect x="1158" y="39" width="190" height="38" rx="19" fill="#e8eef5" stroke="#cbd7e3"/>
+    <text x="1253" y="64" text-anchor="middle" font-size="18" font-weight="700" fill="#415770">Proposed v0.3</text>
+    <text x="1348" y="104" text-anchor="end" font-size="14" fill="#62788d">目标设计，非已启用能力</text>
+    <circle cx="965" cy="135" r="5" fill="#2563eb"/>
+    <text x="978" y="140" font-size="14" fill="#415770">DSH 执行</text>
+    <circle cx="1097" cy="135" r="5" fill="#0f8b8d"/>
+    <text x="1110" y="140" font-size="14" fill="#415770">Host 资产</text>
+    <circle cx="1234" cy="135" r="5" fill="#c48817"/>
+    <text x="1247" y="140" font-size="14" fill="#415770">候选 / 审批</text>
+
+    <!-- Primary flow and the feedback return use separate routing corridors. -->
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M310 254 H344 V464 H310 M310 358 H408 M344 358 V254" stroke="#8498ab" stroke-width="2.5"/>
+      <path d="M640 365 H690" stroke="#c48817" stroke-width="3"/>
+      <path d="M908 365 H982" stroke="#0f8b8d" stroke-width="3"/>
+      <path d="M799 445 V519 H524 V503" stroke="#c48817" stroke-width="2" stroke-dasharray="6 5"/>
+      <path d="M1324 539 V759" stroke="#0f8b8d" stroke-width="3"/>
+      <path d="M1116 550 V611" stroke="#7a91a5" stroke-width="2" stroke-dasharray="5 5"/>
+      <path d="M1132 699 V759" stroke="#7a91a5" stroke-width="2" stroke-dasharray="5 5"/>
+      <path d="M924 849 H844" stroke="#0f8b8d" stroke-width="3"/>
+      <path d="M632 849 H558 M558 792 V920 M558 792 H500 M558 920 H500" stroke="#2563eb" stroke-width="2.5"/>
+      <path d="M400 792 H338 V920 H400 M338 855 H285" stroke="#2563eb" stroke-width="2.5"/>
+      <path d="M170 803 V584 H524 V503" stroke="#c48817" stroke-width="3"/>
+      <path d="M738 955 V974 M738 1012 V1044" stroke="#7b9bce" stroke-width="2" stroke-dasharray="5 5"/>
+    </g>
+    <g>
+      <polygon points="408,358 397,352 397,364" fill="#8498ab"/>
+      <polygon points="690,365 679,359 679,371" fill="#c48817"/>
+      <polygon points="982,365 970,359 970,371" fill="#0f8b8d"/>
+      <polygon points="524,503 518,514 530,514" fill="#c48817"/>
+      <polygon points="1324,759 1318,747 1330,747" fill="#0f8b8d"/>
+      <polygon points="1116,611 1111,601 1121,601" fill="#7a91a5"/>
+      <polygon points="1132,759 1127,749 1137,749" fill="#7a91a5"/>
+      <polygon points="844,849 856,843 856,855" fill="#0f8b8d"/>
+      <polygon points="500,792 511,786 511,798" fill="#2563eb"/>
+      <polygon points="500,920 511,914 511,926" fill="#2563eb"/>
+      <polygon points="285,855 296,849 296,861" fill="#2563eb"/>
+      <polygon points="738,1044 733,1034 743,1034" fill="#7b9bce"/>
+    </g>
+
+    <circle cx="69" cy="188" r="15" fill="#e7edf3"/>
+    <text x="69" y="193" text-anchor="middle" font-size="13" font-weight="700" fill="#526b7f">01</text>
+    <text x="94" y="195" font-size="20" font-weight="700">来源保留，信任分级</text>
+    <rect x="56" y="217" width="254" height="76" rx="38" fill="#ffffff" stroke="#b9c9d6" stroke-width="1.5"/>
+    <circle cx="86" cy="244" r="8" fill="none" stroke="#62788d" stroke-width="2"/>
+    <path d="M73 269 Q73 255 86 255 Q99 255 99 269" fill="none" stroke="#62788d" stroke-width="2" stroke-linecap="round"/>
+    <text x="110" y="249" font-size="20" font-weight="700">用户明确表达</text>
+    <text x="110" y="276" font-size="16" fill="#526b7f">偏好 / 目标 / 纠正</text>
+
+    <path d="M56 322 H80 L92 309 H158 L171 322 H310 V400 H56 Z" fill="#ffffff" stroke="#b9c9d6" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M78 347 H96 M78 356 H96 M78 365 H90" fill="none" stroke="#62788d" stroke-width="2" stroke-linecap="round"/>
+    <text x="110" y="352" font-size="20" font-weight="700">任务证据与反馈</text>
+    <text x="110" y="381" font-size="16" fill="#526b7f">产物引用 / 核验 / 复盘</text>
+
+    <path d="M56 423 H288 L310 445 V510 H56 Z" fill="#fffaf0" stroke="#d7b672" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M288 423 V445 H310" fill="#f9edcf" stroke="#d7b672" stroke-width="1.5" stroke-linejoin="round"/>
+    <polygon points="85,445 98,468 72,468" fill="none" stroke="#a56a10" stroke-width="1.7" stroke-linejoin="round"/>
+    <path d="M85 451 V459 M85 463 V464" fill="none" stroke="#a56a10" stroke-width="2" stroke-linecap="round"/>
+    <text x="110" y="457" font-size="20" font-weight="700" fill="#855b13">外部材料</text>
+    <text x="110" y="487" font-size="16" fill="#855b13">不可信数据，不作指令</text>
+
+    <circle cx="421" cy="188" r="15" fill="#fff0cd"/>
+    <text x="421" y="193" text-anchor="middle" font-size="13" font-weight="700" fill="#855b13">02</text>
+    <text x="446" y="195" font-size="20" font-weight="700">候选写入，不越过确认</text>
+    <path d="M408 258 H613 L640 285 V503 H408 Z" fill="#fff7e5" stroke="#c48817" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M613 258 V285 H640" fill="#f7e4b4" stroke="#c48817" stroke-width="1.5" stroke-linejoin="round"/>
+    <text x="430" y="304" font-size="25" font-weight="700" fill="#855b13">候选记忆</text>
+    <text x="430" y="333" font-size="17" fill="#926a21">待确认，非权威事实</text>
+    <path d="M430 350 H616" fill="none" stroke="#e7cd94" stroke-width="1.3"/>
+    <circle cx="435" cy="374" r="3.5" fill="#c48817"/>
+    <text x="448" y="381" font-size="18">来源 / 置信度</text>
+    <circle cx="435" cy="409" r="3.5" fill="#c48817"/>
+    <text x="448" y="416" font-size="18">适用范围 / 有效期</text>
+    <path d="M430 438 H616" fill="none" stroke="#e7cd94" stroke-width="1.3"/>
+    <text x="430" y="471" font-size="16" fill="#926a21">证据引用 / 冲突记录</text>
+
+    <text x="799" y="261" text-anchor="middle" font-size="16" fill="#926a21">敏感项 / 冲突项需复核</text>
+    <polygon points="799,285 908,365 799,445 690,365" fill="#fff0cc" stroke="#c48817" stroke-width="2"/>
+    <text x="799" y="354" text-anchor="middle" font-size="22" font-weight="700" fill="#855b13">按规则确认</text>
+    <text x="799" y="386" text-anchor="middle" font-size="21" font-weight="700" fill="#855b13">冲突复核</text>
+    <text x="945" y="348" text-anchor="middle" font-size="15" fill="#0f7678">确认</text>
+    <text x="677" y="542" text-anchor="middle" font-size="16" fill="#926a21">未决 / 冲突保留候选</text>
+    <text x="241" y="570" font-size="17" font-weight="700" fill="#926a21">结果反馈回候选，重新确认</text>
+
+    <!-- The cylinder is the authoritative asset store, not a session store. -->
+    <circle cx="997" cy="188" r="15" fill="#d9f3ef"/>
+    <text x="997" y="193" text-anchor="middle" font-size="13" font-weight="700" fill="#0b7274">03</text>
+    <text x="1022" y="195" font-size="20" font-weight="700" fill="#0b7274">lumi Host 个人资产</text>
+    <path d="M982 253 V523 C982 560 1342 560 1342 523 V253 Z" fill="#edfaf7" stroke="#0f8b8d" stroke-width="2"/>
+    <ellipse cx="1162" cy="253" rx="180" ry="28" fill="#d5f3ed" stroke="#0f8b8d" stroke-width="2"/>
+    <text x="1162" y="259" text-anchor="middle" font-size="18" font-weight="700" fill="#0b7274">用户所有的权威个人资产</text>
+    <g fill="#0f8b8d">
+      <circle cx="1021" cy="313" r="5"/>
+      <circle cx="1021" cy="352" r="5"/>
+      <circle cx="1021" cy="391" r="5"/>
+      <circle cx="1021" cy="430" r="5"/>
+    </g>
+    <text x="1040" y="320" font-size="21" font-weight="700">版本化身份 / 偏好</text>
+    <text x="1040" y="359" font-size="21">目标 / 承诺</text>
+    <text x="1040" y="398" font-size="21">决策记忆</text>
+    <text x="1040" y="437" font-size="21">产物 / 证据</text>
+    <path d="M1009 458 H1315" fill="none" stroke="#b5ddd5" stroke-width="1.5"/>
+    <text x="1162" y="486" text-anchor="middle" font-size="19" font-weight="700" fill="#0b7274">SQLite + 文件</text>
+    <text x="1162" y="517" text-anchor="middle" font-size="16" fill="#287b79">可导出 / 可撤回 / 版本可追溯</text>
+
+    <!-- Explicit user corrections invalidate projections and future bundles. -->
+    <g fill="none" stroke="#c48817" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="6 5">
+      <path d="M874 620 V572 H1030 V549"/>
+      <path d="M903 662 H982"/>
+      <path d="M874 703 V727 H1025 V759"/>
+    </g>
+    <polygon points="1030,549 1025,559 1035,559" fill="#c48817"/>
+    <polygon points="982,662 972,657 972,667" fill="#c48817"/>
+    <polygon points="1025,759 1020,749 1030,749" fill="#c48817"/>
+    <path d="M432 620 H883 L903 640 V703 H432 Z" fill="#fff8e9" stroke="#dbc18b" stroke-width="1.5"/>
+    <text x="452" y="650" font-size="20" font-weight="700" fill="#855b13">用户撤回 / 纠正，由 Host 生效</text>
+    <text x="452" y="680" font-size="16" fill="#855b13">更新版本与撤回标记；后续上下文排除旧版本</text>
+    <text x="930" y="593" text-anchor="middle" font-size="14" fill="#926a21">更新资产</text>
+    <text x="944" y="646" text-anchor="middle" font-size="14" fill="#926a21">失效</text>
+    <text x="955" y="717" text-anchor="middle" font-size="14" fill="#926a21">重建后续上下文</text>
+
+    <text x="1134" y="589" font-size="14" fill="#62788d">派生</text>
+    <rect x="982" y="611" width="302" height="88" rx="14" fill="#f0f4f7" stroke="#a6b7c6" stroke-width="1.5" stroke-dasharray="6 4"/>
+    <path d="M1001 632 H1016 M1001 640 H1022 M1001 648 H1013" fill="none" stroke="#6a8297" stroke-width="2" stroke-linecap="round"/>
+    <text x="1032" y="642" font-size="18" font-weight="700" fill="#526b7f">检索 / 向量索引</text>
+    <text x="1001" y="674" font-size="16" fill="#526b7f">可重建投影，非唯一事实源</text>
+    <text x="1150" y="733" font-size="14" fill="#62788d">召回定位</text>
+
+    <text x="1100" y="750" font-size="14" fill="#0b7274">04 / 按需构建</text>
+    <path d="M1000 759 H1340 V938 H1000 L952 887 H924 V811 H952 Z" fill="#e1f6f1" stroke="#0f8b8d" stroke-width="2" stroke-linejoin="round"/>
+    <text x="1141" y="795" text-anchor="middle" font-size="25" font-weight="700" fill="#0b7274">Context Builder</text>
+    <text x="1141" y="828" text-anchor="middle" font-size="19">Task / 权限 / 相关性</text>
+    <text x="1141" y="857" text-anchor="middle" font-size="18">token 预算 / 时效过滤</text>
+    <path d="M1019 875 H1306" fill="none" stroke="#a9d8cf" stroke-width="1.3"/>
+    <text x="1141" y="899" text-anchor="middle" font-size="16" fill="#287b79">带来源与版本的 ContextBundle</text>
+    <text x="1141" y="923" text-anchor="middle" font-size="16" fill="#287b79">仅取所需，不复制全量资产</text>
+    <text x="884" y="828" text-anchor="middle" font-size="14" fill="#0b7274">上下文包</text>
+
+    <text x="738" y="727" text-anchor="middle" font-size="18" font-weight="700" fill="#2457af">05 / DSH 认知执行</text>
+    <circle cx="738" cy="849" r="111" fill="#e3edff"/>
+    <circle cx="738" cy="849" r="101" fill="#eff5ff" stroke="#2563eb" stroke-width="2.5"/>
+    <path d="M716 784 H760 M723 792 H753" fill="none" stroke="#8aaee9" stroke-width="2" stroke-linecap="round"/>
+    <text x="738" y="830" text-anchor="middle" font-size="32" font-weight="700" fill="#2158b5">DSH</text>
+    <text x="738" y="865" text-anchor="middle" font-size="25" font-weight="700" fill="#2158b5">主 agent</text>
+    <text x="738" y="901" text-anchor="middle" font-size="16" fill="#426cae">唯一认知执行循环</text>
+    <rect x="604" y="974" width="268" height="38" rx="19" fill="#e7effd" stroke="#bed0ed"/>
+    <text x="738" y="999" text-anchor="middle" font-size="17" fill="#426cae">工具 / Skills / 子任务委派</text>
+
+    <text x="447" y="739" text-anchor="middle" font-size="18" font-weight="700" fill="#2457af">子 agent 只获子集</text>
+    <circle cx="450" cy="792" r="49" fill="#eff5ff" stroke="#5d8ad4" stroke-width="2"/>
+    <text x="450" y="789" text-anchor="middle" font-size="17" font-weight="700" fill="#2457af">子 agent A</text>
+    <text x="450" y="814" text-anchor="middle" font-size="14" fill="#426cae">任务子集</text>
+    <circle cx="450" cy="920" r="49" fill="#eff5ff" stroke="#5d8ad4" stroke-width="2"/>
+    <text x="450" y="917" text-anchor="middle" font-size="17" font-weight="700" fill="#2457af">子 agent B</text>
+    <text x="450" y="942" text-anchor="middle" font-size="14" fill="#426cae">任务子集</text>
+    <text x="581" y="811" font-size="14" fill="#426cae">裁剪</text>
+    <text x="581" y="915" font-size="14" fill="#426cae">委派</text>
+    <text x="327" y="776" text-anchor="middle" font-size="14" fill="#426cae">回传结果</text>
+    <text x="450" y="1000" text-anchor="middle" font-size="15" fill="#426cae">上下文 / 权限 / 预算均不扩大</text>
+
+    <text x="56" y="774" font-size="18" font-weight="700" fill="#926a21">06 / 反馈闭环</text>
+    <path d="M56 803 H269 L285 819 V926 H56 Z" fill="#ffffff" stroke="#c6a86c" stroke-width="1.5" stroke-linejoin="round"/>
+    <path d="M74 834 H88 V845 M88 834 L76 846" fill="none" stroke="#c48817" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="100" y="844" font-size="23" font-weight="700" fill="#855b13">结果与反馈</text>
+    <text x="74" y="878" font-size="16">产物 / 证据 / 用户纠正</text>
+    <text x="74" y="906" font-size="15" fill="#926a21">只提候选，不直写权威记忆</text>
+
+    <!-- Secondary material stays visually distinct from the authoritative store. -->
+    <path d="M551 1044 H1327 L1348 1065 V1125 H551 Z" fill="#edf3fc" stroke="#c3d2e8" stroke-width="1.5"/>
+    <path d="M575 1062 V1107 M584 1062 V1107" fill="none" stroke="#90a9cc" stroke-width="2"/>
+    <text x="604" y="1076" font-size="20" font-weight="700" fill="#426cae">DSH transcript / compaction</text>
+    <text x="604" y="1105" font-size="17" fill="#526b7f">会话与压缩摘要仅是执行材料，不是权威个人记忆。</text>
+    <text x="56" y="1068" font-size="17" font-weight="700" fill="#526b7f">实线：数据流与结果回流</text>
+    <path d="M57 1092 H99" fill="none" stroke="#7a91a5" stroke-width="2" stroke-dasharray="6 5"/>
+    <text x="111" y="1098" font-size="16" fill="#62788d">虚线：派生引用 / 状态变更</text>
+
+    <path d="M52 1152 H1348" fill="none" stroke="#d9e4ec" stroke-width="1.5"/>
+    <path d="M68 1170 L83 1176 V1188 Q83 1198 68 1203 Q53 1198 53 1188 V1176 Z" fill="#fff0cc" stroke="#b8801b" stroke-width="1.7" stroke-linejoin="round"/>
+    <path d="M68 1179 V1189 M68 1194 V1195" fill="none" stroke="#a56a10" stroke-width="2.5" stroke-linecap="round"/>
+    <text x="100" y="1190" font-size="22" font-weight="700" fill="#855b13">记忆不能充当权限凭证</text>
+    <text x="433" y="1188" font-size="17" fill="#526b7f">置信度不授予权限；动作仍须核验当前有效授权。</text>
+    <text x="52" y="1225" font-size="13" fill="#73889b">纠正与撤回同时使旧索引、检索缓存失效；后续 Context 必须使用有效版本。</text>
+    <text x="1348" y="1225" text-anchor="end" font-size="13" fill="#73889b">依据：DSH 架构研究 / 2026-09-25</text>
+  </g>
+</svg>

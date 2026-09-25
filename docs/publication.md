@@ -1,8 +1,18 @@
 # 飞书设计发布清单
 
-发布日期：2026-09-24。状态：已发布审阅版 v0.2，方案本身为 Proposed。用户授权在“个人助手”下新建方案子文档；原始愿景与原工程方案未修改。
+发布日期：2026-09-24（v0.2 系列）、2026-09-25（DSH 专题 v0.3）。均为 Proposed 审阅版。用户授权在“个人助手”下新建方案子文档；原始愿景与原工程方案未修改。
 
-投影差异（SPEC-0002）：本次任务整理当前工程，未重新发布飞书。仓库的 `00-overview` 新增 lumi 命名、`08-sdd` 更新测试布局、`current-state` 追加整理与验证记录；这三篇的飞书正文仍为下表所列旧 revision。后续发布按本节差异局部同步，不能把旧投影当作最新工程事实。
+## DSH 中心架构 · v0.3
+
+最新专题：[lumi：以 DSH 为核心 Harness 的工程架构](https://bytedance.larkoffice.com/docx/ORmCdJYrkozaqoxLRHCc7ZocnFc)，本地源为 [10-dsh-centered-architecture](design/10-dsh-centered-architecture.md)。全文 revision **4**，包含五张 SVG 画板和一张 Mermaid 时序画板，已逐图导出并目视检查；正文及 Mermaid 源码与草稿一致。
+
+新节点 `OAjGw2beri62HykYOAVcqc1KnCd` 的父节点已核验为“个人助手” `CIACwItFgimTkrkM3B4cGAxznyf`。本篇细化 DSH 职责、Cordis 插件接线、多端部署和技术选型；其余产品宪章、授权与验收原则沿用 v0.2。没有修改旧飞书专题或把设计标成运行时已启用。
+
+证据见 [SPEC-0003](../specs/0003-dsh-centered-design/evidence.md)；本机回执、全文和六张预览保存在 `data/dsh-architecture-20260925/`。主设计源 SHA-256：`9b46917889c93df1485b8ca3e212e3e482dd286fc882aba8cf3c2b8748ff7c43`。图源位于 `docs/design/assets/dsh-centered/`。
+
+## v0.2 系列与投影差异
+
+投影差异（SPEC-0002/0003）：仓库的 `00-overview` 新增 lumi 命名、`08-sdd` 更新测试布局、`current-state` 追加整理及 DSH 设计核验；`02-architecture`、`07-roadmap` 同步了 v0.3 的 DSH / Cordis 职责。这五篇的旧飞书正文仍为下表所列 revision。最新 DSH 提案见上方新篇，不能把旧投影当作最新工程事实；后续同步按差异局部更新。
 
 入口：[超级个人助手：长期设计总纲](https://bytedance.larkoffice.com/wiki/DnYJwYk8iiijjykyqHqc4xAYnke)。
 

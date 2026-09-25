@@ -2,6 +2,8 @@
 
 状态：Proposed · 2026-09-24。关联：设计 02/03、M0–M3。
 
+2026-09-25：[ADR-003](0003-dsh-centered-harness.md) 细化选项 4：DSH 为唯一认知与工具编排 Harness，lumi Host 提供确定性服务，Cordis 插件桥接其端口。个人资产独立与模块化单体原则保持不变。
+
 ## 背景
 
 现有 TS Core、SQLite Ledger、DSH adapter 已分离，测试基线可运行。长期需要换模型、工具、专业 Agent、记忆实现和入口，个人资产需连续存在。单用户当前不需要分布式控制面。

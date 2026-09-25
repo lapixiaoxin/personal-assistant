@@ -1,6 +1,6 @@
 # 设计文档发布与读回
 
-状态：verified_once · 2026-09-24。环境：本机 Python3、lark-cli 1.0.87、user 身份。本次 11 篇审阅文档成功发布并读回；[发布清单](../publication.md) 保存目标和版本。
+状态：verified_once · 2026-09-24 / 2026-09-25。环境：本机 Python3、lark-cli 1.0.87、user 身份。初次 11 篇及后续 DSH 六图专题成功发布并读回；[发布清单](../publication.md) 保存目标和版本。仍仅为指定环境证据。
 
 ## 前置
 
@@ -35,3 +35,15 @@ Markdown 转换器只支持本次用到的标题、段落、简单列表、表�
 保留 draft 及 `.presentation-decision.json`、创建回执和最终 fetch。发布快照含源文件摘要；它不替代 Git commit。回查时先比较版本与内容，防止覆盖用户已编辑的正文。
 
 只清理本次生成的临时目录；默认保留草稿及证据在忽略目录中。敏感认证数据不得进入 SOP、fixture 或发布记录。下一次跨版本成功后追加证据，不能凭本次成功推断永久兼容。
+
+## 2026-09-25 · 多画板专题的已验证补充
+
+适用：本机同版本 CLI，授权新建“个人助手”子文档；五张本地 SVG、一张 Mermaid 时序图。独立 whiteboard-cli 不在本机缓存，offline npx 返回 `ENOTCACHED`，因此按 lark-doc 的 SVG / Mermaid 直接插入路线完成，不依赖额外 CLI。
+
+1. 在 init-draft 返回的专属目录中生成 XML；每个图使用 `<whiteboard type="svg|mermaid" path="@./相对路径"></whiteboard>`，外部图源入库，发布草稿不入库。此次专用投影复用旧转换器后，明确替换其硬编码的版本日期、去除自动编号标题里的手写序号，并将六个 Markdown 图引用替换为真实画板，不能直接照搬旧脚本声称支持图片。
+2. 五张 SVG 经 XML、自包含资源及文字/连线检查；主文档 parse 为 `assessment.status=passed`，识别 6 个 whiteboard。创建成功后立即保存完整 JSON，核查 new_blocks 六项，无 warning；禁止在读回失败后盲目重建。
+3. 全文 fetch 的 Mermaid 画板会带回源码，而 path 引用草稿没有内联源码。比较前将草稿该节点展开为原 `.mmd`，单独逐字核验 Mermaid 内容，再规范化整篇文本。此次正文与源码共 8460 个非空白字符完全一致；不要直接删除所有画板内容掩盖源码差异。
+4. 核对 fetch 的六个 token 与创建回执顺序一致；对每个 token 执行 `whiteboard +export --output-type preview --output ./<证据目录>/<序号>-preview --as user`，用实际返回的 `.jpg` 路径打开查看。返回成功和文件非空不能代替目视检查。
+5. 以 `wiki +node-get --node-token <document_id> --obj-type docx --as user` 核对真实 parent_node_token；本次确为用户指定“个人助手”。保存源文件、草稿与各图摘要，更新发布清单和规格证据。
+
+本次证据见 [SPEC-0003](../../specs/0003-dsh-centered-design/evidence.md)，回执与逐图预览位于 `data/dsh-architecture-20260925/`。这是文档工具发布验收，不是 lumi 自身具备飞书或设备能力的验证。

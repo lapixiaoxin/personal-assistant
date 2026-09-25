@@ -1,0 +1,37 @@
+sequenceDiagram
+    autonumber
+    participant F as 飞书入口
+    participant H as lumi Host／账本
+    participant D as DSH Run
+    participant L as 电脑 Device Agent
+    participant P as 手机审批入口
+    participant C as 飞书 Connector
+    F->>H: 整理周报，发出前确认（来源事件 ID）
+    H->>H: 验签、去重、绑定 owner／Task
+    H->>D: Run-1：目标、上下文、能力与预算
+    D->>H: 准备本地草稿动作（参数／范围）
+    H->>L: 已授权命令（Action-A／TTL）
+    L-->>H: 草稿产物引用与摘要
+    H-->>D: 读回通过的草稿结果
+    D->>H: 准备发送（Action-B／群／内容摘要）
+    H->>H: 保存 waiting_approval
+    H-->>D: 暂停于安全边界
+    Note over H,D: Run-1 可结束；Task 和待发 Action 持久存在
+    H-->>P: 同一 Task 的审批卡与产物预览
+    P->>H: 认证批准 Action-B（版本／摘要）
+    H->>H: 重验权限、摘要、期限与撤销状态
+    H->>D: Run-2：恢复 Task／原 Action-B
+    D->>H: 续办 Action-B（不创建重复动作）
+    H->>C: 执行已封存内容／稳定幂等键
+    alt 响应和实际结果可确认
+        C-->>H: 消息 ID 与发送回执
+    else 响应丢失、结果未知
+        H->>H: Action-B → reconciling
+        H->>C: 按幂等键／业务对象查询
+        C-->>H: 读回结果或仍未知
+        Note over H,C: 仍未知则等待；只有确认未执行才允许范围内重试
+    end
+    opt 已确认发送且任务验收通过
+        H-->>F: 周报链接与发送结果（通知去重）
+        H->>H: 记录交付回执，Task completed
+    end

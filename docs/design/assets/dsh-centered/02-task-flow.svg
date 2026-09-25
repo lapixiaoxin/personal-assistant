@@ -1,0 +1,306 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1910" viewBox="0 0 1440 1910" role="img" aria-labelledby="task-flow-title task-flow-desc">
+  <title id="task-flow-title">任务从请求到结果 · Proposed v0.3</title>
+  <desc id="task-flow-desc">目标设计，尚未实现。channel 或定时事件经认证、去重进入 Task 账本。Host 准备授权上下文，DSH 规划并调用专家工具，提出带真实参数的 Action，由 Host 策略判为已授权、需批准或拒绝。需批准时持久化 waiting_approval 并结束本轮；任一可信 channel 的批准都须重验动作摘要、权限和时效，通过才续办同一 Action。拒绝或重验失败返回 DSH 调整或终止。Broker 受控执行后，确定结果进入独立核验；核验失败或任务验收未满足时返回 DSH 调整或终止，全部通过才交付结果与回执并 completed。结果未知进入 reconciling，由连接器读回：已成功进入独立核验，仍未知持久化 waiting_external 并结束本轮，由后续证据或定时事件唤醒再次读回；只有确认未执行，且原授权和预算仍允许，才可重验并重试同一 Action。R 为返回 DSH 的续接点，E 为同一 Action 续接 Broker 的续接点。DSH 结束不等于任务完成，等待无需常驻 DSH 进程。</desc>
+
+  <rect x="0" y="0" width="1440" height="1910" rx="24" fill="#f7f9fc"/>
+  <rect x="784" y="658" width="614" height="448" rx="24" fill="#fff8ec" stroke="#eddbb8" stroke-width="1.5"/>
+  <rect x="784" y="1130" width="614" height="616" rx="24" fill="#eef8f7" stroke="#c6e4df" stroke-width="1.5"/>
+
+  <g font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif">
+    <text x="44" y="62" font-size="34" font-weight="700" fill="#172b43">任务从请求到结果</text>
+    <text x="46" y="94" font-size="17" fill="#596b80">lumi · DSH 负责认知与编排，Host 持有任务、授权与证据</text>
+    <circle cx="822" cy="57" r="7" fill="#2563eb"/>
+    <text x="838" y="64" font-size="18" fill="#244c88">DSH</text>
+    <circle cx="924" cy="57" r="7" fill="#0d9488"/>
+    <text x="940" y="64" font-size="18" fill="#116b64">Host</text>
+    <circle cx="1036" cy="57" r="7" fill="#d68a13"/>
+    <text x="1052" y="64" font-size="18" fill="#8c5a13">动作</text>
+    <rect x="1182" y="30" width="216" height="42" rx="21" fill="#e8eef7"/>
+    <text x="1290" y="58" text-anchor="middle" font-size="20" font-weight="700" fill="#35516f">Proposed v0.3</text>
+    <text x="1396" y="96" text-anchor="end" font-size="16" fill="#6a7788">目标设计 · 尚未实现</text>
+
+    <rect x="42" y="118" width="1356" height="44" rx="12" fill="#e9eff8"/>
+    <circle cx="66" cy="140" r="5" fill="#2563eb"/>
+    <text x="82" y="147" font-size="19" font-weight="700" fill="#25436a">DSH 结束 ≠ 任务完成</text>
+    <line x1="700" y1="128" x2="700" y2="152" stroke="#c8d3e3" stroke-width="1.5"/>
+    <circle cx="732" cy="140" r="5" fill="#0d9488"/>
+    <text x="748" y="147" font-size="19" font-weight="700" fill="#176d67">等待无需常驻 DSH 进程</text>
+
+    <circle cx="64" cy="220" r="19" fill="#0d9488"/>
+    <text x="64" y="226" text-anchor="middle" font-size="16" font-weight="700" fill="#ffffff">01</text>
+    <text x="96" y="227" font-size="22" font-weight="700" fill="#18364c">接入</text>
+    <text x="48" y="256" font-size="16" fill="#63768a">身份与任务</text>
+    <circle cx="64" cy="692" r="19" fill="#d68a13"/>
+    <text x="64" y="698" text-anchor="middle" font-size="16" font-weight="700" fill="#ffffff">02</text>
+    <text x="96" y="699" font-size="22" font-weight="700" fill="#18364c">动作</text>
+    <text x="48" y="728" font-size="16" fill="#63768a">策略先行</text>
+    <circle cx="64" cy="1198" r="19" fill="#0d9488"/>
+    <text x="64" y="1204" text-anchor="middle" font-size="16" font-weight="700" fill="#ffffff">03</text>
+    <text x="96" y="1205" font-size="22" font-weight="700" fill="#18364c">结果</text>
+    <text x="48" y="1234" font-size="16" fill="#63768a">证据闭环</text>
+    <text x="808" y="688" font-size="19" font-weight="700" fill="#8b5b19">审批侧枝 · 持久等待后跨入口续办</text>
+    <text x="808" y="1158" font-size="19" font-weight="700" fill="#176d67">未知结果侧枝 · 先对账，再决定</text>
+  </g>
+
+  <!-- Orthogonal connectors and explicit arrowheads survive whiteboard import. -->
+  <g id="connectors" fill="none" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round">
+    <polyline id="request-to-ledger" points="450,246 450,274" stroke="#658198"/>
+    <polyline id="ledger-to-context" points="450,344 450,372" stroke="#0d9488"/>
+    <polyline id="context-to-dsh" points="450,442 450,470" stroke="#0d9488"/>
+    <polyline id="return-r-to-dsh" points="212,509 252,509" stroke="#2563eb"/>
+    <polyline id="dsh-to-stop" points="648,509 704,509" stroke="#658198"/>
+    <polyline id="dsh-to-action" points="450,548 450,576" stroke="#2563eb"/>
+    <polyline id="action-to-policy" points="450,654 450,686" stroke="#d68a13"/>
+    <polyline id="policy-authorized" points="450,810 450,868" stroke="#0d9488"/>
+    <polyline id="policy-denied" points="288,748 200,748" stroke="#2563eb"/>
+    <polyline id="policy-approval-required" points="612,748 830,748" stroke="#d68a13"/>
+    <polyline id="approval-wait-to-run-end" points="1136,748 1238,748" stroke="#d68a13"/>
+    <polyline id="approval-event-wakeup" points="1280,790 1280,812 1264,812 1264,831" stroke="#8a7c63" stroke-dasharray="5 6"/>
+    <polyline id="approval-granted" points="1146,895 1100,895" stroke="#0d9488"/>
+    <polyline id="approval-revalidated" points="812,895 748,895 748,910 648,910" stroke="#0d9488"/>
+    <polyline id="approval-revalidation-failed" points="956,959 956,1000" stroke="#2563eb"/>
+    <polyline id="approval-rejected" points="1264,959 1264,1000" stroke="#2563eb"/>
+    <polyline id="resume-e-to-broker" points="212,910 252,910" stroke="#d68a13"/>
+    <polyline id="broker-to-outcome" points="450,952 450,1000" stroke="#d68a13"/>
+    <polyline id="outcome-known" points="450,1120 450,1200" stroke="#0d9488"/>
+    <polyline id="outcome-unknown" points="600,1060 732,1060 732,1205 844,1205" stroke="#d68a13"/>
+    <polyline id="reconciling-to-readback" points="1012,1238 1012,1264" stroke="#0d9488"/>
+    <polyline id="readback-to-outcome" points="1012,1330 1012,1362" stroke="#0d9488"/>
+    <polyline id="reconciled-success-to-verifier" points="854,1424 724,1424 724,1268 620,1268" stroke="#0d9488"/>
+    <polyline id="reconciled-not-executed" points="1012,1486 1012,1556" stroke="#d68a13"/>
+    <polyline id="bounded-retry-to-e" points="824,1599 786,1599" stroke="#d68a13"/>
+    <polyline id="reconciled-still-unknown" points="1170,1424 1292,1424 1292,1498" stroke="#d68a13"/>
+    <polyline id="external-wait-to-run-end" points="1292,1596 1292,1630" stroke="#d68a13"/>
+    <polyline id="external-event-wakeup" points="1334,1672 1412,1672 1412,1297 1180,1297" stroke="#568b83" stroke-dasharray="5 6"/>
+    <polyline id="verification-failed" points="280,1268 200,1268" stroke="#2563eb"/>
+    <polyline id="verification-passed" points="450,1336 450,1396" stroke="#0d9488"/>
+    <polyline id="acceptance-not-met" points="280,1464 200,1464" stroke="#2563eb"/>
+    <polyline id="acceptance-met" points="450,1532 450,1590" stroke="#0d9488"/>
+    <polyline id="delivery-to-completed" points="450,1666 450,1702" stroke="#0d9488"/>
+  </g>
+  <g id="arrowheads">
+    <polygon points="450,274 444,264 456,264" fill="#658198"/>
+    <polygon points="450,372 444,362 456,362" fill="#0d9488"/>
+    <polygon points="450,470 444,460 456,460" fill="#0d9488"/>
+    <polygon points="252,509 242,503 242,515" fill="#2563eb"/>
+    <polygon points="704,509 694,503 694,515" fill="#658198"/>
+    <polygon points="450,576 444,566 456,566" fill="#2563eb"/>
+    <polygon points="450,686 444,676 456,676" fill="#d68a13"/>
+    <polygon points="450,868 444,858 456,858" fill="#0d9488"/>
+    <polygon points="200,748 210,742 210,754" fill="#2563eb"/>
+    <polygon points="830,748 820,742 820,754" fill="#d68a13"/>
+    <polygon points="1238,748 1228,742 1228,754" fill="#d68a13"/>
+    <polygon points="1264,831 1258,821 1270,821" fill="#8a7c63"/>
+    <polygon points="1100,895 1110,889 1110,901" fill="#0d9488"/>
+    <polygon points="648,910 658,904 658,916" fill="#0d9488"/>
+    <polygon points="956,1000 950,990 962,990" fill="#2563eb"/>
+    <polygon points="1264,1000 1258,990 1270,990" fill="#2563eb"/>
+    <polygon points="252,910 242,904 242,916" fill="#d68a13"/>
+    <polygon points="450,1000 444,990 456,990" fill="#d68a13"/>
+    <polygon points="450,1200 444,1190 456,1190" fill="#0d9488"/>
+    <polygon points="844,1205 834,1199 834,1211" fill="#d68a13"/>
+    <polygon points="1012,1264 1006,1254 1018,1254" fill="#0d9488"/>
+    <polygon points="1012,1362 1006,1352 1018,1352" fill="#0d9488"/>
+    <polygon points="620,1268 630,1262 630,1274" fill="#0d9488"/>
+    <polygon points="1012,1556 1006,1546 1018,1546" fill="#d68a13"/>
+    <polygon points="786,1599 796,1593 796,1605" fill="#d68a13"/>
+    <polygon points="1292,1498 1286,1488 1298,1488" fill="#d68a13"/>
+    <polygon points="1292,1630 1286,1620 1298,1620" fill="#d68a13"/>
+    <polygon points="1180,1297 1190,1291 1190,1303" fill="#568b83"/>
+    <polygon points="200,1268 210,1262 210,1274" fill="#2563eb"/>
+    <polygon points="450,1396 444,1386 456,1386" fill="#0d9488"/>
+    <polygon points="200,1464 210,1458 210,1470" fill="#2563eb"/>
+    <polygon points="450,1590 444,1580 456,1580" fill="#0d9488"/>
+    <polygon points="450,1702 444,1692 456,1692" fill="#0d9488"/>
+  </g>
+
+  <g id="main-flow" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" text-anchor="middle">
+    <g id="request">
+      <rect x="280" y="190" width="340" height="56" rx="28" fill="#e8edf5" stroke="#8ba0b6" stroke-width="1.8"/>
+      <text x="450" y="226" font-size="21" font-weight="700" fill="#29425d">channel 请求 / 定时事件</text>
+    </g>
+    <g id="task-ledger">
+      <rect x="252" y="274" width="396" height="70" rx="15" fill="#e5f5f1" stroke="#0d9488" stroke-width="2"/>
+      <text x="450" y="304" font-size="22" font-weight="700" fill="#12655f">认证、去重 + Task 账本</text>
+      <text x="450" y="330" font-size="17" fill="#3c716f">可信身份绑定任务，持久记录请求</text>
+    </g>
+    <g id="host-context">
+      <rect x="252" y="372" width="396" height="70" rx="15" fill="#e5f5f1" stroke="#0d9488" stroke-width="2"/>
+      <text x="450" y="402" font-size="22" font-weight="700" fill="#12655f">Host 准备授权上下文</text>
+      <text x="450" y="428" font-size="17" fill="#3c716f">目标、验收、权限与预算边界</text>
+    </g>
+    <g id="dsh">
+      <rect x="252" y="470" width="396" height="78" rx="18" fill="#2563eb" stroke="#1d4ed8" stroke-width="2"/>
+      <text x="450" y="503" font-size="23" font-weight="700" fill="#ffffff">DSH 规划 / 专家工具</text>
+      <text x="450" y="530" font-size="17" fill="#e4edff">唯一认知循环；可调整计划或终止</text>
+    </g>
+    <g id="task-stopped">
+      <circle cx="746" cy="509" r="42" fill="#e8edf5" stroke="#70849c" stroke-width="2.5"/>
+      <text x="746" y="517" font-size="23" font-weight="700" fill="#3b536b">终止</text>
+      <text x="746" y="575" font-size="14" fill="#63768a">failed / cancelled</text>
+    </g>
+    <g id="action-proposal">
+      <rect x="252" y="576" width="396" height="78" rx="15" fill="#fff0d3" stroke="#d68a13" stroke-width="2"/>
+      <text x="450" y="609" font-size="22" font-weight="700" fill="#85540e">提出 Action · 真实参数</text>
+      <text x="450" y="637" font-size="17" fill="#8b681f">冻结参数快照、摘要与动作标识</text>
+    </g>
+    <g id="host-policy">
+      <polygon points="450,686 612,748 450,810 288,748" fill="#def3ee" stroke="#0d9488" stroke-width="2.5"/>
+      <text x="450" y="745" font-size="23" font-weight="700" fill="#12655f">Host 策略</text>
+      <text x="450" y="771" font-size="17" fill="#3c716f">按实际动作判定</text>
+    </g>
+    <g id="broker">
+      <rect x="252" y="868" width="396" height="84" rx="15" fill="#fff0d3" stroke="#d68a13" stroke-width="2.5"/>
+      <text x="450" y="902" font-size="23" font-weight="700" fill="#85540e">Broker 受控执行</text>
+      <text x="450" y="930" font-size="17" fill="#8b681f">重验授权，落盘动作意图与执行回执</text>
+    </g>
+    <g id="outcome-certainty">
+      <polygon points="450,1000 600,1060 450,1120 300,1060" fill="#fff0d3" stroke="#d68a13" stroke-width="2.5"/>
+      <text x="450" y="1068" font-size="22" font-weight="700" fill="#85540e">结果是否确定？</text>
+    </g>
+    <g id="independent-verification">
+      <polygon points="450,1200 620,1268 450,1336 280,1268" fill="#def3ee" stroke="#0d9488" stroke-width="2.5"/>
+      <text x="450" y="1267" font-size="22" font-weight="700" fill="#12655f">独立核验通过？</text>
+      <text x="450" y="1293" font-size="16" fill="#3c716f">产物 / 回执 / 目标状态</text>
+    </g>
+    <g id="task-acceptance">
+      <polygon points="450,1396 620,1464 450,1532 280,1464" fill="#def3ee" stroke="#0d9488" stroke-width="2.5"/>
+      <text x="450" y="1472" font-size="22" font-weight="700" fill="#12655f">满足任务验收？</text>
+    </g>
+    <g id="delivery">
+      <rect x="252" y="1590" width="396" height="76" rx="15" fill="#e5f5f1" stroke="#0d9488" stroke-width="2"/>
+      <text x="450" y="1623" font-size="22" font-weight="700" fill="#12655f">交付结果与回执</text>
+      <text x="450" y="1649" font-size="17" fill="#3c716f">Host 记录交付证据</text>
+    </g>
+    <g id="task-completed">
+      <circle cx="450" cy="1758" r="56" fill="#0d9488" stroke="#08756d" stroke-width="3"/>
+      <text x="450" y="1751" font-size="19" font-weight="700" fill="#ffffff">任务完成</text>
+      <text x="450" y="1777" font-size="17" fill="#e1fff8">completed</text>
+    </g>
+  </g>
+
+  <g id="approval-branch" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" text-anchor="middle">
+    <g id="waiting-approval">
+      <rect x="830" y="708" width="306" height="80" rx="15" fill="#fff0d3" stroke="#d68a13" stroke-width="2"/>
+      <text x="983" y="740" font-size="21" font-weight="700" fill="#85540e">落盘 waiting_approval</text>
+      <text x="983" y="768" font-size="17" fill="#8b681f">保存待批动作与恢复引用</text>
+    </g>
+    <g id="approval-run-ended">
+      <circle cx="1280" cy="748" r="42" fill="#fff5e1" stroke="#bd8c38" stroke-width="2.5"/>
+      <text x="1280" y="743" font-size="18" font-weight="700" fill="#85540e">本轮</text>
+      <text x="1280" y="767" font-size="18" font-weight="700" fill="#85540e">结束</text>
+    </g>
+    <g id="trusted-channel-decision">
+      <polygon points="1264,831 1382,895 1264,959 1146,895" fill="#e5f5f1" stroke="#0d9488" stroke-width="2"/>
+      <text x="1264" y="892" font-size="17" font-weight="700" fill="#12655f">任一可信 channel</text>
+      <text x="1264" y="916" font-size="17" fill="#3c716f">批准 / 拒绝</text>
+    </g>
+    <g id="approval-revalidation">
+      <polygon points="956,831 1100,895 956,959 812,895" fill="#def3ee" stroke="#0d9488" stroke-width="2"/>
+      <text x="956" y="890" font-size="18" font-weight="700" fill="#12655f">摘要 / 权限 / 时效</text>
+      <text x="956" y="916" font-size="18" font-weight="700" fill="#12655f">重验通过？</text>
+    </g>
+    <text x="956" y="1072" font-size="16" fill="#526c90">不执行，调整或终止</text>
+    <text x="1264" y="1072" font-size="16" fill="#526c90">不执行，调整或终止</text>
+  </g>
+
+  <g id="reconciliation-branch" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" text-anchor="middle">
+    <g id="reconciling">
+      <rect x="844" y="1172" width="336" height="66" rx="14" fill="#e5f5f1" stroke="#0d9488" stroke-width="2"/>
+      <text x="1012" y="1201" font-size="22" font-weight="700" fill="#12655f">落盘 reconciling</text>
+      <text x="1012" y="1225" font-size="16" fill="#3c716f">冻结重试，保留动作状态</text>
+    </g>
+    <g id="connector-readback">
+      <rect x="844" y="1264" width="336" height="66" rx="14" fill="#e5f5f1" stroke="#0d9488" stroke-width="2"/>
+      <text x="1012" y="1293" font-size="22" font-weight="700" fill="#12655f">连接器读回</text>
+      <text x="1012" y="1318" font-size="16" fill="#3c716f">按回执 / 幂等键核对外部事实</text>
+    </g>
+    <g id="readback-outcome">
+      <polygon points="1012,1362 1170,1424 1012,1486 854,1424" fill="#def3ee" stroke="#0d9488" stroke-width="2"/>
+      <text x="1012" y="1432" font-size="22" font-weight="700" fill="#12655f">读回结果？</text>
+    </g>
+    <g id="bounded-retry">
+      <rect x="824" y="1556" width="362" height="86" rx="15" fill="#fff0d3" stroke="#d68a13" stroke-width="2"/>
+      <text x="1005" y="1589" font-size="20" font-weight="700" fill="#85540e">原授权 / 预算内才可重试</text>
+      <text x="1005" y="1618" font-size="17" fill="#8b681f">同一 Action；执行前重验</text>
+    </g>
+    <g id="waiting-external">
+      <rect x="1184" y="1498" width="216" height="98" rx="15" fill="#fff0d3" stroke="#d68a13" stroke-width="2"/>
+      <text x="1292" y="1526" font-size="18" font-weight="700" fill="#85540e">落盘</text>
+      <text x="1292" y="1554" font-size="17" font-weight="700" fill="#85540e">waiting_external</text>
+      <text x="1292" y="1580" font-size="16" fill="#8b681f">等待外部证据</text>
+    </g>
+    <g id="external-run-ended">
+      <circle cx="1292" cy="1672" r="42" fill="#fff5e1" stroke="#bd8c38" stroke-width="2.5"/>
+      <text x="1292" y="1667" font-size="18" font-weight="700" fill="#85540e">本轮</text>
+      <text x="1292" y="1691" font-size="18" font-weight="700" fill="#85540e">结束</text>
+    </g>
+    <text x="1005" y="1680" font-size="16" fill="#8b681f">未知不能直达此分支</text>
+    <text x="1005" y="1705" font-size="16" fill="#63768a">重验不通过则不执行</text>
+  </g>
+
+  <g id="continuation-ports" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" text-anchor="middle" font-size="20" font-weight="700">
+    <g fill="#eaf1ff" stroke="#2563eb" stroke-width="2">
+      <circle id="r-dsh-entry" cx="190" cy="509" r="22"/>
+      <circle id="r-policy-denied" cx="178" cy="748" r="22"/>
+      <circle id="r-approval-invalid" cx="956" cy="1022" r="22"/>
+      <circle id="r-approval-rejected" cx="1264" cy="1022" r="22"/>
+      <circle id="r-verification-failed" cx="178" cy="1268" r="22"/>
+      <circle id="r-acceptance-not-met" cx="178" cy="1464" r="22"/>
+    </g>
+    <g fill="#2563eb">
+      <text x="190" y="516">R</text>
+      <text x="178" y="755">R</text>
+      <text x="956" y="1029">R</text>
+      <text x="1264" y="1029">R</text>
+      <text x="178" y="1275">R</text>
+      <text x="178" y="1471">R</text>
+    </g>
+    <g fill="#fff0d3" stroke="#d68a13" stroke-width="2">
+      <circle id="e-broker-entry" cx="190" cy="910" r="22"/>
+      <circle id="e-retry-resume" cx="764" cy="1599" r="22"/>
+    </g>
+    <g fill="#a2660c">
+      <text x="190" y="917">E</text>
+      <text x="764" y="1606">E</text>
+    </g>
+  </g>
+
+  <g id="connector-labels" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" font-size="17">
+    <text x="190" y="474" text-anchor="middle" font-size="16" fill="#426ba9">调整 / 重规划</text>
+    <text x="676" y="492" text-anchor="middle" font-size="15" fill="#63768a">终止</text>
+    <text x="474" y="845" font-weight="700" fill="#12655f">已授权</text>
+    <text x="238" y="732" text-anchor="middle" fill="#426ba9">拒绝</text>
+    <text x="718" y="732" text-anchor="middle" font-weight="700" fill="#9a681b">需批准</text>
+    <text x="1216" y="817" text-anchor="end" font-size="15" fill="#8a7c63">后续审批事件</text>
+    <text x="1123" y="924" text-anchor="middle" font-size="16" fill="#12655f">批准</text>
+    <text x="696" y="893" text-anchor="middle" font-size="16" fill="#12655f">通过</text>
+    <text x="700" y="939" text-anchor="middle" font-size="15" fill="#12655f">同一 Action</text>
+    <text x="975" y="989" font-size="16" fill="#426ba9">不通过</text>
+    <text x="1283" y="989" font-size="16" fill="#426ba9">拒绝</text>
+    <text x="474" y="1166" fill="#12655f">确定</text>
+    <text x="656" y="1045" font-weight="700" fill="#9a681b">未知</text>
+    <text x="632" y="1252" font-size="16" fill="#12655f">入独立核验</text>
+    <text x="790" y="1408" text-anchor="middle" font-weight="700" fill="#12655f">已成功</text>
+    <text x="1030" y="1524" font-size="16" font-weight="700" fill="#9a681b">确认未执行</text>
+    <text x="1232" y="1408" text-anchor="middle" font-weight="700" fill="#9a681b">仍未知</text>
+    <text x="1208" y="1276" font-size="16" fill="#447c73">新证据 / 定时唤醒</text>
+    <text x="240" y="1251" text-anchor="middle" fill="#426ba9">失败</text>
+    <text x="474" y="1375" fill="#12655f">通过</text>
+    <text x="236" y="1445" text-anchor="middle" font-size="16" fill="#426ba9">尚未满足</text>
+    <text x="474" y="1568" fill="#12655f">是</text>
+  </g>
+
+  <g id="reading-key" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif">
+    <line x1="48" y1="1838" x2="1392" y2="1838" stroke="#d6dfe9" stroke-width="1.5"/>
+    <circle cx="64" cy="1871" r="16" fill="#eaf1ff" stroke="#2563eb" stroke-width="1.5"/>
+    <text x="64" y="1877" text-anchor="middle" font-size="17" font-weight="700" fill="#2563eb">R</text>
+    <text x="90" y="1877" font-size="17" fill="#426181">返回 DSH 调整或终止</text>
+    <circle cx="430" cy="1871" r="16" fill="#fff0d3" stroke="#d68a13" stroke-width="1.5"/>
+    <text x="430" y="1877" text-anchor="middle" font-size="17" font-weight="700" fill="#a2660c">E</text>
+    <text x="456" y="1877" font-size="17" fill="#426181">同一 Action 续接 Broker</text>
+    <line x1="810" y1="1871" x2="852" y2="1871" stroke="#568b83" stroke-width="2" stroke-dasharray="5 6"/>
+    <text x="864" y="1877" font-size="17" fill="#426181">事件唤醒</text>
+    <text x="1390" y="1877" text-anchor="end" font-size="16" fill="#63768a">具体参数与权限边界见正文</text>
+  </g>
+</svg>

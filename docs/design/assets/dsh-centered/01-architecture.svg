@@ -1,0 +1,240 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1320" viewBox="0 0 1440 1320" role="img" aria-labelledby="diagram-title diagram-desc" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif">
+  <title id="diagram-title">lumi 工程总图：以 DSH 为核心 Harness</title>
+  <desc id="diagram-desc">Proposed v0.3，目标设计，非已上线能力。飞书、CLI、PWA 和语音经身份化输入进入单一权威 lumi Host。Host 持有确定性任务与动作账本、身份授权、上下文、持久触发、通知和核验。中央 DSH 基于 Cordis，是唯一 AgentLoop；lumi coordinator 在其中规划、调用模型、Skills、Tools、Subagents 和 MCP。DSH 通过 lumi Cordis 桥接调用 Host 端口，由 Host 分配允许的执行位置。记忆、目标和证据归 Host，DSH 只读取范围化视图。外部生产写入只能经过 Host Action Broker、Connector 或 Device Agent，再到云服务或设备；回执和观测证据回到 Host 独立核验。蓝色表示认知与上下文路径，青色表示 Host 与回执，琥珀色表示真实动作路径。不另建 Planner 或通用 plugin-host。边界为逻辑职责，不限定物理部署位置。</desc>
+
+  <rect width="1440" height="1320" fill="#f7fafc"/>
+  <g fill="#183044">
+    <text x="48" y="57" font-size="32" font-weight="700">lumi 工程总图</text>
+    <text x="48" y="88" font-size="19" fill="#526575">DSH 负责认知与编排；lumi 持有个人资产、授权与交付证据</text>
+  </g>
+  <g data-node="status" data-box="1110 27 282 62">
+    <rect x="1110" y="27" width="282" height="62" rx="16" fill="#e8eef7" stroke="#c5d2e3"/>
+    <text x="1251" y="53" text-anchor="middle" font-size="22" font-weight="700" fill="#214d88">Proposed v0.3</text>
+    <text x="1251" y="76" text-anchor="middle" font-size="16" fill="#526575">目标设计 · 非已上线能力</text>
+  </g>
+  <g font-size="17" fill="#526575">
+    <line x1="50" y1="119" x2="96" y2="119" stroke="#285cc4" stroke-width="3"/>
+    <polygon points="96,119 87,114 87,124" fill="#285cc4"/>
+    <text x="110" y="125">认知 / 上下文 / 服务调用</text>
+    <line x1="518" y1="119" x2="564" y2="119" stroke="#087d83" stroke-width="3" stroke-dasharray="7 5"/>
+    <polygon points="564,119 555,114 555,124" fill="#087d83"/>
+    <text x="578" y="125">Host 控制 / 回执与证据</text>
+    <line x1="1046" y1="119" x2="1092" y2="119" stroke="#b86c09" stroke-width="3"/>
+    <polygon points="1092,119 1083,114 1083,124" fill="#b86c09"/>
+    <text x="1106" y="125">真实动作 / 生产写入</text>
+  </g>
+
+  <!-- Multiple channels converge before entering the single Host authority. -->
+  <text x="50" y="192" font-size="18" font-weight="700" fill="#526575">多入口</text>
+  <g data-node="feishu" data-box="156 157 208 54">
+    <rect x="156" y="157" width="208" height="54" rx="27" fill="#ffffff" stroke="#b9cbd5" stroke-width="1.5"/>
+    <path d="M181 173 H205 V189 H191 L185 195 V189 H181 Z" fill="none" stroke="#526575" stroke-width="2" stroke-linejoin="round"/>
+    <text x="251" y="192" text-anchor="middle" font-size="22" font-weight="600" fill="#183044">飞书</text>
+  </g>
+  <g data-node="cli" data-box="456 157 208 54">
+    <rect x="456" y="157" width="208" height="54" rx="27" fill="#ffffff" stroke="#b9cbd5" stroke-width="1.5"/>
+    <rect x="480" y="173" width="29" height="23" rx="3" fill="none" stroke="#526575" stroke-width="2"/>
+    <path d="M486 179 L491 184 L486 189 M497 190 H503" fill="none" stroke="#526575" stroke-width="2"/>
+    <text x="554" y="192" text-anchor="middle" font-size="22" font-weight="600" fill="#183044">CLI</text>
+  </g>
+  <g data-node="pwa" data-box="756 157 208 54">
+    <rect x="756" y="157" width="208" height="54" rx="27" fill="#ffffff" stroke="#b9cbd5" stroke-width="1.5"/>
+    <rect x="780" y="173" width="29" height="23" rx="3" fill="none" stroke="#526575" stroke-width="2"/>
+    <path d="M780 180 H809 M786 176 H789" fill="none" stroke="#526575" stroke-width="2"/>
+    <text x="858" y="192" text-anchor="middle" font-size="22" font-weight="600" fill="#183044">PWA</text>
+  </g>
+  <g data-node="voice" data-box="1056 157 208 54">
+    <rect x="1056" y="157" width="208" height="54" rx="27" fill="#ffffff" stroke="#b9cbd5" stroke-width="1.5"/>
+    <rect x="1088" y="169" width="12" height="21" rx="6" fill="none" stroke="#526575" stroke-width="2"/>
+    <path d="M1082 182 V186 Q1082 197 1094 197 Q1106 197 1106 186 V182 M1094 197 V202" fill="none" stroke="#526575" stroke-width="2"/>
+    <text x="1155" y="192" text-anchor="middle" font-size="22" font-weight="600" fill="#183044">语音</text>
+  </g>
+  <g data-node="identity-input" data-box="490 261 460 63">
+    <polygon points="490,261 950,261 918,324 522,324" fill="#eaf7f5" stroke="#087d83" stroke-width="2"/>
+    <text x="720" y="287" text-anchor="middle" font-size="22" font-weight="700" fill="#08686d">身份化输入</text>
+    <text x="720" y="313" text-anchor="middle" font-size="17" fill="#426a70">认证归属 · 会话绑定 · 请求去重</text>
+  </g>
+
+  <!-- The teal enclosure denotes logical ownership, not one OS process. -->
+  <rect x="40" y="357" width="1360" height="656" rx="26" fill="#ffffff" stroke="#087d83" stroke-width="2.5"/>
+  <path d="M66 358 H1374 Q1399 358 1399 383 V421 H41 V383 Q41 358 66 358 Z" fill="#eaf7f5"/>
+  <line x1="41" y1="421" x2="1399" y2="421" stroke="#b8ddda" stroke-width="1.5"/>
+  <text x="74" y="395" font-size="28" font-weight="700" fill="#08686d">lumi Host</text>
+  <text x="260" y="395" font-size="20" fill="#426a70">确定性个人服务与生命周期权威</text>
+  <text x="1215" y="393" text-anchor="middle" font-size="18" font-weight="600" fill="#08686d">单一权威节点</text>
+  <circle cx="1092" cy="387" r="7" fill="#087d83"/>
+
+  <text x="76" y="460" font-size="18" font-weight="700" fill="#087d83">持久控制面</text>
+  <g data-node="ledger" data-box="74 480 308 150">
+    <rect x="74" y="480" width="308" height="150" rx="16" fill="#eff8f7"/>
+    <path d="M95 492 H116 L123 499 V520 H95 Z M116 492 V500 H123 M101 506 H116 M101 513 H116" fill="none" stroke="#087d83" stroke-width="2" stroke-linejoin="round"/>
+    <text x="137" y="512" font-size="22" font-weight="700" fill="#08686d">任务 / 动作账本</text>
+    <text x="95" y="548" font-size="18" fill="#183044">状态 · 授权 · 审计</text>
+    <text x="95" y="579" font-size="18" fill="#183044">身份与委托 · 授权范围</text>
+    <text x="95" y="610" font-size="17" fill="#183044">上下文 · 持久触发 · 通知</text>
+  </g>
+  <text x="92" y="672" font-size="18" font-weight="700" fill="#087d83">用户所有，Host 持有</text>
+  <g data-node="personal-assets" data-box="92 683 280 142">
+    <path d="M92 705 C92 677 372 677 372 705 V802 C372 832 92 832 92 802 Z" fill="#eaf7f5" stroke="#087d83" stroke-width="2"/>
+    <ellipse cx="232" cy="705" rx="140" ry="21" fill="#d7efeb" stroke="#087d83" stroke-width="2"/>
+    <text x="232" y="751" text-anchor="middle" font-size="22" font-weight="700" fill="#08686d">个人资产</text>
+    <text x="232" y="781" text-anchor="middle" font-size="21" fill="#183044">记忆 · 目标 · 证据</text>
+    <text x="232" y="806" text-anchor="middle" font-size="16" fill="#426a70">来源 · 版本 · 可撤回</text>
+  </g>
+  <g data-node="verification" data-box="74 874 308 108">
+    <rect x="74" y="874" width="308" height="108" rx="16" fill="#eff8f7"/>
+    <circle cx="99" cy="902" r="13" fill="#d7efeb" stroke="#087d83" stroke-width="1.5"/>
+    <path d="M92 902 L97 907 L107 896" fill="none" stroke="#087d83" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="125" y="910" font-size="22" font-weight="700" fill="#08686d">回执 / 独立核验</text>
+    <text x="95" y="941" font-size="18" fill="#183044">验收通过后更新任务状态</text>
+    <text x="95" y="968" font-size="17" fill="#426a70">结果未知先对账，不盲重试</text>
+  </g>
+
+  <!-- The only cognitive loop occupies the visual center. -->
+  <g data-node="dsh" data-box="508 450 520 387">
+    <polygon points="535,450 1001,450 1028,477 1028,810 1001,837 535,837 508,810 508,477" fill="#edf4ff" stroke="#285cc4" stroke-width="3"/>
+    <circle cx="548" cy="487" r="11" fill="#285cc4"/>
+    <circle cx="548" cy="487" r="4" fill="#ffffff"/>
+    <text x="575" y="497" font-size="34" font-weight="700" fill="#214d88">DSH (Cordis)</text>
+    <text x="544" y="529" font-size="21" font-weight="600" fill="#285cc4">核心 Harness · 唯一 AgentLoop</text>
+
+    <rect x="546" y="553" width="444" height="122" rx="26" fill="#ffffff" stroke="#94b6ef" stroke-width="2"/>
+    <text x="768" y="594" text-anchor="middle" font-size="26" font-weight="700" fill="#214d88">lumi coordinator</text>
+    <text x="768" y="626" text-anchor="middle" font-size="20" fill="#214d88">理解目标 · 规划 · 委派 · 汇总</text>
+    <text x="768" y="655" text-anchor="middle" font-size="17" fill="#526575">Host 不再运行第二套 Planner</text>
+    <polyline points="568,560 568,553 958,553" fill="none" stroke="#285cc4" stroke-width="2"/>
+    <polygon points="958,553 948,547 948,559" fill="#285cc4"/>
+    <polyline points="968,668 968,675 578,675" fill="none" stroke="#285cc4" stroke-width="2"/>
+    <polygon points="578,675 588,669 588,681" fill="#285cc4"/>
+
+    <rect x="546" y="697" width="128" height="47" rx="12" fill="#dce9ff"/>
+    <circle cx="566" cy="721" r="7" fill="none" stroke="#285cc4" stroke-width="1.8"/>
+    <circle cx="566" cy="721" r="2" fill="#285cc4"/>
+    <text x="618" y="729" text-anchor="middle" font-size="21" font-weight="600" fill="#214d88">模型</text>
+    <rect x="704" y="697" width="128" height="47" rx="12" fill="#dce9ff"/>
+    <path d="M719 711 H728 L732 715 L736 711 H745 V730 H736 L732 734 L728 730 H719 Z M732 715 V733" fill="none" stroke="#285cc4" stroke-width="1.6" stroke-linejoin="round"/>
+    <text x="785" y="729" text-anchor="middle" font-size="21" font-weight="600" fill="#214d88">Skills</text>
+    <rect x="862" y="697" width="128" height="47" rx="12" fill="#dce9ff"/>
+    <path d="M877 713 L885 721 L893 713 M885 721 V732 M877 713 V708 M893 713 V708" fill="none" stroke="#285cc4" stroke-width="2" stroke-linecap="round"/>
+    <text x="943" y="729" text-anchor="middle" font-size="21" font-weight="600" fill="#214d88">Tools</text>
+    <rect x="546" y="765" width="218" height="46" rx="12" fill="#dce9ff"/>
+    <path d="M570 782 V790 M559 799 V790 H581 V799" fill="none" stroke="#285cc4" stroke-width="1.7"/>
+    <circle cx="570" cy="779" r="4" fill="#285cc4"/>
+    <circle cx="559" cy="801" r="3" fill="#285cc4"/>
+    <circle cx="581" cy="801" r="3" fill="#285cc4"/>
+    <text x="675" y="796" text-anchor="middle" font-size="21" font-weight="600" fill="#214d88">Subagents</text>
+    <rect x="790" y="765" width="200" height="46" rx="12" fill="#dce9ff"/>
+    <path d="M810 778 V784 M820 778 V784 M806 784 H824 V790 Q824 797 815 797 V803 M806 784 V790 Q806 797 815 797" fill="none" stroke="#285cc4" stroke-width="1.8" stroke-linecap="round"/>
+    <text x="900" y="796" text-anchor="middle" font-size="21" font-weight="600" fill="#214d88">MCP</text>
+  </g>
+
+  <g data-node="host-ports" data-box="1112 461 256 310">
+    <path d="M1130 461 H1350 Q1368 461 1368 479 V753 Q1368 771 1350 771 H1130 Q1112 771 1112 753 V479 Q1112 461 1130 461 Z" fill="#eff8f7" stroke="#b8ddda" stroke-width="1.5"/>
+    <text x="1240" y="498" text-anchor="middle" font-size="23" font-weight="700" fill="#08686d">Host 服务端口</text>
+    <text x="1132" y="538" font-size="18" fill="#183044">身份 / 上下文端口</text>
+    <text x="1132" y="571" font-size="18" fill="#183044">触发 / 通知 / 核验</text>
+    <line x1="1132" y1="593" x2="1348" y2="593" stroke="#b8ddda" stroke-width="1.5"/>
+    <text x="1240" y="627" text-anchor="middle" font-size="21" font-weight="700" fill="#08686d">执行位置准入</text>
+    <text x="1240" y="662" text-anchor="middle" font-size="17" fill="#183044">本机 / 受控远端 / 设备</text>
+    <text x="1240" y="693" text-anchor="middle" font-size="17" fill="#426a70">按能力、授权、在线状态</text>
+    <text x="1240" y="749" text-anchor="middle" font-size="18" font-weight="600" fill="#08686d">Host 决定何处可执行</text>
+  </g>
+  <g data-node="cordis-bridge" data-box="558 883 420 68">
+    <rect x="558" y="883" width="420" height="68" rx="13" fill="#e9f1ff" stroke="#285cc4" stroke-width="2"/>
+    <path d="M578 904 V931 M578 908 H588 M578 927 H588 M956 904 V931 M946 908 H956 M946 927 H956" fill="none" stroke="#285cc4" stroke-width="2"/>
+    <text x="768" y="912" text-anchor="middle" font-size="24" font-weight="700" fill="#214d88">lumi Cordis 桥接</text>
+    <text x="768" y="939" text-anchor="middle" font-size="17" fill="#526575">插件接线 · Host 端口契约</text>
+  </g>
+  <text x="1107" y="861" font-size="19" font-weight="700" fill="#b86c09">真实写入唯一出口</text>
+  <g data-node="action-broker" data-box="1096 884 272 111">
+    <polygon points="1096,884 1368,884 1368,965 1232,995 1096,965" fill="#fff4df" stroke="#b86c09" stroke-width="2.5"/>
+    <text x="1232" y="918" text-anchor="middle" font-size="22" font-weight="700" fill="#8b5108">Host Action Broker</text>
+    <text x="1232" y="946" text-anchor="middle" font-size="17" fill="#8b5108">授权复核 · 幂等 · 记账</text>
+    <path d="M1226 973 L1231 978 L1241 967" fill="none" stroke="#b86c09" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="558" y="984" font-size="17" fill="#526575">逻辑职责边界；DSH 可部署于受控执行节点</text>
+
+  <!-- Production credentials stay beyond the broker, never in the DSH loop. -->
+  <text x="610" y="1050" font-size="20" font-weight="700" fill="#b86c09">受控执行与真实世界</text>
+  <text x="871" y="1050" font-size="17" fill="#526575">生产凭据留在连接器，DSH 不直连生产写入</text>
+  <g data-node="connector" data-box="610 1130 382 88">
+    <polygon points="610,1130 970,1130 970,1152 992,1152 992,1196 970,1196 970,1218 610,1218" fill="#fff4df" stroke="#b86c09" stroke-width="2"/>
+    <text x="791" y="1166" text-anchor="middle" font-size="23" font-weight="700" fill="#8b5108">Connector / Device Agent</text>
+    <text x="791" y="1197" text-anchor="middle" font-size="18" fill="#8b5108">云连接器 / 注册设备执行代理</text>
+  </g>
+  <g data-node="cloud-services" data-box="1120 1114 256 64">
+    <path d="M1144 1178 C1112 1178 1112 1132 1145 1132 C1147 1109 1184 1109 1195 1128 C1211 1102 1252 1113 1258 1131 H1350 C1384 1131 1384 1178 1350 1178 Z" fill="#fff4df" stroke="#b86c09" stroke-width="2"/>
+    <text x="1250" y="1163" text-anchor="middle" font-size="23" font-weight="600" fill="#8b5108">云服务</text>
+  </g>
+  <g data-node="devices" data-box="1120 1200 256 42">
+    <rect x="1120" y="1200" width="256" height="42" rx="10" fill="#fff4df" stroke="#b86c09" stroke-width="2"/>
+    <rect x="1137" y="1209" width="24" height="17" rx="2" fill="none" stroke="#b86c09" stroke-width="1.8"/>
+    <path d="M1149 1226 V1232 M1139 1233 H1159" fill="none" stroke="#b86c09" stroke-width="1.8"/>
+    <rect x="1169" y="1209" width="11" height="24" rx="2" fill="none" stroke="#b86c09" stroke-width="1.8"/>
+    <text x="1260" y="1229" text-anchor="middle" font-size="22" font-weight="600" fill="#8b5108">设备 / 家居</text>
+  </g>
+
+  <!-- Orthogonal connectors are rendered last and run only in reserved gutters. -->
+  <g fill="none" stroke="#087d83" stroke-width="2.5" stroke-linejoin="round">
+    <polyline data-connector="feishu-to-input" points="260,211 260,236 720,236 720,261"/>
+    <polyline data-connector="cli-to-input" points="560,211 560,236"/>
+    <polyline data-connector="pwa-to-input" points="860,211 860,236 720,236"/>
+    <polyline data-connector="voice-to-input" points="1160,211 1160,236 860,236"/>
+    <polyline data-connector="input-to-host" points="720,324 720,357"/>
+  </g>
+  <g fill="#087d83">
+    <polygon points="720,261 714,251 726,251"/>
+    <polygon points="720,357 714,347 726,347"/>
+    <circle cx="560" cy="236" r="3"/>
+    <circle cx="720" cy="236" r="3"/>
+    <circle cx="860" cy="236" r="3"/>
+  </g>
+  <g fill="none" stroke="#285cc4" stroke-width="2.5" stroke-linejoin="round">
+    <polyline data-connector="host-run-to-dsh" points="382,607 508,607"/>
+    <polyline data-connector="scoped-view-to-dsh" points="372,749 508,749" stroke-dasharray="7 5"/>
+    <polyline data-connector="dsh-to-bridge" points="768,837 768,883"/>
+    <polyline data-connector="bridge-to-host-ports" points="978,906 1070,906 1070,743 1112,743"/>
+  </g>
+  <g fill="#285cc4">
+    <polygon points="508,607 498,601 498,613"/>
+    <polygon points="508,749 498,743 498,755"/>
+    <polygon points="768,883 762,873 774,873"/>
+    <polygon points="1112,743 1102,737 1102,749"/>
+  </g>
+  <g font-size="17" fill="#285cc4">
+    <text x="445" y="590" text-anchor="middle">任务 / Run</text>
+    <text x="440" y="730" text-anchor="middle">范围化视图</text>
+    <text x="440" y="777" text-anchor="middle">只读</text>
+    <text x="783" y="866">类型化工具调用</text>
+    <text x="1060" y="817" text-anchor="end">调用</text>
+  </g>
+  <g fill="none" stroke="#b86c09" stroke-width="3" stroke-linejoin="round">
+    <polyline data-connector="bridge-to-broker" points="978,938 1096,938"/>
+    <polyline data-connector="broker-to-connector" points="1232,995 1232,1088 802,1088 802,1130"/>
+    <polyline data-connector="connector-to-cloud" points="992,1174 1048,1174 1048,1153 1120,1153"/>
+    <polyline data-connector="connector-to-device" points="1048,1174 1048,1221 1120,1221"/>
+  </g>
+  <g fill="#b86c09">
+    <polygon points="1096,938 1086,932 1086,944"/>
+    <polygon points="802,1130 796,1120 808,1120"/>
+    <polygon points="1120,1153 1110,1147 1110,1159"/>
+    <polygon points="1120,1221 1110,1215 1110,1227"/>
+    <circle cx="1048" cy="1174" r="4"/>
+  </g>
+  <g font-size="17" fill="#8b5108">
+    <text x="1037" y="926" text-anchor="middle">动作提案</text>
+    <text x="968" y="1114" text-anchor="middle">受准入限制的执行请求</text>
+  </g>
+  <g fill="none" stroke="#087d83" stroke-width="2.5" stroke-dasharray="8 6" stroke-linejoin="round">
+    <polyline data-connector="cloud-receipt-to-host" points="1376,1153 1410,1153 1410,1268 223,1268 223,982"/>
+    <polyline data-connector="device-receipt-to-host" points="1376,1221 1410,1221"/>
+  </g>
+  <polygon points="223,982 217,993 229,993" fill="#087d83"/>
+  <circle cx="1410" cy="1221" r="3.5" fill="#087d83"/>
+  <g fill="#087d83">
+    <text x="255" y="1156" font-size="22" font-weight="700">回执 / 实际状态</text>
+    <text x="255" y="1189" font-size="18">回到 Host 核验与留证</text>
+    <text x="567" y="1252" font-size="17">回执与观测证据返回，不以模型结束代替任务完成</text>
+  </g>
+  <text x="48" y="1304" font-size="17" fill="#526575">Proposed v0.3 · 复用 Cordis 原生扩展，不另建 Planner 或通用 plugin-host；安全边界由 Host 与受控执行环境共同落实。</text>
+</svg>

@@ -63,6 +63,12 @@ NPM_CONFIG_CACHE=./data/tooling/npm-cache NPM_CONFIG_REGISTRY=https://registry.n
 
 `PA_*`、`data/assistant.db`、`personal-assistant` capability ID、`pa-` 会话前缀保持兼容，无数据库迁移。本次没有实现 SPEC-0001 或执行真实云模型/外部业务任务。范围、命令、证据及工具限制见 [SPEC-0002](../specs/0002-lumi-workspace/spec.md)，复用步骤见 [工程整理 SOP](runbooks/workspace-layout.md)。
 
+## 2026-09-25 · DSH 中心架构设计
+
+[v0.3 六图方案](design/10-dsh-centered-architecture.md) 与 [ADR-003](adr/0003-dsh-centered-harness.md) 细化 DSH 核心 Harness、Cordis 接线与单权威 Host 的多端路线。核对了固定发行版 `0.1.7-rc.1` 的 SDK、tools、schedule、MCP 接口；SDK 无逐 session 取消/反向审批回调，工具 guard 为同步判断，会话 schedule 不能承担冷会话唤醒。
+
+本次仅新增设计、图源及飞书审阅投影，没有修改业务源码、依赖、数据库或运行 profile。上文缺口仍然存在；原设计中的通用 plugin-host 不再作为待建模块，改为复用 DSH/Cordis 并补 lumi 桥接服务。验证范围见 [SPEC-0003 证据](../specs/0003-dsh-centered-design/evidence.md)。
+
 ## 状态标注规则
 
 `Proposed`：设计建议；`Specified`：验收和边界已写清；`Implemented`：代码存在；`Verified`：指定环境和版本有证据；`Enabled`：部署配置已启用。后一个状态不能由前一个自动推断。

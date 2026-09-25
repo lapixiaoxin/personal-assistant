@@ -1,0 +1,261 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1340" viewBox="0 0 1440 1340" role="img" aria-labelledby="diagram-title diagram-description">
+  <title id="diagram-title">多设备部署 · Proposed v0.3</title>
+  <desc id="diagram-description">一个常驻 lumi Host 是身份、任务、动作授权、调度、通知与结果核验的唯一权威，持有 SQLite 和文件证据。初期部署在当前 Mac，需要 24h 值守时迁至 Mac mini 或服务器，迁移不双主。本机 DSH workers 为主，受控远端可选，均共享 Host 的同一权威任务。桌面 Device Agent、手机和家庭网关主动通过 TLS 出站连接 Host；可穿戴仅经手机伴侣接入，机器人和车只接收交给既有控制器的高层目标。第三方 Connector 也经过 Host 授权出口。连接使用短期身份与能力声明，命令携带 ID、TTL 和回执；ack 不等于动作完成。离线只允许已获许可的采集与草稿，重连去重、续传并先对账，不新增高风险授权。</desc>
+  <rect width="1440" height="1340" fill="#f7fafc"/>
+
+  <g font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" fill="#18324f">
+    <text x="40" y="38" font-size="13" font-weight="700" letter-spacing="2" fill="#52718b">LUMI / DEPLOYMENT</text>
+    <text x="40" y="86" font-size="36" font-weight="700">多设备部署</text>
+    <text x="40" y="122" font-size="19" fill="#52677d">一个常驻 Host，多个受控执行端；设备和会话都不拥有第二份权威。</text>
+    <rect x="1176" y="34" width="224" height="40" rx="20" fill="#fff2d9" stroke="#d49a31"/>
+    <text x="1288" y="61" font-size="19" font-weight="700" text-anchor="middle" fill="#895511">Proposed v0.3</text>
+    <circle cx="1082" cy="108" r="6" fill="#2864ae"/>
+    <text x="1096" y="114" font-size="16" fill="#52677d">权威</text>
+    <circle cx="1186" cy="108" r="6" fill="#128681"/>
+    <text x="1200" y="114" font-size="16" fill="#52677d">设备</text>
+    <circle cx="1290" cy="108" r="6" fill="#be8120"/>
+    <text x="1304" y="114" font-size="16" fill="#52677d">信任边界</text>
+
+    <!-- Deployment boundaries are separate from the Host's authority boundary. -->
+    <rect x="32" y="158" width="408" height="905" rx="24" fill="#edf8f6" stroke="#7cbbb6" stroke-width="2" stroke-dasharray="7 6"/>
+    <text x="58" y="196" font-size="21" font-weight="700" fill="#136b69">边缘设备 / 各自 OS 权限域</text>
+    <text x="58" y="225" font-size="18" fill="#4b7373">能力可分布，授权不分散</text>
+
+    <rect x="548" y="158" width="860" height="606" rx="24" fill="#edf3fc" stroke="#86a8d0" stroke-width="2" stroke-dasharray="7 6"/>
+    <text x="576" y="196" font-size="22" font-weight="700" fill="#245b9d">常驻部署节点 / 本机边界</text>
+    <text x="576" y="228" font-size="18" fill="#52677d">初期：当前 Mac（休眠即离线）</text>
+    <text x="998" y="228" font-size="17" fill="#52677d">需要 24h 值守：迁 Mac mini / 服务器</text>
+
+    <!-- Shared visual trunk: each endpoint establishes its own outbound TLS link. -->
+    <g fill="none" stroke="#188a85" stroke-width="3" stroke-linejoin="round">
+      <polyline points="418,315 483,315 483,933"/>
+      <polyline points="418,472 483,472"/>
+      <polyline points="418,738 483,738"/>
+      <polyline points="418,933 483,933"/>
+      <polyline points="483,373 574,373"/>
+    </g>
+    <g fill="#188a85">
+      <polygon points="460,309 472,315 460,321"/>
+      <polygon points="460,466 472,472 460,478"/>
+      <polygon points="460,732 472,738 460,744"/>
+      <polygon points="460,927 472,933 460,939"/>
+      <polygon points="562,366 574,373 562,380"/>
+      <circle cx="483" cy="315" r="4"/>
+      <circle cx="483" cy="373" r="5"/>
+      <circle cx="483" cy="472" r="4"/>
+      <circle cx="483" cy="738" r="4"/>
+      <circle cx="483" cy="933" r="4"/>
+    </g>
+    <text x="529" y="352" font-size="17" text-anchor="middle" font-weight="700" fill="#136b69">TLS</text>
+    <text x="514" y="638" transform="rotate(-90 514 638)" text-anchor="middle" font-size="18" fill="#136b69">各设备独立发起出站连接</text>
+
+    <g id="desktop-device">
+      <path d="M70 250 H398 L418 270 V364 L402 380 H54 V266 Z" fill="#ffffff" stroke="#65a9a3" stroke-width="2"/>
+      <circle cx="90" cy="291" r="26" fill="#def2ef"/>
+      <g fill="none" stroke="#167b76" stroke-width="2.3" stroke-linejoin="round">
+        <rect x="74" y="278" width="32" height="22" rx="3"/>
+        <path d="M71 307 H109 M90 300 V307"/>
+      </g>
+      <text x="130" y="285" font-size="22" font-weight="700" fill="#165d5c">桌面 Device Agent</text>
+      <text x="130" y="315" font-size="18" fill="#3f6667">文件 · 浏览器 · OS 权限</text>
+      <text x="78" y="353" font-size="17" fill="#526f73">按目录、应用与系统许可执行</text>
+    </g>
+
+    <g id="phone-and-wearable">
+      <path d="M70 412 H398 L418 432 V616 L402 632 H54 V428 Z" fill="#ffffff" stroke="#65a9a3" stroke-width="2"/>
+      <circle cx="90" cy="455" r="26" fill="#def2ef"/>
+      <g fill="none" stroke="#167b76" stroke-width="2.3" stroke-linecap="round">
+        <rect x="79" y="435" width="22" height="38" rx="4"/>
+        <path d="M86 441 H94 M88 467 H92"/>
+      </g>
+      <text x="130" y="449" font-size="22" font-weight="700" fill="#165d5c">手机</text>
+      <text x="130" y="479" font-size="17" fill="#3f6667">输入 · 审批 · 推送 · 传感器</text>
+      <text x="78" y="516" font-size="18" fill="#896020">受 iOS / Android 系统后台限制</text>
+      <polyline points="90,535 90,581 129,581" fill="none" stroke="#188a85" stroke-width="2.5" stroke-linejoin="round"/>
+      <polygon points="120,576 130,581 120,586" fill="#188a85"/>
+      <rect x="130" y="542" width="266" height="72" rx="36" fill="#edf8f6"/>
+      <g fill="none" stroke="#167b76" stroke-width="2.2" stroke-linejoin="round">
+        <path d="M155 558 V550 H167 V558 M155 594 V602 H167 V594"/>
+        <rect x="149" y="560" width="24" height="32" rx="8"/>
+        <path d="M161 568 V577 L167 581"/>
+      </g>
+      <text x="191" y="574" font-size="19" font-weight="700" fill="#165d5c">可穿戴设备</text>
+      <text x="191" y="600" font-size="17" fill="#4b7373">仅经手机伴侣接入</text>
+    </g>
+
+    <g id="home-gateway">
+      <path d="M70 664 H398 L418 684 V808 L402 824 H54 V680 Z" fill="#ffffff" stroke="#65a9a3" stroke-width="2"/>
+      <circle cx="90" cy="706" r="26" fill="#def2ef"/>
+      <g fill="none" stroke="#167b76" stroke-width="2.3" stroke-linejoin="round">
+        <path d="M72 706 L90 690 L108 706 M77 702 V720 H103 V702 M86 720 V709 H94 V720"/>
+      </g>
+      <text x="130" y="704" font-size="22" font-weight="700" fill="#165d5c">家庭网关</text>
+      <text x="130" y="735" font-size="18" fill="#3f6667">Home Assistant / Matter</text>
+      <polyline points="90,746 90,787 116,787" fill="none" stroke="#188a85" stroke-width="2.2"/>
+      <circle cx="90" cy="787" r="4" fill="#188a85"/>
+      <text x="130" y="789" font-size="18" fill="#526f73">灯光、环境与家居设备</text>
+    </g>
+
+    <g id="robot-and-car">
+      <path d="M70 862 H398 L418 882 V1015 L402 1031 H54 V878 Z" fill="#ffffff" stroke="#65a9a3" stroke-width="2"/>
+      <circle cx="90" cy="905" r="26" fill="#def2ef"/>
+      <g fill="none" stroke="#167b76" stroke-width="2.3" stroke-linejoin="round">
+        <path d="M72 912 V901 L78 898 L82 889 H98 L102 898 L108 901 V912 Z M78 898 H102"/>
+        <circle cx="80" cy="913" r="3" fill="#def2ef"/>
+        <circle cx="100" cy="913" r="3" fill="#def2ef"/>
+      </g>
+      <text x="130" y="901" font-size="22" font-weight="700" fill="#165d5c">机器人 / 车</text>
+      <text x="130" y="932" font-size="18" fill="#3f6667">既有控制器接收高层目标</text>
+      <path d="M76 958 H396" fill="none" stroke="#d6e8e3"/>
+      <text x="78" y="983" font-size="17" fill="#896020">运动控制 / 安全闭环留在控制器</text>
+      <text x="78" y="1010" font-size="17" fill="#896020">不交给 LLM 实时控制</text>
+    </g>
+
+    <g id="authoritative-host">
+      <path d="M598 258 H1014 L1038 282 V682 L1014 706 H598 L574 682 V282 Z" fill="#ffffff" stroke="#2864ae" stroke-width="3"/>
+      <rect x="844" y="274" width="170" height="31" rx="15.5" fill="#e6effc"/>
+      <text x="929" y="296" text-anchor="middle" font-size="16" font-weight="700" fill="#245b9d">唯一权威 / 信任域</text>
+      <path d="M616 279 L639 288 V310 Q639 329 616 339 Q593 329 593 310 V288 Z" fill="#2864ae"/>
+      <g fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round">
+        <path d="M607 307 V302 A9 9 0 0 1 625 302 V307"/>
+        <rect x="605" y="307" width="22" height="16" rx="3"/>
+      </g>
+      <text x="658" y="309" font-size="29" font-weight="700" fill="#214f89">lumi Host</text>
+      <text x="658" y="337" font-size="16" fill="#52677d">确定性控制，非第二套 Agent Loop</text>
+      <path d="M598 353 H1014" fill="none" stroke="#d9e4f2" stroke-width="1.5"/>
+
+      <g fill="#2864ae">
+        <circle cx="610" cy="380" r="4"/>
+        <circle cx="610" cy="414" r="4"/>
+        <circle cx="826" cy="380" r="4"/>
+        <circle cx="826" cy="414" r="4"/>
+      </g>
+      <text x="626" y="387" font-size="19">身份 / 设备注册</text>
+      <text x="626" y="421" font-size="19">任务 / 动作授权</text>
+      <text x="842" y="387" font-size="19">持久调度</text>
+      <text x="842" y="421" font-size="19">通知 / 结果核验</text>
+
+      <g id="authoritative-storage">
+        <path d="M615 481 V568 C615 594 791 594 791 568 V481 Z" fill="#eaf1fd" stroke="#4c7caf" stroke-width="2"/>
+        <ellipse cx="703" cy="481" rx="88" ry="18" fill="#d7e6fa" stroke="#4c7caf" stroke-width="2"/>
+        <path d="M615 558 C615 584 791 584 791 558" fill="none" stroke="#a2bddf" stroke-width="1.5"/>
+        <text x="703" y="525" text-anchor="middle" font-size="23" font-weight="700" fill="#245b9d">SQLite</text>
+        <text x="703" y="552" text-anchor="middle" font-size="16" fill="#4e6a8c">任务 · 授权 · 事件</text>
+        <path d="M829 470 H881 L897 486 H991 V578 H829 Z" fill="#e3f3f0" stroke="#3e9992" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M830 499 H990" fill="none" stroke="#8fc2bc" stroke-width="1.5"/>
+        <text x="910" y="536" text-anchor="middle" font-size="22" font-weight="700" fill="#176c67">文件证据</text>
+        <text x="910" y="561" text-anchor="middle" font-size="17" fill="#4b7373">产物 · 回执</text>
+      </g>
+      <text x="806" y="623" text-anchor="middle" font-size="20" font-weight="700" fill="#245b9d">共享同一权威任务 / taskId</text>
+      <path d="M598 648 H1014" fill="none" stroke="#d9e4f2" stroke-width="1.5"/>
+      <text x="806" y="679" text-anchor="middle" font-size="18" fill="#52677d">只有 Host 判定结果并写入任务账本</text>
+    </g>
+
+    <g id="local-worker-links">
+      <polyline points="1038,373 1100,373" fill="none" stroke="#2864ae" stroke-width="2.5"/>
+      <polygon points="1088,367 1100,373 1088,379" fill="#2864ae"/>
+      <polyline points="1100,414 1038,414" fill="none" stroke="#188a85" stroke-width="2.5"/>
+      <polygon points="1050,408 1038,414 1050,420" fill="#188a85"/>
+      <text x="1069" y="355" text-anchor="middle" font-size="15" fill="#245b9d">派发</text>
+      <text x="1069" y="440" text-anchor="middle" font-size="15" fill="#136b69">证据</text>
+    </g>
+    <g id="local-dsh-workers">
+      <rect x="1100" y="276" width="282" height="188" rx="20" fill="#ffffff" stroke="#be974f" stroke-width="2" stroke-dasharray="5 4"/>
+      <polygon points="1140,287 1165,301 1165,329 1140,343 1115,329 1115,301" fill="#e5eefc" stroke="#5381b9" stroke-width="1.5"/>
+      <g fill="none" stroke="#2864ae" stroke-width="2.2" stroke-linejoin="round">
+        <rect x="1127" y="304" width="26" height="21" rx="3"/>
+        <path d="M1133 309 L1138 314 L1133 319 M1142 319 H1148"/>
+      </g>
+      <text x="1182" y="312" font-size="21" font-weight="700" fill="#245b9d">DSH workers</text>
+      <text x="1182" y="340" font-size="17" fill="#896020">本机为主 · 受限域</text>
+      <text x="1120" y="381" font-size="19">唯一认知 / 执行循环</text>
+      <text x="1120" y="411" font-size="18" fill="#52677d">按 Host 授权执行与回传</text>
+      <text x="1120" y="441" font-size="18" fill="#52677d">不持有独立任务权威</text>
+    </g>
+
+    <g id="authorized-egress">
+      <polyline points="1038,599 1100,599" fill="none" stroke="#b48129" stroke-width="2.5"/>
+      <polygon points="1088,593 1100,599 1088,605" fill="#b48129"/>
+      <polyline points="1100,657 1038,657" fill="none" stroke="#188a85" stroke-width="2.5"/>
+      <polygon points="1050,651 1038,657 1050,663" fill="#188a85"/>
+      <text x="1069" y="581" text-anchor="middle" font-size="15" fill="#896020">授权</text>
+      <text x="1069" y="683" text-anchor="middle" font-size="15" fill="#136b69">回执</text>
+      <path d="M1120 518 H1362 L1382 538 V686 L1362 706 H1120 L1100 686 V538 Z" fill="#fff9ed" stroke="#bb8b36" stroke-width="2"/>
+      <circle cx="1140" cy="558" r="25" fill="#fbe8bc"/>
+      <g fill="none" stroke="#9b6b17" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M1134 540 V550 M1146 540 V550 M1129 550 H1151 V558 Q1151 568 1140 568 Q1129 568 1129 558 Z M1140 568 V578"/>
+      </g>
+      <text x="1182" y="552" font-size="20" font-weight="700" fill="#805611">受控 Connector</text>
+      <text x="1182" y="580" font-size="18" fill="#896020">Host 授权出口</text>
+      <text x="1120" y="618" font-size="18">第三方凭据留在受控侧</text>
+      <text x="1120" y="647" font-size="18" fill="#766b52">动作授权 + 参数复核</text>
+      <text x="1120" y="677" font-size="18" fill="#766b52">DSH / 设备不可旁路</text>
+    </g>
+
+    <!-- Only controlled links cross into remote execution and third-party domains. -->
+    <path d="M548 795 H1408" fill="none" stroke="#c28f3d" stroke-width="2" stroke-dasharray="8 7"/>
+    <text x="558" y="787" font-size="16" fill="#93661f">跨网络与信任边界</text>
+    <polyline points="802,867 802,706" fill="none" stroke="#4677b2" stroke-width="2.5" stroke-dasharray="7 5"/>
+    <polygon points="796,718 802,706 808,718" fill="#4677b2"/>
+    <text x="818" y="824" font-size="17" fill="#52677d">远端主动 TLS 接入</text>
+    <polyline points="1242,706 1242,876" fill="none" stroke="#b48129" stroke-width="2.5"/>
+    <polygon points="1236,864 1242,876 1248,864" fill="#b48129"/>
+    <text x="1256" y="824" font-size="16" fill="#93661f">TLS / 受控出口</text>
+
+    <g id="optional-remote-workers">
+      <rect x="570" y="867" width="468" height="196" rx="22" fill="#f0f5fc" stroke="#7f9fc6" stroke-width="2" stroke-dasharray="7 6"/>
+      <polygon points="614,883 640,898 640,928 614,943 588,928 588,898" fill="#dfeafa" stroke="#5381b9" stroke-width="1.5"/>
+      <g fill="none" stroke="#2864ae" stroke-width="2.2">
+        <rect x="601" y="899" width="26" height="10" rx="2"/>
+        <rect x="601" y="915" width="26" height="10" rx="2"/>
+        <path d="M607 904 H611 M607 920 H611"/>
+      </g>
+      <text x="656" y="902" font-size="21" font-weight="700" fill="#245b9d">受控远端 DSH workers</text>
+      <text x="656" y="931" font-size="17" fill="#52677d">可选 · 仅获任务子集与短期授权</text>
+      <text x="594" y="971" font-size="18">主动 TLS 连接 Host；回传证据</text>
+      <text x="594" y="1001" font-size="18" fill="#52677d">同一 taskId，无第二份权威账本</text>
+      <text x="594" y="1031" font-size="18" fill="#52677d">不取得生产凭据，不成为备用主节点</text>
+    </g>
+    <g id="third-party-services">
+      <path d="M1120 876 H1362 L1382 896 V1038 L1362 1058 H1120 L1100 1038 V896 Z" fill="#fff9ed" stroke="#c69b54" stroke-width="2" stroke-dasharray="6 5"/>
+      <circle cx="1137" cy="914" r="24" fill="#fbe8bc"/>
+      <g fill="none" stroke="#9b6b17" stroke-width="2">
+        <circle cx="1137" cy="914" r="15"/>
+        <ellipse cx="1137" cy="914" rx="7" ry="15"/>
+        <path d="M1123 909 H1151 M1123 919 H1151"/>
+      </g>
+      <text x="1175" y="920" font-size="22" font-weight="700" fill="#805611">互联网第三方</text>
+      <text x="1120" y="962" font-size="19">飞书 · 日历 · SaaS</text>
+      <text x="1120" y="994" font-size="18" fill="#766b52">结果 / 业务回执回传</text>
+      <text x="1120" y="1026" font-size="18" fill="#766b52">服务回包不等于目标达成</text>
+    </g>
+
+    <g id="connection-contract">
+      <rect x="32" y="1090" width="1376" height="102" rx="18" fill="#e9f0fa" stroke="#c6d7ed" stroke-width="1.5"/>
+      <path d="M72 1110 L93 1119 V1140 Q93 1158 72 1169 Q51 1158 51 1140 V1119 Z" fill="#2864ae"/>
+      <path d="M62 1139 L70 1147 L83 1131" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="112" y="1125" font-size="21" font-weight="700" fill="#245b9d">连接协议</text>
+      <text x="224" y="1125" font-size="20">设备主动 TLS 出站 · 短期身份 · 能力声明（声明不等于授权）</text>
+      <text x="112" y="1154" font-size="19" font-weight="700" fill="#805611">命令 ID + TTL + 回执；ack ≠ 动作完成，必须返回实际结果与可核验证据。</text>
+      <text x="112" y="1180" font-size="17" fill="#52677d">命令与结果沿已建立连接往返；设备不开放公网入站。结果未知先对账，不能盲目重试。</text>
+    </g>
+
+    <g id="offline-reconnect-migration">
+      <path d="M32 1212 H472 M496 1212 H936 M960 1212 H1408" fill="none" stroke="#cbd9e5" stroke-width="2"/>
+      <circle cx="55" cy="1238" r="15" fill="#fbe8bc"/>
+      <path d="M48 1231 L62 1245 M62 1231 L48 1245" fill="none" stroke="#9b6b17" stroke-width="2.2" stroke-linecap="round"/>
+      <text x="82" y="1244" font-size="19" font-weight="700" fill="#805611">离线：仅已允许的采集 / 草稿</text>
+      <text x="82" y="1275" font-size="17" fill="#52677d">不新增高风险授权，不擅自执行写动作</text>
+      <circle cx="519" cy="1238" r="15" fill="#def2ef"/>
+      <path d="M511 1237 A8 8 0 0 1 525 1232 M525 1227 V1233 H519 M527 1240 A8 8 0 0 1 513 1245" fill="none" stroke="#167b76" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="546" y="1244" font-size="19" font-weight="700" fill="#136b69">重连：去重 / 续传</text>
+      <text x="546" y="1275" font-size="17" fill="#52677d">按稳定命令 ID 对账，再决定是否续执行</text>
+      <circle cx="983" cy="1238" r="15" fill="#dce8f9"/>
+      <text x="983" y="1245" text-anchor="middle" font-size="20" font-weight="700" fill="#245b9d">1</text>
+      <text x="1010" y="1244" font-size="19" font-weight="700" fill="#245b9d">迁移：单权威，不双主</text>
+      <text x="1010" y="1275" font-size="17" fill="#52677d">先停旧 Host 写权，再启新 Host</text>
+    </g>
+    <text x="40" y="1325" font-size="15" fill="#64798e">目标设计，非已启用能力；24h 可用性与设备权限须分别验证。</text>
+    <text x="1400" y="1325" font-size="15" text-anchor="end" fill="#64798e">lumi · 2026-09-25</text>
+  </g>
+</svg>

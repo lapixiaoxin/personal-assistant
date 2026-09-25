@@ -1,0 +1,222 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1200" viewBox="0 0 1440 1200" role="img" aria-labelledby="diagram-title diagram-desc" font-family="Noto Sans SC, PingFang SC, Microsoft YaHei, sans-serif" fill="#172B4D">
+  <title id="diagram-title">DIY与持续进化 · Proposed v0.3</title>
+  <desc id="diagram-desc">用于“DIY与持续进化”章节的设计图，非已启用能力声明。上部：Skill（知识）、Cordis Plugin（运行时服务）、MCP（工具资源）、外部 Agent（专家）、Device Adapter（设备），经过描述契约与版本注册、schema、权限、副作用及健康声明，独立测试和动作出口验证后，以 disabled 状态安装；授权启用 profile 后，DSH 才可发现调用，写入仍经过 Host Broker。复用 DSH Cordis，不另造通用 plugin-host。下部：真实任务结果与用户反馈，形成可量化失败和候选 SOP，进入 SDD spec 及验收、隔离 DSH Code Agent 实现、独立验证、受权发布门禁、观察与回滚；升级版本回到上部重新准入，观察结果继续积累为证据。独立验证不接受执行者自己宣布通过。日常开发现在可由 Agent 托管，自动发布是后续 M5。安装不等于启用，不等于授权。宪章、授权根、受保护验收不由普通开发 Agent 更改。一次成功的 SOP 仅标 verified_once。</desc>
+
+  <rect width="1440" height="1200" fill="#F5F7FB"/>
+  <circle cx="60" cy="56" r="24" fill="#172B4D"/>
+  <text x="60" y="63" text-anchor="middle" font-size="20" font-weight="700" fill="#FFFFFF">06</text>
+  <text x="100" y="69" font-size="36" font-weight="700">DIY与持续进化</text>
+  <text x="36" y="108" font-size="20" fill="#5C6C82">能力接入与自主精进共享版本链，开发权与发布权分离。</text>
+  <rect x="1190" y="34" width="218" height="42" rx="21" fill="#E8EDF5" stroke="#C5D0E0"/>
+  <text x="1299" y="62" text-anchor="middle" font-size="20" font-weight="600">Proposed v0.3</text>
+  <g id="legend" font-size="18">
+    <circle cx="985" cy="102" r="6" fill="#376FDC"/>
+    <text x="1001" y="108" fill="#285AB6">DSH</text>
+    <circle cx="1090" cy="102" r="6" fill="#10877E"/>
+    <text x="1106" y="108" fill="#086E66">Host</text>
+    <circle cx="1204" cy="102" r="6" fill="#BF8016"/>
+    <text x="1220" y="108" fill="#925C0B">发布</text>
+  </g>
+
+  <rect x="32" y="144" width="1376" height="464" rx="24" fill="#FFFFFF" stroke="#DCE3ED" stroke-width="2"/>
+  <rect x="32" y="640" width="1376" height="348" rx="24" fill="#FFFFFF" stroke="#DCE3ED" stroke-width="2"/>
+
+  <g id="intake-heading">
+    <circle cx="64" cy="179" r="16" fill="#E1F3F0"/>
+    <text x="64" y="185" text-anchor="middle" font-size="17" font-weight="700" fill="#086E66">1</text>
+    <text x="92" y="187" font-size="25" font-weight="700">接能力</text>
+    <text x="234" y="187" font-size="20" fill="#285AB6">复用 DSH Cordis，不另造通用 plugin-host</text>
+  </g>
+
+  <g id="capability-inputs">
+    <g id="skill">
+      <rect x="64" y="216" width="242" height="62" rx="17" fill="#F0F5FF" stroke="#BBD0F4"/>
+      <circle cx="91" cy="247" r="17" fill="#DDE9FF"/>
+      <path d="M80 238 H87 L91 241 L95 238 H102 V255 H95 L91 258 L87 255 H80 Z M91 241 V258" fill="none" stroke="#376FDC" stroke-width="1.8" stroke-linejoin="round"/>
+      <text x="119" y="241" font-size="20" font-weight="600" fill="#285AB6">Skill</text>
+      <text x="119" y="265" font-size="18" fill="#5C6C82">知识</text>
+    </g>
+    <g id="cordis-plugin">
+      <rect x="328" y="216" width="242" height="62" rx="17" fill="#F0F5FF" stroke="#BBD0F4"/>
+      <circle cx="355" cy="247" r="17" fill="#DDE9FF"/>
+      <polygon points="355,234 366,240 366,253 355,260 344,253 344,240" fill="none" stroke="#376FDC" stroke-width="1.8"/>
+      <circle cx="355" cy="247" r="4" fill="#376FDC"/>
+      <text x="383" y="241" font-size="20" font-weight="600" fill="#285AB6">Cordis Plugin</text>
+      <text x="383" y="265" font-size="18" fill="#5C6C82">运行时服务</text>
+    </g>
+    <g id="mcp">
+      <rect x="592" y="216" width="242" height="62" rx="17" fill="#F0F5FF" stroke="#BBD0F4"/>
+      <circle cx="619" cy="247" r="17" fill="#DDE9FF"/>
+      <polyline points="609,240 619,240 619,254 629,254" fill="none" stroke="#376FDC" stroke-width="1.8"/>
+      <circle cx="609" cy="240" r="3" fill="#376FDC"/>
+      <circle cx="619" cy="247" r="3" fill="#376FDC"/>
+      <circle cx="629" cy="254" r="3" fill="#376FDC"/>
+      <text x="647" y="241" font-size="20" font-weight="600" fill="#285AB6">MCP</text>
+      <text x="647" y="265" font-size="18" fill="#5C6C82">工具资源</text>
+    </g>
+    <g id="external-agent">
+      <rect x="856" y="216" width="242" height="62" rx="17" fill="#F0F5FF" stroke="#BBD0F4"/>
+      <circle cx="883" cy="247" r="17" fill="#DDE9FF"/>
+      <circle cx="883" cy="241" r="5" fill="none" stroke="#376FDC" stroke-width="1.8"/>
+      <path d="M873 256 V253 Q883 245 893 253 V256" fill="none" stroke="#376FDC" stroke-width="1.8" stroke-linejoin="round"/>
+      <text x="911" y="241" font-size="20" font-weight="600" fill="#285AB6">外部 Agent</text>
+      <text x="911" y="265" font-size="18" fill="#5C6C82">专家</text>
+    </g>
+    <g id="device-adapter">
+      <rect x="1120" y="216" width="242" height="62" rx="17" fill="#F0F5FF" stroke="#BBD0F4"/>
+      <circle cx="1147" cy="247" r="17" fill="#DDE9FF"/>
+      <rect x="1140" y="235" width="14" height="24" rx="3" fill="none" stroke="#376FDC" stroke-width="1.8"/>
+      <line x1="1144" y1="255" x2="1150" y2="255" stroke="#376FDC" stroke-width="1.8"/>
+      <text x="1175" y="241" font-size="20" font-weight="600" fill="#285AB6">Device Adapter</text>
+      <text x="1175" y="265" font-size="18" fill="#5C6C82">设备</text>
+    </g>
+  </g>
+
+  <g id="intake-bus" fill="none" stroke="#96A6BD" stroke-width="2" stroke-linejoin="round">
+    <polyline points="185,278 185,348"/>
+    <polyline points="449,278 449,306 185,306"/>
+    <polyline points="713,278 713,306 449,306"/>
+    <polyline points="977,278 977,306 713,306"/>
+    <polyline points="1241,278 1241,306 977,306"/>
+  </g>
+  <polygon points="185,360 179,348 191,348" fill="#96A6BD"/>
+
+  <g id="version-return">
+    <polyline points="1368,844 1384,844 1384,332 197,332" fill="none" stroke="#BF8016" stroke-width="2.5" stroke-dasharray="8 6" stroke-linejoin="round"/>
+    <polygon points="185,332 197,326 197,338" fill="#BF8016"/>
+    <circle cx="185" cy="332" r="4" fill="#BF8016"/>
+    <text x="1000" y="326" font-size="18" font-weight="600" fill="#925C0B">升级版本 · 重新准入</text>
+  </g>
+
+  <g id="intake-connectors" stroke-width="2.5" stroke-linejoin="round">
+    <polyline points="306,435 344,435" fill="none" stroke="#10877E"/>
+    <polygon points="354,435 344,429 344,441" fill="#10877E"/>
+    <polyline points="574,435 614,435" fill="none" stroke="#96A6BD"/>
+    <polygon points="624,435 614,429 614,441" fill="#96A6BD"/>
+    <polyline points="796,435 838,435" fill="none" stroke="#10877E"/>
+    <polygon points="848,435 838,429 838,441" fill="#10877E"/>
+    <polyline points="1068,435 1106,435" fill="none" stroke="#376FDC"/>
+    <polygon points="1116,435 1106,429 1106,441" fill="#376FDC"/>
+  </g>
+
+  <g id="contract-version-registry">
+    <path d="M64 360 H286 L306 380 V510 H64 Z" fill="#EEFAF7" stroke="#73BDB4" stroke-width="2" stroke-linejoin="round"/>
+    <polyline points="286,360 286,380 306,380" fill="none" stroke="#73BDB4" stroke-width="2"/>
+    <text x="185" y="401" text-anchor="middle" font-size="23" font-weight="700" fill="#086E66">契约与版本注册</text>
+    <text x="185" y="442" text-anchor="middle" font-size="20" fill="#355D5B">描述·版本·schema</text>
+    <text x="185" y="479" text-anchor="middle" font-size="20" fill="#355D5B">权限·副作用·健康</text>
+  </g>
+  <g id="intake-verification">
+    <polygon points="370,360 558,360 574,376 574,494 558,510 370,510 354,494 354,376" fill="#EEFAF7" stroke="#73BDB4" stroke-width="2"/>
+    <text x="464" y="417" text-anchor="middle" font-size="24" font-weight="700" fill="#086E66">独立测试</text>
+    <text x="464" y="455" text-anchor="middle" font-size="20" fill="#355D5B">动作出口验证</text>
+  </g>
+  <g id="installed-disabled">
+    <rect x="624" y="377" width="172" height="116" rx="18" fill="#F1F4F8" stroke="#BAC6D7" stroke-width="2"/>
+    <text x="710" y="427" text-anchor="middle" font-size="24" font-weight="700" fill="#53637A">disabled</text>
+    <text x="710" y="463" text-anchor="middle" font-size="18" fill="#5C6C82">安装 · 默认停用</text>
+  </g>
+  <g id="authorized-profile">
+    <rect x="848" y="360" width="220" height="150" rx="24" fill="#E1F5EF" stroke="#10877E" stroke-width="2"/>
+    <polygon points="958,372 971,377 971,391 958,401 945,391 945,377" fill="#10877E"/>
+    <polyline points="952,385 957,390 965,381" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="958" y="433" text-anchor="middle" font-size="24" font-weight="700" fill="#086E66">授权启用</text>
+    <text x="958" y="469" text-anchor="middle" font-size="22" fill="#086E66">profile</text>
+  </g>
+  <g id="dsh-discovery">
+    <rect x="1116" y="360" width="244" height="150" rx="26" fill="#EAF1FF" stroke="#376FDC" stroke-width="2"/>
+    <text x="1238" y="417" text-anchor="middle" font-size="32" font-weight="700" fill="#285AB6">DSH</text>
+    <text x="1238" y="457" text-anchor="middle" font-size="20" fill="#285AB6">可发现 · 可调用</text>
+  </g>
+  <g id="host-write-boundary">
+    <polyline points="1238,510 1238,532" fill="none" stroke="#10877E" stroke-width="2.5"/>
+    <polygon points="1238,542 1232,532 1244,532" fill="#10877E"/>
+    <text x="1256" y="532" font-size="18" fill="#086E66">写入仍经</text>
+    <rect x="1116" y="542" width="244" height="44" rx="12" fill="#10877E"/>
+    <text x="1238" y="571" text-anchor="middle" font-size="22" font-weight="600" fill="#FFFFFF">Host Broker</text>
+    <text x="64" y="565" font-size="24" font-weight="700" fill="#086E66">安装 ≠ 启用 ≠ 授权</text>
+  </g>
+
+  <g id="evolution-heading">
+    <circle cx="64" cy="675" r="16" fill="#E1F3F0"/>
+    <text x="64" y="681" text-anchor="middle" font-size="17" font-weight="700" fill="#086E66">2</text>
+    <text x="92" y="683" font-size="25" font-weight="700">自主精进</text>
+    <text x="240" y="683" font-size="20" fill="#5C6C82">从真实结果改进</text>
+    <rect x="800" y="654" width="560" height="44" rx="22" fill="#FFF5DF" stroke="#E5C78E"/>
+    <text x="1080" y="683" text-anchor="middle" font-size="20" fill="#925C0B">日常开发可 Agent 托管 · 自动发布后续 M5</text>
+  </g>
+
+  <g id="evolution-connectors" stroke-width="2.5" stroke-linejoin="round">
+    <polyline points="242,844 256,844" fill="none" stroke="#96A6BD"/>
+    <polygon points="266,844 256,838 256,850" fill="#96A6BD"/>
+    <polyline points="430,844 444,844" fill="none" stroke="#96A6BD"/>
+    <polygon points="454,844 444,838 444,850" fill="#96A6BD"/>
+    <polyline points="602,844 616,844" fill="none" stroke="#376FDC"/>
+    <polygon points="626,844 616,838 616,850" fill="#376FDC"/>
+    <polyline points="814,844 828,844" fill="none" stroke="#10877E"/>
+    <polygon points="838,844 828,838 828,850" fill="#10877E"/>
+    <polyline points="1006,844 1020,844" fill="none" stroke="#BF8016"/>
+    <polygon points="1030,844 1020,838 1020,850" fill="#BF8016"/>
+    <polyline points="1206,844 1220,844" fill="none" stroke="#BF8016"/>
+    <polygon points="1230,844 1220,838 1220,850" fill="#BF8016"/>
+  </g>
+
+  <g id="task-evidence">
+    <rect x="64" y="768" width="178" height="152" rx="18" fill="#F8FAFC" stroke="#BAC6D7" stroke-width="2"/>
+    <text x="153" y="826" text-anchor="middle" font-size="22" font-weight="700">真实任务结果</text>
+    <text x="153" y="862" text-anchor="middle" font-size="20" fill="#5C6C82">+ 用户反馈</text>
+  </g>
+  <g id="improvement-candidate">
+    <path d="M266 768 H412 L430 786 V920 H266 Z" fill="#F8FAFC" stroke="#BAC6D7" stroke-width="2" stroke-linejoin="round"/>
+    <polyline points="412,768 412,786 430,786" fill="none" stroke="#BAC6D7" stroke-width="2"/>
+    <text x="348" y="826" text-anchor="middle" font-size="22" font-weight="700">可量化失败</text>
+    <text x="348" y="862" text-anchor="middle" font-size="20" fill="#5C6C82">+ 候选 SOP</text>
+  </g>
+  <g id="sdd-acceptance">
+    <rect x="454" y="768" width="148" height="152" rx="18" fill="#F8FAFC" stroke="#BAC6D7" stroke-width="2"/>
+    <text x="528" y="826" text-anchor="middle" font-size="22" font-weight="700">SDD spec</text>
+    <text x="528" y="862" text-anchor="middle" font-size="20" fill="#5C6C82">及验收</text>
+  </g>
+  <g id="isolated-dsh-builder">
+    <rect x="626" y="752" width="188" height="184" rx="20" fill="#EAF1FF" stroke="#376FDC" stroke-width="2"/>
+    <text x="720" y="809" text-anchor="middle" font-size="24" font-weight="700" fill="#285AB6">隔离实现</text>
+    <text x="720" y="846" text-anchor="middle" font-size="19" font-weight="600" fill="#285AB6">DSH Code Agent</text>
+    <text x="720" y="884" text-anchor="middle" font-size="18" fill="#526F9A">worktree / 沙箱</text>
+  </g>
+  <g id="independent-verifier">
+    <polygon points="854,760 990,760 1006,776 1006,912 990,928 854,928 838,912 838,776" fill="#EEFAF7" stroke="#10877E" stroke-width="2"/>
+    <text x="922" y="809" text-anchor="middle" font-size="24" font-weight="700" fill="#086E66">独立验证</text>
+    <text x="922" y="849" text-anchor="middle" font-size="20" fill="#355D5B">执行者不得</text>
+    <text x="922" y="883" text-anchor="middle" font-size="20" fill="#355D5B">自报通过</text>
+  </g>
+  <g id="authorized-release-gate">
+    <polygon points="1054,760 1182,760 1206,844 1182,928 1054,928 1030,844" fill="#FFF5DF" stroke="#BF8016" stroke-width="2"/>
+    <path d="M1111 788 V783 A7 7 0 0 1 1125 783 V788" fill="none" stroke="#925C0B" stroke-width="2"/>
+    <rect x="1107" y="788" width="22" height="16" rx="3" fill="#BF8016"/>
+    <text x="1118" y="835" text-anchor="middle" font-size="22" font-weight="700" fill="#925C0B">受权发布门禁</text>
+    <text x="1118" y="873" text-anchor="middle" font-size="20" fill="#925C0B">授权 · 证据</text>
+  </g>
+  <g id="observe-rollback">
+    <circle cx="1299" cy="844" r="69" fill="#FFF5DF" stroke="#BF8016" stroke-width="2"/>
+    <text x="1299" y="837" text-anchor="middle" font-size="24" font-weight="700" fill="#925C0B">观察</text>
+    <text x="1299" y="873" text-anchor="middle" font-size="20" fill="#925C0B">异常回滚</text>
+  </g>
+
+  <g id="evidence-feedback">
+    <polyline points="1299,913 1299,958 153,958 153,932" fill="none" stroke="#96A6BD" stroke-width="2" stroke-dasharray="6 5" stroke-linejoin="round"/>
+    <polygon points="153,920 147,932 159,932" fill="#96A6BD"/>
+    <text x="720" y="979" text-anchor="middle" font-size="18" fill="#5C6C82">观察结果回到任务证据，继续下一轮改进</text>
+  </g>
+
+  <g id="protected-boundaries">
+    <rect x="32" y="1020" width="1376" height="148" rx="24" fill="#EAF0F7" stroke="#D1DCE9" stroke-width="2"/>
+    <polygon points="82,1054 105,1063 105,1091 82,1110 59,1091 59,1063" fill="#DCE6F0" stroke="#667A93" stroke-width="2"/>
+    <path d="M77 1077 V1073 A5 5 0 0 1 87 1073 V1077" fill="none" stroke="#53637A" stroke-width="2"/>
+    <rect x="73" y="1077" width="18" height="15" rx="3" fill="#53637A"/>
+    <text x="132" y="1070" font-size="24" font-weight="700">宪章 / 授权根 / 受保护验收</text>
+    <text x="132" y="1111" font-size="21" fill="#53637A">普通开发 Agent 不得更改</text>
+    <line x1="922" y1="1050" x2="922" y2="1138" stroke="#C5D0E0" stroke-width="2"/>
+    <text x="962" y="1070" font-size="23" font-weight="700">一次成功 SOP</text>
+    <text x="962" y="1111" font-size="21" fill="#53637A">仅标 verified_once</text>
+  </g>
+</svg>
