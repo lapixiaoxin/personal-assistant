@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="730" viewBox="0 0 1000 730">
+  <rect x="0" y="0" width="1000" height="730" rx="20" fill="#f8fafc"/>
+  <text x="40" y="47" font-family="sans-serif" font-size="25" font-weight="700" fill="#14233b">一套插件机制，组成不同应用</text>
+  <text x="40" y="76" font-family="sans-serif" font-size="16" fill="#526277">上方决定装配；下方是启动后的 Cordis 插件树</text>
+  <circle cx="69" cy="127" r="24" fill="#315cc9"/>
+  <text x="69" y="134" text-anchor="middle" font-family="sans-serif" font-size="21" font-weight="700" fill="#ffffff">1</text>
+  <text x="110" y="122" font-family="sans-serif" font-size="20" font-weight="700" fill="#14233b">选择 Profile</text>
+  <text x="110" y="151" font-family="sans-serif" font-size="17" fill="#526277">web · headless · sdk · sdk-minimal · acp</text>
+  <line x1="69" y1="154" x2="69" y2="181" stroke="#a5b4cc" stroke-width="3"/>
+  <polygon points="63,177 75,177 69,187" fill="#a5b4cc"/>
+  <circle cx="69" cy="218" r="24" fill="#315cc9"/>
+  <text x="69" y="225" text-anchor="middle" font-family="sans-serif" font-size="21" font-weight="700" fill="#ffffff">2</text>
+  <text x="110" y="213" font-family="sans-serif" font-size="20" font-weight="700" fill="#14233b">按层应用配置</text>
+  <text x="110" y="242" font-family="sans-serif" font-size="17" fill="#526277">Bundle 顺序 → Profile Patch → Home Patch → CLI Patch</text>
+  <text x="110" y="267" font-family="sans-serif" font-size="15" fill="#526277">sdk-minimal 使用独立 Bundle；Patch 替换目标行的整份配置</text>
+  <line x1="69" y1="245" x2="69" y2="310" stroke="#a5b4cc" stroke-width="3"/>
+  <polygon points="63,306 75,306 69,316" fill="#a5b4cc"/>
+  <circle cx="69" cy="347" r="24" fill="#315cc9"/>
+  <text x="69" y="354" text-anchor="middle" font-family="sans-serif" font-size="21" font-weight="700" fill="#ffffff">3</text>
+  <text x="110" y="340" font-family="sans-serif" font-size="20" font-weight="700" fill="#14233b">加载插件，等待依赖满足</text>
+  <text x="110" y="369" font-family="sans-serif" font-size="17" fill="#526277">Cordis Context：服务发现 · 事件接线 · 生命周期</text>
+  <line x1="500" y1="388" x2="500" y2="416" stroke="#315cc9" stroke-width="3"/>
+  <polygon points="494,412 506,412 500,422" fill="#315cc9"/>
+  <rect x="40" y="432" width="920" height="224" rx="18" fill="#eaf0fc" stroke="#b9c9ed" stroke-width="2"/>
+  <text x="65" y="466" font-family="sans-serif" font-size="19" font-weight="700" fill="#213e7e">运行中的插件树</text>
+  <rect x="65" y="490" width="262" height="110" rx="12" fill="#ffffff" stroke="#b9c9ed"/>
+  <text x="85" y="522" font-family="sans-serif" font-size="19" font-weight="700" fill="#14233b">执行与状态</text>
+  <text x="85" y="552" font-family="sans-serif" font-size="17" fill="#526277">Agent Loop · Session</text>
+  <text x="85" y="578" font-family="sans-serif" font-size="17" fill="#526277">作用域 · 提示词</text>
+  <rect x="369" y="490" width="262" height="110" rx="12" fill="#ffffff" stroke="#b9c9ed"/>
+  <text x="389" y="522" font-family="sans-serif" font-size="19" font-weight="700" fill="#14233b">模型与工具</text>
+  <text x="389" y="552" font-family="sans-serif" font-size="17" fill="#526277">模型路由 · 文件 · Shell</text>
+  <text x="389" y="578" font-family="sans-serif" font-size="17" fill="#526277">MCP · 审批 · Sandbox</text>
+  <rect x="673" y="490" width="262" height="110" rx="12" fill="#ffffff" stroke="#b9c9ed"/>
+  <text x="693" y="522" font-family="sans-serif" font-size="19" font-weight="700" fill="#14233b">应用入口</text>
+  <text x="693" y="552" font-family="sans-serif" font-size="17" fill="#526277">Web / Desktop</text>
+  <text x="693" y="578" font-family="sans-serif" font-size="17" fill="#526277">SDK / ACP / Headless</text>
+  <text x="65" y="633" font-family="sans-serif" font-size="16" fill="#315cc9">连 Agent Loop 都是插件；实际可用能力由最终组合决定</text>
+  <text x="40" y="700" font-family="sans-serif" font-size="16" fill="#526277">图示为装配关系；可选能力需单独配置，并非所有入口同时启动。</text>
+</svg>

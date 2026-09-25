@@ -1,6 +1,14 @@
-# 飞书设计发布清单
+# 飞书设计与研究发布清单
 
-发布日期：2026-09-24（v0.2 系列）、2026-09-25（DSH 专题 v0.3）。均为 Proposed 审阅版。用户授权在“个人助手”下新建方案子文档；原始愿景与原工程方案未修改。
+发布日期：2026-09-24（v0.2 系列）、2026-09-25（DSH 专题 v0.3、DSH 源码研究）。设计为 Proposed 审阅版；源码研究为固定快照的静态分析。用户授权在“个人助手”下新建阅读文档；原始愿景与原工程方案未修改。
+
+## DSH 源码研究 · rc.2
+
+[看懂 DSH：核心理念、执行链路与当前能力](https://bytedance.larkoffice.com/docx/VAE4ddnnjoh0PPxBjAncjMDInHh)，本地源为 [源码分析](research/2026-09-25-dsh-source-analysis.md)。固定上游 `477b4f420553e8a52c2fbccc464d7561b239c443`，覆盖五个设计理念、装配与执行图、20 项能力、rc.1/rc.2 差异与 lumi 接入启示。
+
+已读回 revision **4**，正文、41 处源码引用链接与 Mermaid 图源核验一致；一张 SVG 和一张 Mermaid 画板均下载并目视检查。节点 `RpbxwUVK1iGK3Ckw4ybcRyU3nve` 的父节点确为“个人助手”。源文件 SHA-256：`dce3f0b7a40aad0cef53fe86eb5d5219d5a2c2018d51a918756f10eac7d78427`。
+
+证据见 [源码研究记录](evidence/2026-09-25-dsh-source-analysis.md)，本机回执与预览在 `data/dsh-source-analysis-20260925/`。lumi 未升级依赖，未运行上游测试。最新讨论将 DSH 限定为复杂任务主要 Harness，实时对话、感知和物理控制可有独立运行时；下方 v0.3 的较宽定位尚待正式修订。
 
 ## DSH 中心架构 · v0.3
 
@@ -12,7 +20,7 @@
 
 ## v0.2 系列与投影差异
 
-投影差异（SPEC-0002/0003）：仓库的 `00-overview` 新增 lumi 命名、`08-sdd` 更新测试布局、`current-state` 追加整理及 DSH 设计核验；`02-architecture`、`07-roadmap` 同步了 v0.3 的 DSH / Cordis 职责。这五篇的旧飞书正文仍为下表所列 revision。最新 DSH 提案见上方新篇，不能把旧投影当作最新工程事实；后续同步按差异局部更新。
+投影差异（SPEC-0002/0003 及后续研究）：仓库的 `00-overview` 新增 lumi 命名、`08-sdd` 更新测试布局、`current-state` 追加整理、DSH 设计核验及 rc.2 源码发现；`02-architecture`、`07-roadmap` 同步了 v0.3 的 DSH / Cordis 职责。这五篇的旧飞书正文仍为下表所列 revision。最新 DSH 提案与源码事实见上方各篇，不能把旧投影当作最新工程事实；后续同步按差异局部更新。
 
 入口：[超级个人助手：长期设计总纲](https://bytedance.larkoffice.com/wiki/DnYJwYk8iiijjykyqHqc4xAYnke)。
 

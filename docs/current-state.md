@@ -69,6 +69,14 @@ NPM_CONFIG_CACHE=./data/tooling/npm-cache NPM_CONFIG_REGISTRY=https://registry.n
 
 本次仅新增设计、图源及飞书审阅投影，没有修改业务源码、依赖、数据库或运行 profile。上文缺口仍然存在；原设计中的通用 plugin-host 不再作为待建模块，改为复用 DSH/Cordis 并补 lumi 桥接服务。验证范围见 [SPEC-0003 证据](../specs/0003-dsh-centered-design/evidence.md)。
 
+## 2026-09-25 · DSH 上游源码分析
+
+对上游固定提交 `477b4f420553e8a52c2fbccc464d7561b239c443`（根版本 `0.1.7-rc.2`）完成源码、配置及代表性测试的静态审读，见 [分析报告](research/2026-09-25-dsh-source-analysis.md)。lumi 仍固定 rc.1；本次没有安装或运行 rc.2，也没有改变运行能力。
+
+版本差异：rc.2 的 Schedule 已有 Host 持久任务与冷会话恢复，Web 默认关闭，Session 写入与投递回执仍非同一原子事务。上文“schedule 不能承担冷会话唤醒”仅适用于已检查的 rc.1。后续应先评估新版复用与显式迁移。
+
+公共 SDK 仍只有 initialize、session/prompt、shutdown 三个请求；内部 Agent 接口则有更丰富的取消、输入与恢复控制。实验语音输入是录音后转写到草稿，尚非实时双向语音。后续产品讨论将 DSH 定位为复杂任务主要 Harness，实时交互、感知和物理控制保留独立运行时空间；这项认识尚未实施为新架构。
+
 ## 状态标注规则
 
 `Proposed`：设计建议；`Specified`：验收和边界已写清；`Implemented`：代码存在；`Verified`：指定环境和版本有证据；`Enabled`：部署配置已启用。后一个状态不能由前一个自动推断。

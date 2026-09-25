@@ -10,7 +10,7 @@
 
 ## 已成功流程
 
-1. 读取原愿景、当前实现、上游参考，确定读者和 design_rfc 体裁；明确事实、设计和未知。
+1. 读取原愿景、当前实现、上游参考，按当前技能选择读者任务与体裁；明确事实、设计和未知。初次方案使用当时的 design_rfc，不能将其套用于所有后续文档。
 2. 用 `lark-cli docs +script --command init-draft --presentation-decision ...` 创建专属草稿目录。总纲包含一张解释双闭环的 SVG；专题使用精确表格和文字。
 3. 使用 `python3 scripts/docs-to-lark.py <source.md> <draft.xml>` 生成当前语法子集的 XML。总纲传入 `--board docs/design/assets/closed-loops.svg`；转换器拒绝覆盖已有草稿。
 4. 用 `docs +script --command parse --content @./<draft.xml>` 检查；除 `ok=true` 外确认 `assessment.status=passed`，再检查标签和正文。
@@ -47,3 +47,13 @@ Markdown 转换器只支持本次用到的标题、段落、简单列表、表�
 5. 以 `wiki +node-get --node-token <document_id> --obj-type docx --as user` 核对真实 parent_node_token；本次确为用户指定“个人助手”。保存源文件、草稿与各图摘要，更新发布清单和规格证据。
 
 本次证据见 [SPEC-0003](../../specs/0003-dsh-centered-design/evidence.md)，回执与逐图预览位于 `data/dsh-architecture-20260925/`。这是文档工具发布验收，不是 lumi 自身具备飞书或设备能力的验证。
+
+## 2026-09-25 · 源码解释文档与草稿清理
+
+状态：verified_once；同机 lark-cli 1.0.87 / user 身份，沿用已授权父节点。本次按更新后的 lark-doc 创建工作流选 `router.knowledge` 的 Explanation 模式，生成两张聚焦图和能力矩阵；未把研究事实套成未来设计。完整证据见 [DSH 源码研究](../evidence/2026-09-25-dsh-source-analysis.md)。
+
+- 源码引用固定到完整 commit SHA；发布前在本地快照检查文件与行号。本次 41 处引用、39 个不同 URL 均通过。
+- 复用旧转换器时显式移除硬编码的 v0.2 设计元数据；图片引用改成真实 whiteboard，不能把路径说明当成已渲染图表。辅助脚本仅保存在本次忽略的证据目录中。
+- `docs +media-download --type whiteboard --token <board_token> --output ./<证据目录>/<序号>-preview --as user` 可下载实际画板预览；按返回的 `saved_path` 查看，不假设是 PNG。本次两张都返回 JPEG。
+- 全文 fetch 后同时比较规范化正文、展开后的 Mermaid 源码及全部链接；本次 7866 个非空白字符一致，并核验四张表和父节点。
+- 当前技能要求交付前删除 `init-draft` 返回的整个专属目录。这条新规则替代上文“默认保留草稿”的后续操作建议；保留目录外的源文件、摘要、回执、最终 fetch 和预览即可。只精确删除本次目录，不清理历史草稿或用户资料。

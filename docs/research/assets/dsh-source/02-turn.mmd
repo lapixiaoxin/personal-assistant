@@ -1,0 +1,26 @@
+sequenceDiagram
+    autonumber
+    participant I as 输入队列
+    participant A as Agent Loop
+    participant S as Session 日志
+    participant M as 模型 Provider
+    participant T as 工具管线
+    I->>A: 唤醒并认领本轮输入
+    Note over A: 组装提示词与工具，前置处理决定是否进入 Step
+    loop 有待执行工作时继续 Step
+        A->>M: 准备模型路由与请求能力
+        A->>S: 记录输入和请求上下文
+        S-->>A: 派生并冻结模型历史
+        A->>M: 发起模型请求
+        M-->>A: 流式输出与工具调用意图
+        A->>S: 落定助手消息或请求尝试
+        opt 模型请求调用工具
+            A->>T: 参数校验、前置策略
+            Note over T: 必要时审批，再经过同步 guard
+            T->>T: 获准后执行，后置处理结果
+            T-->>A: 最终工具结果或拒绝结果
+            A->>S: 追加工具结果
+        end
+    end
+    A->>S: 本轮结束 turn/end
+    Note over A,S: turn/end 表示执行轮次结束，业务验收仍由调用方定义
