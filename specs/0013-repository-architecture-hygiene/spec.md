@@ -1,6 +1,6 @@
 # SPEC-0013: 仓库架构精简与边界门禁
 
-状态：Specified · v0.1 · 2026-09-25。
+状态：Implemented / verified_once · v0.1 · 2026-09-25。
 
 负责人：lumi Agent。关联 Goal：降低长期维护成本，避免目录与依赖边界随迭代退化。依据：[ADR-004](../../docs/adr/0004-host-ownership-and-module-boundaries.md)。
 

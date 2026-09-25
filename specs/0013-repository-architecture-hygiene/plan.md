@@ -1,6 +1,6 @@
 # SPEC-0013 实现计划
 
-状态：Ready · 对应 spec v0.1。
+状态：Done · 对应 spec v0.1。
 
 ## 边界
 

@@ -21,5 +21,5 @@
 
 ## 发布
 
-- [ ] 变更与证据已提交并普通 push 到 `origin/main`。
-- [ ] 未执行 release、部署或飞书发布。
+- [x] 变更与证据已提交并普通 push 到 `origin/main`。
+- [x] 未执行 release、部署或飞书发布。

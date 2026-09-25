@@ -175,6 +175,16 @@ Gateway、CLI 和 Workbench 支持创建/取消提醒、查看计划、读取和
 
 两个 clean 且已合并的历史 worktree/分支已删除，释放约 1.5 GB；其他 `data/` 内容和运行中 4310/4313 服务未处理。Node 22.19.0 下 `pnpm check` 继续通过 25 个测试文件、195 项测试和完整构建；文档检查通过 95 个 Markdown、202 个本地链接。源码提交为 `9aad4dc`，完整证据见 [SPEC-0012](../specs/0012-architecture-consolidation/evidence.md)。
 
+## 2026-09-25 · 仓库架构精简与边界门禁
+
+`SPEC-0013` 完成全 workspace 依赖审计：20 个 package 的生产图无环，`apps/runtime` 保持 composition root。唯一发现的反向生产依赖 `packages/action-runtime → adapters/local-artifact` 已修正为由 action-runtime 拥有 `ArtifactProvider` 端口、local adapter 实现端口；adapter 继续兼容 re-export 原三个 provider 类型。
+
+新增 `pnpm check:architecture` 并纳入 `pnpm check`，当前检查 41 个生产源码文件、58 条内部生产依赖和 11 项负向规则自测，拒绝生产环、层级反向依赖、未声明内部依赖、跨 package 相对 import、领域包引用 DSH SDK、`src` 测试和根 draft。
+
+模块自有测试继续位于 `<module>/tests`，根 `tests/` 只放 contract/integration/e2e 等跨模块场景。12 个可再生的历史 `draft_*_folder` 已从根目录删除；`data/README.md` 现明确运行数据、缓存、隔离验证和发布草稿的边界，其他 1.8 GiB 本机数据未清理。
+
+Node 22.19.0 下完整 `pnpm check` 通过 25 个测试文件、196 项测试及 server/Workbench build；文档检查通过 100 个 Markdown、209 个本地链接。实现提交 `aadf89c` 已推送 `origin/main`；完整证据见 [SPEC-0013](../specs/0013-repository-architecture-hygiene/evidence.md)。
+
 ## 状态标注规则
 
 `Proposed`：设计建议；`Specified`：验收和边界已写清；`Implemented`：代码存在；`Verified`：指定环境和版本有证据；`Enabled`：部署配置已启用。后一个状态不能由前一个自动推断。
