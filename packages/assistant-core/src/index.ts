@@ -56,7 +56,7 @@ export class AssistantCore {
       return existing
     }
 
-    let task = this.ledger.createTask(request)
+    const task = this.ledger.createTask(request)
     this.ledger.appendAudit({
       action: 'task.submit',
       actorId: request.actorId,
@@ -65,6 +65,36 @@ export class AssistantCore {
       targetId: request.id,
     })
 
+    return this.#dispatch(task)
+  }
+
+  async resumeQueued(taskId: string): Promise<TaskRecord> {
+    const task = this.requireTask(taskId)
+    if (task.state !== 'queued') {
+      throw new Error(`Task ${task.id} is not queued`)
+    }
+    if (task.channel === 'action-runtime') {
+      throw new Error(`Action task ${task.id} requires explicit action execution`)
+    }
+    if (!task.capabilityId) return this.#dispatch(task)
+
+    const approval = this.ledger.getApprovalForTask(task.id)
+    if (approval?.status !== 'approved') {
+      throw new Error(`Task ${task.id} has an assigned capability without an approved decision`)
+    }
+    this.ledger.appendAudit({
+      action: 'execution.resume_queued',
+      actorId: task.actorId,
+      detail: { capabilityId: task.capabilityId },
+      outcome: 'allowed',
+      targetId: task.id,
+    })
+    return this.#execute(task, this.#requireAssignedCapability(task))
+  }
+
+  async #dispatch(initialTask: TaskRecord): Promise<TaskRecord> {
+    let task = initialTask
+    const request = TaskRequestSchema.parse(task)
     try {
       const route = this.router.route(request)
       this.ledger.appendEvent(request.id, 'routing.selected', {
@@ -369,5 +399,8 @@ function errorMessage(error: unknown): string {
 }
 
 function isTerminal(state: TaskRecord['state']): boolean {
-  return state === 'completed' || state === 'failed' || state === 'cancelled'
+  return state === 'completed'
+    || state === 'failed'
+    || state === 'cancelled'
+    || state === 'interrupted'
 }

@@ -9,6 +9,7 @@ import type {
   ActionStatus,
   ApprovalRecord,
   PersonalMemory,
+  RecoveryRecord,
   TaskRecord,
 } from '../src/types.ts'
 
@@ -69,9 +70,11 @@ function fakeApiWithActions(
   tasks: TaskRecord[] = [],
   initialActions: ActionDetail[] = [],
   initialMemories: PersonalMemory[] = [],
+  initialRecoveries: RecoveryRecord[] = [],
 ): LumiApiClient {
   let actions = initialActions
   let memoryRecords = initialMemories
+  let recoveries = initialRecoveries
   let taskRecords = tasks
   const replaceAction = (actionId: string, status: ActionStatus): ActionDetail => {
     const current = actions.find(item => item.action.id === actionId)
@@ -108,6 +111,18 @@ function fakeApiWithActions(
   }
 
   return {
+    acknowledgeRecovery: vi.fn(async recoveryId => {
+      const current = recoveries.find(recovery => recovery.id === recoveryId)
+      if (!current) throw new Error(`Recovery not found: ${recoveryId}`)
+      const next: RecoveryRecord = {
+        ...current,
+        resolution: 'acknowledged',
+        resolvedAt: '2026-09-25T09:05:00.000Z',
+        status: 'resolved',
+      }
+      recoveries = recoveries.map(recovery => recovery.id === recoveryId ? next : recovery)
+      return next
+    }),
     authorizeAction: vi.fn(async actionId => replaceAction(actionId, 'authorized')),
     approve: vi.fn(async () => ({ ...waitingTask, state: 'completed' as const })),
     cancel: vi.fn(async () => ({ ...waitingTask, state: 'cancelled' as const })),
@@ -180,6 +195,8 @@ function fakeApiWithActions(
     }),
     getAudit: vi.fn(async () => []),
     getEvents: vi.fn(async () => []),
+    getTaskRecovery: vi.fn(async taskId =>
+      recoveries.find(recovery => recovery.taskId === taskId)),
     getTask: vi.fn(async taskId => ({
       approval: taskId === waitingTask.id ? approval : null,
       task: taskRecords.find(task => task.id === taskId) ?? waitingTask,
@@ -202,6 +219,28 @@ function fakeApiWithActions(
       }
       memoryRecords = memoryRecords.map(memory => memory.id === memoryId ? next : memory)
       return next
+    }),
+    retryRecovery: vi.fn(async recoveryId => {
+      const current = recoveries.find(recovery => recovery.id === recoveryId)
+      if (!current) throw new Error(`Recovery not found: ${recoveryId}`)
+      const replacement: TaskRecord = {
+        ...(taskRecords.find(task => task.id === current.taskId) ?? waitingTask),
+        error: null,
+        id: 'task-recovery-replacement',
+        result: 'Recovered result',
+        state: 'completed',
+      }
+      const resolved: RecoveryRecord = {
+        ...current,
+        replacementCreatedAt: '2026-09-25T09:05:00.000Z',
+        replacementTaskId: replacement.id,
+        resolution: 'retried',
+        resolvedAt: '2026-09-25T09:05:01.000Z',
+        status: 'resolved',
+      }
+      recoveries = recoveries.map(recovery => recovery.id === recoveryId ? resolved : recovery)
+      taskRecords = [replacement, ...taskRecords]
+      return { recovery: resolved, task: replacement }
     }),
     submitMeetingBrief: vi.fn(async (input, id) => {
       const task: TaskRecord = {
@@ -268,6 +307,33 @@ function fakeApiWithActions(
   }
 }
 
+function recoveryRecord(
+  taskId: string,
+  disposition: RecoveryRecord['disposition'],
+): RecoveryRecord {
+  return {
+    actionId: disposition === 'reconcile_action' ? 'action-recovery' : null,
+    detectedAt: '2026-09-25T09:01:00.000Z',
+    disposition,
+    id: `recovery-${taskId}`,
+    ownerId: 'local-owner',
+    principalId: 'local-user',
+    reasonCode: disposition === 'retry_available'
+      ? 'HOST_RESTART_SAFE_TO_RETRY'
+      : disposition === 'manual_review'
+        ? 'HOST_RESTART_EFFECT_MAY_HAVE_OCCURRED'
+        : 'ACTION_OUTCOME_UNKNOWN',
+    replacementCreatedAt: null,
+    replacementTaskId: null,
+    resolution: null,
+    resolvedAt: null,
+    safeToRetry: disposition === 'retry_available',
+    schemaVersion: 'lumi.recovery/v1',
+    status: 'pending',
+    taskId,
+  }
+}
+
 function actionDetail(status: ActionStatus): ActionDetail {
   return {
     action: {
@@ -327,6 +393,63 @@ describe('Workbench', () => {
     fireEvent.click(screen.getByRole('button', { name: '允许' }))
 
     await waitFor(() => expect(api.approve).toHaveBeenCalledWith(waitingTask.id))
+  })
+
+  it('creates a new task for a safely retryable interrupted task', async () => {
+    const interrupted: TaskRecord = {
+      ...waitingTask,
+      capabilityId: 'meeting-agent',
+      error: 'Execution was interrupted by a host restart',
+      id: 'task-interrupted',
+      state: 'interrupted',
+    }
+    const recovery = recoveryRecord(interrupted.id, 'retry_available')
+    const api = fakeApiWithActions([interrupted], [], [], [recovery])
+    render(<App api={api} />)
+
+    expect(await screen.findByText('需要恢复处理')).toBeTruthy()
+    expect(screen.getByText('已中断')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '创建新任务' }))
+
+    await waitFor(() => expect(api.retryRecovery).toHaveBeenCalledWith(recovery.id))
+    expect(await screen.findByText('Recovered result')).toBeTruthy()
+  })
+
+  it('does not offer retry when an interrupted task may have effects', async () => {
+    const interrupted: TaskRecord = {
+      ...waitingTask,
+      capabilityId: 'coding-agent',
+      error: 'Execution was interrupted by a host restart',
+      id: 'task-manual-review',
+      state: 'interrupted',
+    }
+    const recovery = recoveryRecord(interrupted.id, 'manual_review')
+    const api = fakeApiWithActions([interrupted], [], [], [recovery])
+    render(<App api={api} />)
+
+    expect(await screen.findByText(/不会自动重跑/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: '创建新任务' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: '已了解' }))
+    await waitFor(() => expect(api.acknowledgeRecovery).toHaveBeenCalledWith(recovery.id))
+  })
+
+  it('routes an uncertain action task to the action inbox without offering retry', async () => {
+    const reconciling: TaskRecord = {
+      ...waitingTask,
+      channel: 'action-runtime',
+      error: 'Action outcome requires reconciliation after a host restart',
+      id: 'task-reconciling',
+      state: 'reconciling',
+    }
+    const recovery = recoveryRecord(reconciling.id, 'reconcile_action')
+    const api = fakeApiWithActions([reconciling], [], [], [recovery])
+    render(<App api={api} />)
+
+    expect(await screen.findByText(/动作结果未知/)).toBeTruthy()
+    expect(screen.getByText('待对账')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: '创建新任务' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: '前往动作对账' }))
+    expect(await screen.findByText('暂无动作')).toBeTruthy()
   })
 
   it('submits a research brief with explicit source URLs', async () => {

@@ -126,6 +126,9 @@ importers:
       '@lumi/task-ledger':
         specifier: workspace:*
         version: link:../../packages/task-ledger
+      '@lumi/task-recovery':
+        specifier: workspace:*
+        version: link:../../packages/task-recovery
       fastify:
         specifier: 5.6.1
         version: 5.6.1
@@ -186,6 +189,13 @@ importers:
       '@lumi/task-ledger':
         specifier: workspace:*
         version: link:../../packages/task-ledger
+      '@lumi/task-recovery':
+        specifier: workspace:*
+        version: link:../../packages/task-recovery
+    devDependencies:
+      '@lumi/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
 
   apps/workbench:
     dependencies:
@@ -310,6 +320,28 @@ importers:
       '@lumi/contracts':
         specifier: workspace:*
         version: link:../contracts
+
+  packages/task-recovery:
+    dependencies:
+      '@lumi/action-runtime':
+        specifier: workspace:*
+        version: link:../action-runtime
+      '@lumi/assistant-core':
+        specifier: workspace:*
+        version: link:../assistant-core
+      '@lumi/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@lumi/task-ledger':
+        specifier: workspace:*
+        version: link:../task-ledger
+    devDependencies:
+      '@lumi/capability-registry':
+        specifier: workspace:*
+        version: link:../capability-registry
+      '@lumi/policy':
+        specifier: workspace:*
+        version: link:../policy
 
   plugins/dsh-action-bridge:
     dependencies:

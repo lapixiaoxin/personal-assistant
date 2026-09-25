@@ -24,6 +24,7 @@
       "@lumi/research-sources": ["./adapters/research-sources/src/index.ts"],
       "@lumi/research-workflow": ["./packages/research-workflow/src/index.ts"],
       "@lumi/runtime": ["./apps/runtime/src/index.ts"],
+      "@lumi/task-recovery": ["./packages/task-recovery/src/index.ts"],
       "@lumi/task-ledger": ["./packages/task-ledger/src/index.ts"]
     },
     "resolveJsonModule": true,

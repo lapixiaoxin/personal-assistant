@@ -44,6 +44,8 @@ M2 的记忆存储可以与 M1 非重叠开发，但没有 M1 的安全出口证
 
 2026-09-25，SPEC-0007 完成 M1.5 中首个研究报告切片：用户声明的公开 HTTPS 来源经 Host URL allowlist、SSRF/大小/类型控制和不可变 snapshot 后进入独立 `research-agent`，最终结果必须覆盖全部 source ID。已完成一次真实 MiniMax + 公开网页只读样本；会议 brief、仓库变更和研究场景的建议样本量仍未满足，不能据此宣布 M1.5 整体完成。
 
+2026-09-25，SPEC-0010 完成 M3 的最小单机重启恢复切片：queued Task 可续调度，running Task 以 interrupted + 新 Task 重试保留历史，受控 Action 进入 reconciling 并复用读回验证。本机 PID 所有权避免活跃 Gateway 被 CLI 误接管；它不是分布式 lease/fencing，也没有检查点、跨设备接管或 7 天 soak，因此 M3 仍未完成。
+
 建议每个开发切片控制在一个 Agent 能完整理解、实现、验证和交接的范围；不要按目录把一个不可验收的大功能机械拆碎。
 
 ## 首轮真实样本与门槛

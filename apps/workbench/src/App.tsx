@@ -14,6 +14,7 @@ import {
   MessageSquareText,
   Plus,
   RefreshCw,
+  RotateCcw,
   Send,
   ShieldCheck,
   UserRound,
@@ -37,6 +38,7 @@ import type {
   AuditRecord,
   CapabilityDescriptor,
   HealthStatus,
+  RecoveryRecord,
   TaskDetail,
   TaskEvent,
   TaskRecord,
@@ -58,7 +60,9 @@ const stateLabels: Record<TaskState, string> = {
   cancelled: '已取消',
   completed: '已完成',
   failed: '失败',
+  interrupted: '已中断',
   queued: '排队中',
+  reconciling: '待对账',
   running: '运行中',
   waiting_approval: '待确认',
 }
@@ -126,6 +130,7 @@ function TaskWorkspace({
   const [detail, setDetail] = useState<TaskDetail>()
   const [events, setEvents] = useState<TaskEvent[]>([])
   const [audit, setAudit] = useState<AuditRecord[]>([])
+  const [recovery, setRecovery] = useState<RecoveryRecord>()
   const [filter, setFilter] = useState<TaskFilter>('all')
   const [tab, setTab] = useState<DetailTab>('events')
   const [composerMode, setComposerMode] = useState<ComposerMode>('task')
@@ -149,14 +154,16 @@ function TaskWorkspace({
 
   const refreshDetail = useCallback(async (taskId: string, tolerateMissing = false) => {
     try {
-      const [nextDetail, nextEvents, nextAudit] = await Promise.all([
+      const [nextDetail, nextEvents, nextAudit, nextRecovery] = await Promise.all([
         api.getTask(taskId),
         api.getEvents(taskId),
         api.getAudit(taskId),
+        api.getTaskRecovery(taskId),
       ])
       setDetail(nextDetail)
       setEvents(nextEvents)
       setAudit(nextAudit)
+      setRecovery(nextRecovery)
     } catch (cause) {
       if (tolerateMissing && cause instanceof ApiError && cause.status === 404) return
       throw cause
@@ -192,6 +199,7 @@ function TaskWorkspace({
       setDetail(undefined)
       setEvents([])
       setAudit([])
+      setRecovery(undefined)
       return
     }
     void refreshDetail(selectedId, selectedId === pendingTaskId)
@@ -281,6 +289,31 @@ function TaskWorkspace({
       .then(async () => {
         await refreshTasks()
         await refreshDetail(selectedId)
+      })
+      .catch(cause => setError(errorMessage(cause)))
+      .finally(() => setPendingAction(undefined))
+  }
+
+  const resolveRecovery = (command: 'acknowledge' | 'retry'): void => {
+    if (!recovery || pendingAction) return
+    setPendingAction(command)
+    setError(undefined)
+    const operation = command === 'retry'
+      ? api.retryRecovery(recovery.id)
+      : api.acknowledgeRecovery(recovery.id)
+    void operation
+      .then(async (result) => {
+        if ('task' in result) {
+          setSelectedId(result.task.id)
+          setDetail({
+            approval: null,
+            task: result.task,
+          })
+        } else {
+          setRecovery(result)
+        }
+        await refreshTasks()
+        if ('task' in result) await refreshDetail(result.task.id)
       })
       .catch(cause => setError(errorMessage(cause)))
       .finally(() => setPendingAction(undefined))
@@ -623,7 +656,19 @@ function TaskWorkspace({
           />
         )}
 
-        {selectedTask && isTaskActive(selectedTask) && selectedTask.state !== 'waiting_approval' && (
+        {recovery && recovery.status !== 'resolved' && (
+          <RecoveryPanel
+            busy={pendingAction !== undefined}
+            onAcknowledge={() => resolveRecovery('acknowledge')}
+            onOpenActions={() => onWorkspaceChange('actions')}
+            onRetry={() => resolveRecovery('retry')}
+            recovery={recovery}
+          />
+        )}
+
+        {selectedTask && (
+          selectedTask.state === 'queued' || selectedTask.state === 'running'
+        ) && (
           <button
             className="cancel-button"
             disabled={pendingAction !== undefined}
@@ -735,6 +780,47 @@ function ApprovalPanel({
   )
 }
 
+function RecoveryPanel({
+  busy,
+  onAcknowledge,
+  onOpenActions,
+  onRetry,
+  recovery,
+}: {
+  busy: boolean
+  onAcknowledge: () => void
+  onOpenActions: () => void
+  onRetry: () => void
+  recovery: RecoveryRecord
+}) {
+  return (
+    <section className="recovery-panel">
+      <div className="approval-title">
+        <RotateCcw aria-hidden="true" size={17} />
+        需要恢复处理
+      </div>
+      <p>{recoveryCopy(recovery)}</p>
+      <div className="approval-actions">
+        {recovery.disposition === 'retry_available' && (
+          <button disabled={busy} onClick={onRetry} type="button">
+            <RotateCcw aria-hidden="true" size={16} />创建新任务
+          </button>
+        )}
+        {recovery.disposition === 'manual_review' && (
+          <button disabled={busy} onClick={onAcknowledge} type="button">
+            <Check aria-hidden="true" size={16} />已了解
+          </button>
+        )}
+        {recovery.disposition === 'reconcile_action' && (
+          <button disabled={busy} onClick={onOpenActions} type="button">
+            <ShieldCheck aria-hidden="true" size={16} />前往动作对账
+          </button>
+        )}
+      </div>
+    </section>
+  )
+}
+
 function TimelineItem({
   label,
   meta,
@@ -761,7 +847,9 @@ function TimelineItem({
 
 function stateIcon(state: TaskState) {
   if (state === 'completed') return <CheckCircle2 aria-hidden="true" size={14} />
-  if (state === 'failed') return <AlertTriangle aria-hidden="true" size={14} />
+  if (state === 'failed' || state === 'interrupted') {
+    return <AlertTriangle aria-hidden="true" size={14} />
+  }
   if (state === 'cancelled') return <Ban aria-hidden="true" size={14} />
   return <CircleDashed className={state === 'running' ? 'spin' : ''} aria-hidden="true" size={14} />
 }
@@ -770,9 +858,24 @@ function progressCopy(state: TaskState): string {
   if (state === 'waiting_approval') return '这项任务需要你的确认后才能继续。'
   if (state === 'queued') return '任务已进入队列。'
   if (state === 'running') return '正在调用 DSH 完成任务，执行进度会显示在右侧。'
+  if (state === 'interrupted') return '上一次执行因 lumi 重启而中断，请按恢复判定处理。'
+  if (state === 'reconciling') return '动作可能已经发生，需要先对账，不能重新执行。'
   if (state === 'cancelled') return '任务已取消。'
   if (state === 'failed') return '任务执行失败。'
   return '任务已完成。'
+}
+
+function recoveryCopy(recovery: RecoveryRecord): string {
+  if (recovery.reasonCode === 'ACTION_VERIFICATION_PENDING') {
+    return '动作已有回执但尚未完成独立验证，请在动作页读回对账。'
+  }
+  if (recovery.reasonCode === 'ACTION_OUTCOME_UNKNOWN') {
+    return '动作结果未知，禁止重复执行；请在动作页读取实际结果。'
+  }
+  if (recovery.reasonCode === 'HOST_RESTART_EFFECT_MAY_HAVE_OCCURRED') {
+    return '执行中观察到工具或宽权限能力，lumi 不会自动重跑。请检查实际影响。'
+  }
+  return '未观察到副作用，可由你明确创建一个新的重试任务。原任务记录会保留。'
 }
 
 function eventLabel(event: TaskEvent): string {

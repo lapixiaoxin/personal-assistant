@@ -270,7 +270,8 @@ textarea:focus-visible {
 }
 
 .state-dot.state-running,
-.state-dot.state-waiting_approval {
+.state-dot.state-waiting_approval,
+.state-dot.state-reconciling {
   background: var(--accent);
 }
 
@@ -278,7 +279,8 @@ textarea:focus-visible {
   background: #8f9991;
 }
 
-.state-dot.state-failed {
+.state-dot.state-failed,
+.state-dot.state-interrupted {
   background: #ef766b;
 }
 
@@ -382,8 +384,14 @@ textarea:focus-visible {
   border-color: var(--accent);
 }
 
-.state-badge.state-failed {
+.state-badge.state-failed,
+.state-badge.state-interrupted {
   color: var(--danger);
+}
+
+.state-badge.state-reconciling {
+  color: var(--warning);
+  border-color: #d59b43;
 }
 
 .state-badge.action-prepared,
@@ -847,7 +855,8 @@ textarea:focus-visible {
   min-height: 44px;
 }
 
-.approval-panel {
+.approval-panel,
+.recovery-panel {
   margin-top: 18px;
   padding: 14px;
   background: #ffffff;
@@ -864,9 +873,22 @@ textarea:focus-visible {
   font-weight: 700;
 }
 
-.approval-panel p {
+.approval-panel p,
+.recovery-panel p {
   margin: 9px 0 5px;
   line-height: 1.5;
+}
+
+.recovery-panel {
+  border-color: #d59b43;
+}
+
+.recovery-panel .approval-title {
+  color: var(--warning);
+}
+
+.recovery-panel .approval-actions {
+  grid-template-columns: 1fr;
 }
 
 .action-control-panel.warning {

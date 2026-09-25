@@ -6,6 +6,7 @@ import { ActionServiceError } from '@lumi/action-runtime'
 import {
   ActionProposalSubmissionSchema,
   createTaskRequest,
+  RecoveryListQuerySchema,
   TaskListQuerySchema,
   TaskSubmissionSchema,
   type ActionErrorCode,
@@ -29,6 +30,7 @@ import {
   PersonalMemoryListQuerySchema,
 } from '@lumi/personal-memory'
 import { createAssistantRuntime, type AssistantRuntime } from '@lumi/runtime'
+import { RecoveryServiceError } from '@lumi/task-recovery'
 import {
   ActionAuthorizationError,
   ActionConflictError,
@@ -55,6 +57,9 @@ const ActionListQuerySchema = z.object({
 const MemoryParamsSchema = z.object({
   memoryId: z.string().trim().min(1).max(128),
 })
+const RecoveryParamsSchema = z.object({
+  recoveryId: z.string().trim().min(1).max(128),
+})
 
 export interface GatewayOptions {
   logger?: boolean
@@ -66,6 +71,9 @@ export function buildGateway(options: GatewayOptions = {}): FastifyInstance {
   const runtime = options.runtime ?? createAssistantRuntime()
   const ownsRuntime = options.runtime === undefined
   const app = Fastify({ logger: options.logger ?? false })
+  app.addHook('onReady', async () => {
+    await runtime.ready
+  })
 
   app.get('/health', async () => ({
     executor: runtime.executorKind,
@@ -210,13 +218,37 @@ export function buildGateway(options: GatewayOptions = {}): FastifyInstance {
   app.post('/v2/actions/:actionId/reconcile', async (request) => {
     const principal = authenticate(runtime, request)
     const { actionId } = ActionParamsSchema.parse(request.params)
-    return { data: await runtime.actions.reconcile(principal, actionId) }
+    return { data: await runtime.recovery.reconcileAction(principal, actionId) }
   })
 
   app.post('/v2/actions/:actionId/cancel', async (request) => {
     const principal = authenticate(runtime, request)
     const { actionId } = ActionParamsSchema.parse(request.params)
     return { data: runtime.actions.cancel(principal, actionId) }
+  })
+
+  app.get('/v2/recoveries', async (request) => {
+    const principal = authenticate(runtime, request)
+    const query = RecoveryListQuerySchema.parse(request.query)
+    return { data: runtime.recovery.list(principal, query) }
+  })
+
+  app.get('/v2/recoveries/:recoveryId', async (request) => {
+    const principal = authenticate(runtime, request)
+    const { recoveryId } = RecoveryParamsSchema.parse(request.params)
+    return { data: runtime.recovery.get(principal, recoveryId) }
+  })
+
+  app.post('/v2/recoveries/:recoveryId/retry', async (request) => {
+    const principal = authenticate(runtime, request)
+    const { recoveryId } = RecoveryParamsSchema.parse(request.params)
+    return { data: await runtime.recovery.retry(principal, recoveryId) }
+  })
+
+  app.post('/v2/recoveries/:recoveryId/acknowledge', async (request) => {
+    const principal = authenticate(runtime, request)
+    const { recoveryId } = RecoveryParamsSchema.parse(request.params)
+    return { data: runtime.recovery.acknowledge(principal, recoveryId) }
   })
 
   app.post('/v2/memories', async (request, reply) => {
@@ -376,6 +408,17 @@ export function buildGateway(options: GatewayOptions = {}): FastifyInstance {
     }
     if (error instanceof MemoryStateConflictError) {
       reply.code(409).send({
+        error: {
+          code: error.code,
+          message: error.message,
+          retryable: false,
+          safeToRetry: false,
+        },
+      })
+      return
+    }
+    if (error instanceof RecoveryServiceError) {
+      reply.code(error.code === 'RECOVERY_NOT_FOUND' ? 404 : 409).send({
         error: {
           code: error.code,
           message: error.message,

@@ -11,6 +11,7 @@
     "@lumi/personal-memory": "workspace:*",
     "@lumi/research-workflow": "workspace:*",
     "@lumi/runtime": "workspace:*",
+    "@lumi/task-recovery": "workspace:*",
     "@lumi/task-ledger": "workspace:*",
     "fastify": "5.6.1",
     "zod": "4.1.11"

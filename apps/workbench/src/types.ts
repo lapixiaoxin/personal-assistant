@@ -2,6 +2,8 @@ export type TaskState =
   | 'queued'
   | 'running'
   | 'waiting_approval'
+  | 'interrupted'
+  | 'reconciling'
   | 'completed'
   | 'failed'
   | 'cancelled'
@@ -57,6 +59,40 @@ export interface AuditRecord {
 
 export interface TaskDetail {
   approval: ApprovalRecord | null
+  task: TaskRecord
+}
+
+export type RecoveryDisposition =
+  | 'retry_available'
+  | 'manual_review'
+  | 'reconcile_action'
+
+export type RecoveryStatus = 'pending' | 'retrying' | 'resolved'
+
+export interface RecoveryRecord {
+  actionId: string | null
+  detectedAt: string
+  disposition: RecoveryDisposition
+  id: string
+  ownerId: string
+  principalId: string
+  reasonCode:
+    | 'HOST_RESTART_SAFE_TO_RETRY'
+    | 'HOST_RESTART_EFFECT_MAY_HAVE_OCCURRED'
+    | 'ACTION_OUTCOME_UNKNOWN'
+    | 'ACTION_VERIFICATION_PENDING'
+  replacementCreatedAt: string | null
+  replacementTaskId: string | null
+  resolution: 'acknowledged' | 'reconciled' | 'retried' | null
+  resolvedAt: string | null
+  safeToRetry: boolean
+  schemaVersion: 'lumi.recovery/v1'
+  status: RecoveryStatus
+  taskId: string
+}
+
+export interface RecoveryRetryResult {
+  recovery: RecoveryRecord
   task: TaskRecord
 }
 

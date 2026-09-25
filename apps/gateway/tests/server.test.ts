@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { TaskExecutor } from '@lumi/assistant-core'
+import { createTaskRequest } from '@lumi/contracts'
 import {
   MEETING_BRIEF_END_MARKER,
   MEETING_BRIEF_SECTIONS,
@@ -10,6 +11,7 @@ import {
 } from '@lumi/meeting-workflow'
 import { createAssistantRuntime, type AssistantRuntime } from '@lumi/runtime'
 import { researchSourceUrlsFromContextRefs } from '@lumi/research-workflow'
+import { SqliteTaskLedger } from '@lumi/task-ledger'
 import { buildGateway } from '../src/server.ts'
 
 const openRuntimes: AssistantRuntime[] = []
@@ -331,6 +333,83 @@ describe('gateway', () => {
 
     expect(response.statusCode).toBe(404)
     expect(response.json().error.code).toBe('MEMORY_NOT_FOUND')
+    await app.close()
+  })
+
+  it('lists and retries an interrupted task through the authenticated recovery API', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'lumi-gateway-recovery-'))
+    temporaryDirectories.push(directory)
+    const dbPath = join(directory, 'assistant.db')
+    const seed = new SqliteTaskLedger({ filename: dbPath })
+    const request = createTaskRequest({
+      actorId: 'user-1',
+      channel: 'meeting-brief',
+      content: 'Prepare the interrupted meeting',
+      id: 'task-http-recovery',
+    })
+    seed.createTask(request)
+    seed.transitionTask(request.id, ['queued'], 'running', {
+      capabilityId: 'meeting-agent',
+    })
+    seed.appendEvent(request.id, 'execution.started', {
+      capabilityId: 'meeting-agent',
+    })
+    seed.close()
+    const runtime = createAssistantRuntime({
+      dbPath,
+      executor: { execute: async () => ({ output: 'recovered through HTTP' }) },
+      httpToken: token,
+      principalId: 'user-1',
+    })
+    openRuntimes.push(runtime)
+    const app = buildGateway({ runtime })
+
+    const listed = await app.inject({
+      headers: authenticatedHeaders(),
+      method: 'GET',
+      url: '/v2/recoveries?status=pending',
+    })
+    expect(listed.statusCode).toBe(200)
+    expect(listed.json().data).toHaveLength(1)
+    const recoveryId = listed.json().data[0].id as string
+
+    const retried = await app.inject({
+      headers: authenticatedHeaders(),
+      method: 'POST',
+      url: `/v2/recoveries/${recoveryId}/retry`,
+    })
+    expect(retried.statusCode).toBe(200)
+    expect(retried.json().data).toMatchObject({
+      recovery: { resolution: 'retried', status: 'resolved' },
+      task: { result: 'recovered through HTTP', state: 'completed' },
+    })
+    expect(retried.json().data.task.id).not.toBe(request.id)
+
+    const foreignTask = createTaskRequest({
+      actorId: 'foreign-user',
+      channel: 'web',
+      content: 'Foreign interrupted task',
+      id: 'task-foreign-recovery',
+    })
+    runtime.ledger.createTask(foreignTask)
+    runtime.ledger.transitionTask(foreignTask.id, ['queued'], 'running', {
+      capabilityId: 'personal-assistant',
+    })
+    const foreignRecovery = runtime.ledger.recordTaskRecovery({
+      disposition: 'retry_available',
+      ownerId: 'foreign-owner',
+      principalId: 'foreign-user',
+      reasonCode: 'HOST_RESTART_SAFE_TO_RETRY',
+      safeToRetry: true,
+      taskId: foreignTask.id,
+    })
+    const hidden = await app.inject({
+      headers: authenticatedHeaders(),
+      method: 'GET',
+      url: `/v2/recoveries/${foreignRecovery.id}`,
+    })
+    expect(hidden.statusCode).toBe(404)
+    expect(hidden.json().error.code).toBe('RECOVERY_NOT_FOUND')
     await app.close()
   })
 

@@ -4,6 +4,7 @@ import { resolve } from 'node:path'
 import { Command } from 'commander'
 import {
   createTaskRequest,
+  RecoveryListQuerySchema,
   TaskStateSchema,
   TaskSubmissionSchema,
 } from '@lumi/contracts'
@@ -262,11 +263,49 @@ for (const operation of ['authorize', 'execute', 'reconcile', 'cancel'] as const
         : operation === 'execute'
           ? await runtime.actions.execute(principal, actionId)
           : operation === 'reconcile'
-            ? await runtime.actions.reconcile(principal, actionId)
+            ? await runtime.recovery.reconcileAction(principal, actionId)
             : runtime.actions.cancel(principal, actionId)
       print(result)
     }))
 }
+
+const recovery = program
+  .command('recovery')
+  .description('Inspect and resolve tasks interrupted by a host restart')
+
+recovery
+  .command('list')
+  .option('--limit <count>', 'maximum rows', '50')
+  .option('--status <status>', 'pending, retrying, or resolved')
+  .action(async (options: { limit: string; status?: string }) =>
+    withRuntime(async (runtime) => {
+      const query = RecoveryListQuerySchema.parse({
+        limit: parseLimit(options.limit),
+        ...(options.status ? { status: options.status } : {}),
+      })
+      print(runtime.recovery.list(runtime.identity.localPrincipal(), query))
+    }))
+
+recovery
+  .command('get')
+  .argument('<recovery-id>')
+  .action(async (recoveryId: string) => withRuntime(async (runtime) => {
+    print(runtime.recovery.get(runtime.identity.localPrincipal(), recoveryId))
+  }))
+
+recovery
+  .command('retry')
+  .argument('<recovery-id>')
+  .action(async (recoveryId: string) => withRuntime(async (runtime) => {
+    print(await runtime.recovery.retry(runtime.identity.localPrincipal(), recoveryId))
+  }))
+
+recovery
+  .command('acknowledge')
+  .argument('<recovery-id>')
+  .action(async (recoveryId: string) => withRuntime(async (runtime) => {
+    print(runtime.recovery.acknowledge(runtime.identity.localPrincipal(), recoveryId))
+  }))
 
 const memory = program
   .command('memory')
@@ -402,6 +441,7 @@ async function withRuntime(action: (runtime: AssistantRuntime) => Promise<void>)
     ...(globals.db ? { dbPath: resolve(globals.db) } : {}),
   })
   try {
+    await runtime.ready
     await action(runtime)
   } finally {
     await runtime.close()

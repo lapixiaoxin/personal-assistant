@@ -1,7 +1,9 @@
 import { mkdir, readFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect, test } from '@playwright/test'
+import { createTaskRequest } from '../../packages/contracts/src/index.ts'
+import { SqliteTaskLedger } from '../../packages/task-ledger/src/index.ts'
 
 test.describe.configure({ mode: 'serial' })
 const token = 'e2e.token.not.a.secret.0123456789'
@@ -251,6 +253,67 @@ test('manages a persistent personal memory from the memory vault', async ({ page
   await page.screenshot({
     fullPage: true,
     path: join(screenshotDir, `memory-${testInfo.project.name}.png`),
+  })
+  expect(consoleErrors).toEqual([])
+})
+
+test('reviews an interrupted task and creates one replacement task', async ({ page }, testInfo) => {
+  const consoleErrors: string[] = []
+  page.on('console', (message) => {
+    if (message.type() === 'error') consoleErrors.push(message.text())
+  })
+  page.on('pageerror', error => consoleErrors.push(error.message))
+
+  const suffix = `${testInfo.project.name}-${Date.now()}`
+  const taskId = `task-recovery-${suffix}`
+  const content = `恢复浏览器任务 ${suffix}`
+  const ledger = new SqliteTaskLedger({
+    filename: resolve('data/workbench-e2e/assistant.db'),
+  })
+  ledger.createTask(createTaskRequest({
+    actorId: 'local-user',
+    channel: 'web',
+    content,
+    id: taskId,
+  }))
+  ledger.transitionTask(taskId, ['queued'], 'running', {
+    capabilityId: 'personal-assistant',
+  })
+  ledger.appendEvent(taskId, 'execution.started', {
+    capabilityId: 'personal-assistant',
+  })
+  ledger.recordTaskRecovery({
+    disposition: 'retry_available',
+    ownerId: 'local-owner',
+    principalId: 'local-user',
+    reasonCode: 'HOST_RESTART_SAFE_TO_RETRY',
+    safeToRetry: true,
+    taskId,
+  })
+  ledger.close()
+
+  await page.goto(`/#token=${token}`)
+  const taskRow = page.getByRole('button', { name: new RegExp(content) })
+  if (await taskRow.isVisible()) await taskRow.click()
+  await expect(page.getByRole('heading', { name: content })).toBeVisible()
+  await expect(page.locator('.state-badge')).toHaveText('已中断')
+  await expect(page.getByText('需要恢复处理')).toBeVisible()
+  await expect(page.getByText(/原任务记录会保留/)).toBeVisible()
+
+  await page.getByRole('button', { name: '创建新任务' }).click()
+  await expect(page.locator('.state-badge')).toHaveText('已完成')
+  await expect(page.locator('.result-copy')).toContainText('[mock:personal-assistant]')
+
+  const noHorizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth <= window.innerWidth,
+  )
+  expect(noHorizontalOverflow).toBe(true)
+
+  const screenshotDir = join(process.cwd(), 'data', 'workbench-evidence')
+  await mkdir(screenshotDir, { recursive: true })
+  await page.screenshot({
+    fullPage: true,
+    path: join(screenshotDir, `recovery-${testInfo.project.name}.png`),
   })
   expect(consoleErrors).toEqual([])
 })

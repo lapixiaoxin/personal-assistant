@@ -3,6 +3,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ExecutionInput } from '@lumi/assistant-core'
+import { createTaskRequest } from '@lumi/contracts'
+import { SqliteTaskLedger } from '@lumi/task-ledger'
 import { createAssistantRuntime, resolveDshModelConfiguration } from '../src/index.ts'
 
 const temporaryDirectories: string[] = []
@@ -99,5 +101,48 @@ describe('runtime composition', () => {
     expect(reopened.memories.get(reopened.identity.localPrincipal(), memory.id))
       .toMatchObject({ content: 'Prefer concise answers', revision: 1 })
     await reopened.close()
+  })
+
+  it('finishes startup recovery before exposing an interrupted task', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'lumi-runtime-recovery-'))
+    temporaryDirectories.push(directory)
+    const dbPath = join(directory, 'assistant.db')
+    const seed = new SqliteTaskLedger({ filename: dbPath })
+    const request = createTaskRequest({
+      actorId: 'user-one',
+      channel: 'meeting-brief',
+      content: 'Prepare a restart-safe meeting',
+      id: 'task-runtime-interrupted',
+    })
+    seed.createTask(request)
+    seed.transitionTask(request.id, ['queued'], 'running', {
+      capabilityId: 'meeting-agent',
+    })
+    seed.appendEvent(request.id, 'execution.started', {
+      capabilityId: 'meeting-agent',
+    })
+    seed.close()
+    const execute = vi.fn(async () => ({ output: 'must wait for explicit retry' }))
+    const runtime = createAssistantRuntime({
+      dbPath,
+      executor: { execute },
+      ownerId: 'owner-one',
+      principalId: 'user-one',
+    })
+
+    await expect(runtime.ready).resolves.toMatchObject({
+      detected: 1,
+      pending: 1,
+    })
+    expect(runtime.core.getTask(request.id)?.state).toBe('interrupted')
+    expect(runtime.recovery.getForTask(
+      runtime.identity.localPrincipal(),
+      request.id,
+    )).toMatchObject({
+      disposition: 'retry_available',
+      status: 'pending',
+    })
+    expect(execute).not.toHaveBeenCalled()
+    await runtime.close()
   })
 })

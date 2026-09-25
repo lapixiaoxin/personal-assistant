@@ -146,4 +146,41 @@ describe('AssistantCore', () => {
     await expect(pending).resolves.toMatchObject({ state: 'cancelled' })
     await core.close()
   })
+
+  it('dispatches an already persisted queued task exactly once', async () => {
+    const execute = vi.fn(async () => ({ output: 'Recovered queue item' }))
+    const { core, ledger } = createCore({ execute })
+    const request = createTaskRequest({
+      actorId: 'user-1',
+      channel: 'http',
+      content: 'Summarize the queued plan',
+      id: 'task-queued-recovery',
+    })
+    ledger.createTask(request)
+
+    await expect(core.resumeQueued(request.id)).resolves.toMatchObject({
+      result: 'Recovered queue item',
+      state: 'completed',
+    })
+    expect(execute).toHaveBeenCalledOnce()
+    await expect(core.resumeQueued(request.id)).rejects.toThrow('is not queued')
+    await core.close()
+  })
+
+  it('does not dispatch queued action tasks through the assistant executor', async () => {
+    const execute = vi.fn(async () => ({ output: 'must not run' }))
+    const { core, ledger } = createCore({ execute })
+    const request = createTaskRequest({
+      actorId: 'user-1',
+      channel: 'action-runtime',
+      content: 'artifact.write summary',
+      id: 'task-action-queued',
+    })
+    ledger.createTask(request)
+
+    await expect(core.resumeQueued(request.id))
+      .rejects.toThrow('requires explicit action execution')
+    expect(execute).not.toHaveBeenCalled()
+    await core.close()
+  })
 })

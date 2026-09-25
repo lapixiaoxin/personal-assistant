@@ -15,11 +15,12 @@
 | 执行 | DSH SDK 每任务独立子进程，支持 AbortSignal 取消 | `adapters/dsh` |
 | 上游 | SDK/runtime/mock server 精确固定 0.1.7-rc.1 | `upstream.lock.json`、`pnpm-lock.yaml` |
 | 记忆 | SQLite 持久化、candidate/confirmed/retracted、纠正、遗忘 tombstone 与受控任务注入 | `packages/personal-memory`、`apps/runtime` |
+| 恢复 | 单机 runtime 所有权、queued 续调度、running 中断判定、显式新 Task 重试与 Action 对账 | `packages/task-recovery`、`packages/task-ledger` |
 | 工程检查 | lint、typecheck、版本对齐、测试、构建 | `pnpm check`、`.github/workflows/ci.yml` |
 
 ## 必须明确的缺口
 
-- 任务记录跨重启保存；**运行中任务不会因此自动恢复**。没有持久 worker 租约、检查点与动作对账。
+- 单机重启恢复已区分 queued 续调度、普通 running 中断与 Action 对账；仍没有模型检查点、分布式 worker lease/fencing 或跨设备接管，普通 running Task 不能原地 resume。
 - HTTP 已使用本地 Bearer token 映射单 owner/principal 并执行对象归属检查；仍没有公网所需的多用户认证、TLS、限流与来源控制。
 - v1 审批仍针对任务。v2 仅对受控 `artifact.write` 绑定具体参数摘要；`personal-assistant` DSH profile 已接入该 Broker 并阻断默认高风险工具，但 `coding-agent`、读取隔离、真实 Connector 和 OS 级沙箱尚未纳入。
 - `operations` 列表进入提示词，不构成工具权限隔离。不能宣称“风险意图被识别”就等于“所有危险动作都被阻止”。
@@ -29,8 +30,8 @@
 - 记忆已接入 runtime / Gateway / CLI / Workbench，但只支持显式写入和确定性 purpose/scope 检索；没有自动抽取、语义索引、字段级加密或跨设备同步。
 - 当前 coding-agent 是路由到另一份 DSH profile，不是已接入 A2A 的独立外部专家。
 - 无产品级多轮会话；DSH Web UI 使用 DSH 会话，绕开助手 Task Ledger。
-- 尚无插件 host、MCP/A2A adapter、持久 scheduler、设备协议、自动学习或自主发布。
-- Task Ledger 已按 `user_version` 执行 v1→v2 expand 迁移并记录 `migration_history`；contract/回滚自动化仍未实现。
+- 尚无 MCP/A2A adapter、持久 scheduler、设备协议、自动学习或自主发布。
+- Task Ledger 已按 `user_version` 执行 v1→v2→v3 expand 迁移并记录 `migration_history`；自动 contract migration 和数据库回滚仍未实现。
 - 数据内容、错误、任务结果和 DSH 会话仍可能含敏感信息；只减少工具审计正文不等于全链路脱敏。
 
 这些是设计基线和后续规范输入，不是本次已经修复的行为。
@@ -81,7 +82,7 @@ NPM_CONFIG_CACHE=./data/tooling/npm-cache NPM_CONFIG_REGISTRY=https://registry.n
 
 `apps/workbench` 已提供 React + Vite 单页工作台，通过现有 Gateway 提交和查询任务，显示结果、错误、事件与审计，并支持已有任务级审批、拒绝和取消。生产构建输出到 `dist/workbench`，Gateway 在产物存在时从同一 loopback 地址托管页面和哈希资源。
 
-当前 Gateway 的提交与批准调用仍等待执行结束；页面以客户端 task ID 和并发轮询呈现中间状态。它不是产品级多轮对话或流式协议。该初始切片没有 Action 或 Memory 操作面，后续已分别由 SPEC-0006 和 SPEC-0009 补齐；远程身份、重启恢复和真实工作工具仍未实现。
+当前 Gateway 的提交与批准调用仍等待执行结束；页面以客户端 task ID 和并发轮询呈现中间状态。它不是产品级多轮对话或流式协议。该初始切片没有 Action、Memory 或 Recovery 操作面，后续已分别由 SPEC-0006、SPEC-0009 和 SPEC-0010 补齐；远程身份和真实工作工具仍未实现。
 
 验证包括 Vitest API/组件/静态托管测试，以及 Playwright 在桌面 Chrome 和移动 Chromium 视口上的 mock 任务与审批流程；细节见 [SPEC-0004 证据](../specs/0004-web-workbench/evidence.md) 和 [Workbench SOP](runbooks/web-workbench.md)。
 
@@ -144,6 +145,14 @@ Task 执行前的确定性检索按 owner、confirmed 状态、classification、
 本机 `pnpm check` 通过 21 个测试文件、155 个用例，其中 10 个启动真实 DSH SDK 子进程；桌面/移动 Playwright 共 10 个场景通过。独立 CLI 进程验证跨重启的创建、确认、纠正和遗忘。真实 `minimax-cn / MiniMax-M3` 使用非敏感虚构偏好，在约 3.7 秒内返回唯一 token `LUMI_MEMORY_OK`，原 Task content 保持不变，事件无记忆正文；隔离数据库和 DSH home 已精确清理。
 
 该结果为 `verified_once`。当前不会自动从对话抽取记忆，没有语义相关性排序、冲突合并、正文版本历史、字段级加密、备份删除传播或跨设备同步。`personal` 记录会发送给当前模型 provider；不应出境的内容应标为 sensitive/secret。细节见 [SPEC-0009 证据](../specs/0009-personal-memory/evidence.md) 和 [个人记忆 SOP](runbooks/personal-memory.md)。
+
+## 2026-09-25 · 可解释的单机重启恢复
+
+`SPEC-0010` 新增 `packages/task-recovery`、Task Ledger v3 expand migration 和 `runtime.ready` 启动屏障。普通 queued Task 在启动时续调度；Action queued 仍等待显式 execute。遗留 running Task 不原地回退到 queued，而是结束为 `interrupted` 并建立 owner/principal 范围的 Recovery。meeting/research 以及未观察到工具或 Action 迹象的 personal Task 可由用户显式创建唯一 replacement Task；coding-agent、未知 capability 和有工具迹象的任务只允许人工确认。
+
+executing / outcome_unknown 以及已有回执但未验证的 Action Task 转为 `reconciling`。executing 同事务改为 outcome_unknown，授权仍为 consumed；后续只调用现有 provider read、摘要比对和 Verification，不重复 write。Gateway、CLI 和 Workbench 提供恢复查询、retry、acknowledge 与动作对账入口。
+
+SQLite 保存单个本机 runtime ID 与 PID；仍存活的进程会阻止另一个入口把它的 running Task 误判为崩溃。该机制不是分布式 lease/fencing；PID 复用只会延迟恢复，跨主机共享数据库不在支持范围。真实子进程在 Task running 后经 `SIGKILL`，独立 CLI 随后识别 stale runtime 并创建 Recovery；桌面/移动 Workbench 可创建唯一 replacement Task。完整边界和命令见 [SPEC-0010 证据](../specs/0010-task-recovery/evidence.md) 与 [任务恢复 SOP](runbooks/task-recovery.md)。
 
 ## 状态标注规则
 

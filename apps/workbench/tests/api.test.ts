@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { ApiError, isTaskActive, LumiApi, type MemoryInput } from '../src/api.ts'
-import type { ActionDetail, PersonalMemory, TaskRecord } from '../src/types.ts'
+import type {
+  ActionDetail,
+  PersonalMemory,
+  RecoveryRecord,
+  TaskRecord,
+} from '../src/types.ts'
 
 const task: TaskRecord = {
   actorId: 'local-user',
@@ -67,6 +72,24 @@ const personalMemory: PersonalMemory = {
   source: 'explicit_user_input',
   status: 'confirmed',
   updatedAt: '2026-09-25T09:00:00.000Z',
+}
+
+const recovery: RecoveryRecord = {
+  actionId: null,
+  detectedAt: '2026-09-25T09:01:00.000Z',
+  disposition: 'retry_available',
+  id: 'recovery-one',
+  ownerId: 'local-owner',
+  principalId: 'local-user',
+  reasonCode: 'HOST_RESTART_SAFE_TO_RETRY',
+  replacementCreatedAt: null,
+  replacementTaskId: null,
+  resolution: null,
+  resolvedAt: null,
+  safeToRetry: true,
+  schemaVersion: 'lumi.recovery/v1',
+  status: 'pending',
+  taskId: task.id,
 }
 
 describe('LumiApi', () => {
@@ -295,6 +318,41 @@ describe('LumiApi', () => {
     })
     expect(calls[5]?.[1]?.method).toBe('DELETE')
   })
+
+  it('uses the scoped recovery lookup and command endpoints', async () => {
+    const calls: Array<[RequestInfo | URL, RequestInit | undefined]> = []
+    const fetcher: typeof fetch = async (input, init) => {
+      calls.push([input, init])
+      const path = String(input)
+      const data = path.includes('?limit=')
+        ? [recovery]
+        : path.endsWith('/retry')
+          ? {
+              recovery: { ...recovery, resolution: 'retried', status: 'resolved' },
+              task: { ...task, id: 'task-retried', state: 'completed' },
+            }
+          : { ...recovery, resolution: 'acknowledged', status: 'resolved' }
+      return new Response(JSON.stringify({ data }), {
+        headers: { 'content-type': 'application/json' },
+        status: 200,
+      })
+    }
+    const api = new LumiApi(fetcher, 'test-token')
+
+    await expect(api.getTaskRecovery(task.id)).resolves.toEqual(recovery)
+    await api.retryRecovery(recovery.id)
+    await api.acknowledgeRecovery(recovery.id)
+
+    expect(calls.map(([path]) => path)).toEqual([
+      '/v2/recoveries?limit=1&taskId=task-one',
+      '/v2/recoveries/recovery-one/retry',
+      '/v2/recoveries/recovery-one/acknowledge',
+    ])
+    for (const [, request] of calls.slice(1)) {
+      expect(request?.method).toBe('POST')
+      expect(request?.body).toBe(JSON.stringify({}))
+    }
+  })
 })
 
 describe('isTaskActive', () => {
@@ -302,6 +360,8 @@ describe('isTaskActive', () => {
     ['queued', true],
     ['running', true],
     ['waiting_approval', true],
+    ['reconciling', true],
+    ['interrupted', false],
     ['completed', false],
     ['failed', false],
     ['cancelled', false],

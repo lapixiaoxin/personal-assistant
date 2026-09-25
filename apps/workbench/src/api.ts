@@ -12,6 +12,8 @@ import type {
   MemoryStatus,
   PersonalMemory,
   PersonalMemoryTombstone,
+  RecoveryRecord,
+  RecoveryRetryResult,
   TaskDetail,
   TaskEvent,
   TaskRecord,
@@ -67,6 +69,7 @@ export class ApiError extends Error {
 }
 
 export interface LumiApiClient {
+  acknowledgeRecovery(recoveryId: string): Promise<RecoveryRecord>
   authorizeAction(actionId: string): Promise<ActionDetail>
   approve(taskId: string): Promise<TaskRecord>
   cancel(taskId: string): Promise<TaskRecord>
@@ -80,6 +83,7 @@ export interface LumiApiClient {
   getAction(actionId: string): Promise<ActionDetail>
   getAudit(taskId: string): Promise<AuditRecord[]>
   getEvents(taskId: string): Promise<TaskEvent[]>
+  getTaskRecovery(taskId: string): Promise<RecoveryRecord | undefined>
   getTask(taskId: string): Promise<TaskDetail>
   health(): Promise<HealthStatus>
   listActions(): Promise<ActionDetail[]>
@@ -88,6 +92,7 @@ export interface LumiApiClient {
   reconcileAction(actionId: string): Promise<ActionDetail>
   reject(taskId: string): Promise<TaskRecord>
   retractMemory(memoryId: string): Promise<PersonalMemory>
+  retryRecovery(recoveryId: string): Promise<RecoveryRetryResult>
   submitMeetingBrief(input: MeetingBriefInput, id: string): Promise<TaskDetail>
   submitResearchBrief(question: string, sources: string[], id: string): Promise<TaskDetail>
   submitTask(content: string, id: string): Promise<TaskDetail>
@@ -121,6 +126,12 @@ export class LumiApi implements LumiApiClient {
   listMemories(): Promise<PersonalMemory[]> {
     return this.request<DataEnvelope<PersonalMemory[]>>('/v2/memories?limit=100')
       .then(response => response.data)
+  }
+
+  getTaskRecovery(taskId: string): Promise<RecoveryRecord | undefined> {
+    return this.request<DataEnvelope<RecoveryRecord[]>>(
+      `/v2/recoveries?limit=1&taskId=${encodeURIComponent(taskId)}`,
+    ).then(response => response.data[0])
   }
 
   getTask(taskId: string): Promise<TaskDetail> {
@@ -245,6 +256,14 @@ export class LumiApi implements LumiApiClient {
     return this.actionCommand<ActionCancellationResult>(actionId, 'cancel')
   }
 
+  retryRecovery(recoveryId: string): Promise<RecoveryRetryResult> {
+    return this.recoveryCommand<RecoveryRetryResult>(recoveryId, 'retry')
+  }
+
+  acknowledgeRecovery(recoveryId: string): Promise<RecoveryRecord> {
+    return this.recoveryCommand<RecoveryRecord>(recoveryId, 'acknowledge')
+  }
+
   private decide(taskId: string, decision: 'approve' | 'cancel' | 'reject'): Promise<TaskRecord> {
     return this.request<DataEnvelope<TaskRecord>>(
       `/v1/tasks/${encodeURIComponent(taskId)}/${decision}`,
@@ -284,6 +303,20 @@ export class LumiApi implements LumiApiClient {
     ).then(response => response.data)
   }
 
+  private recoveryCommand<T>(
+    recoveryId: string,
+    command: 'acknowledge' | 'retry',
+  ): Promise<T> {
+    return this.request<DataEnvelope<T>>(
+      `/v2/recoveries/${encodeURIComponent(recoveryId)}/${command}`,
+      {
+        body: JSON.stringify({}),
+        headers: { 'content-type': 'application/json' },
+        method: 'POST',
+      },
+    ).then(response => response.data)
+  }
+
   private async request<T>(path: string, init?: RequestInit): Promise<T> {
     const headers = new Headers(init?.headers)
     if (this.token) headers.set('authorization', `Bearer ${this.token}`)
@@ -310,6 +343,7 @@ export function createTaskId(): string {
 export function isTaskActive(task: TaskRecord): boolean {
   return task.state === 'queued'
     || task.state === 'running'
+    || task.state === 'reconciling'
     || task.state === 'waiting_approval'
 }
 

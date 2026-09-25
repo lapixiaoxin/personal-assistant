@@ -73,6 +73,7 @@ async function assertCoreHasNoDshImports() {
     'packages/assistant-core',
     'packages/policy',
     'packages/task-ledger',
+    'packages/task-recovery',
   ]
   for (const directory of protectedDirectories) {
     for (const path of await sourceFiles(resolve(root, directory))) {

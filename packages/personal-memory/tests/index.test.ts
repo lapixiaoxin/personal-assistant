@@ -112,7 +112,7 @@ describe('PersonalMemoryService', () => {
 
     const inspected = new DatabaseSync(filename)
     expect((inspected.prepare('PRAGMA user_version').get() as { user_version: number }).user_version)
-      .toBe(2)
+      .toBe(3)
     expect(inspected.prepare(
       'SELECT version, name FROM personal_memory_migrations ORDER BY version',
     ).all()).toEqual([{ name: 'personal-memory', version: 1 }])

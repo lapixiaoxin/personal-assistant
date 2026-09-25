@@ -2,7 +2,7 @@
 
 `lumi` 是面向长期成长的超级个人智能体，名字取意于与“光”有关的词根，短、具有未来感。
 
-当前处于第一阶段 MVP，重点是持久化、可审计的任务闭环；运行中任务尚不能在进程重启后自动恢复。
+当前处于第一阶段 MVP，重点是持久化、可审计的任务闭环与可解释的单机重启恢复。
 
 长期方案与后续建设入口：[设计总纲](docs/design/00-overview.md)、[文档导航](docs/README.md)、[Agent 指南](AGENTS.md)、[首个 SDD 规范](specs/0001-action-boundary/spec.md)。设计为 Proposed，已实现与未实现的边界见 [工程事实基线](docs/current-state.md)。
 
@@ -20,6 +20,8 @@
 - 本地 Web 工作台提供任务、动作和记忆三视图；用户可管理个人记忆，或审阅参数摘要、授权/取消动作并读取回执和独立验证。
 - Gateway 使用本地 Bearer token 派生 owner/principal；请求体中的 `actorId` 不能用于切换身份。
 - 任务事件、工具调用摘要、审批动作和执行结果可查询，服务重启后仍保留。
+- runtime 启动会续调度尚未开始的普通 queued Task；遗留 running Task 转为 interrupted，只有确定性规则判定无副作用风险时才允许用户显式创建新的重试 Task。
+- executing / outcome_unknown Action 在重启后进入 reconciling，只能读回对账；本机 PID 所有权会阻止另一个仍存活的 runtime 被误判为崩溃。
 - DSH 通过独立 adapter 接入，固定为 `0.1.7-rc.1`；核心层不导入 DSH。
 - 默认通过 DSH SDK 执行；`PA_EXECUTOR=mock` 仅用于离线开发和故障隔离。
 
@@ -48,6 +50,7 @@ apps/runtime/                  Composition root
 packages/contracts/            Stable domain contracts
 packages/assistant-core/       Task lifecycle and orchestration
 packages/task-ledger/          SQLite persistence
+packages/task-recovery/        Restart classification and explicit recovery
 packages/policy/               Risk classification and approval policy
 packages/capability-registry/  Capability discovery and routing
 packages/personal-memory/      Persistent memory lifecycle and bounded context
@@ -120,6 +123,10 @@ pnpm cli memory correct <memory-id> "仅在编程任务中偏好决策表" \
   --purpose coding
 pnpm cli memory retract <memory-id>
 pnpm cli memory forget <memory-id>
+pnpm cli recovery list --status pending
+pnpm cli recovery get <recovery-id>
+pnpm cli recovery retry <recovery-id>
+pnpm cli recovery acknowledge <recovery-id>
 pnpm cli list
 pnpm cli get <task-id>
 pnpm cli events <task-id>
@@ -195,6 +202,9 @@ curl -sS http://127.0.0.1:4310/v1/tasks/task-http-demo/audit \
 | `POST` | `/v2/actions/:id/execute` | 执行动作并读回核验 |
 | `POST` | `/v2/actions/:id/reconcile` | 对账不确定结果 |
 | `POST` | `/v2/actions/:id/cancel` | 撤销未执行动作或记录剩余影响 |
+| `GET` | `/v2/recoveries`、`/v2/recoveries/:id` | 查询当前 principal 的重启恢复记录 |
+| `POST` | `/v2/recoveries/:id/retry` | 为允许重试的 interrupted Task 创建唯一替代 Task |
+| `POST` | `/v2/recoveries/:id/acknowledge` | 确认已人工检查不可自动重试的中断 |
 | `POST`、`GET` | `/v2/memories` | 创建或列出当前 owner 的个人记忆 |
 | `GET` | `/v2/memories/:id` | 读取当前 owner 的一条记忆 |
 | `POST` | `/v2/memories/:id/confirm` | 确认候选记忆 |
@@ -208,7 +218,7 @@ curl -sS http://127.0.0.1:4310/v1/tasks/task-http-demo/audit \
 
 ## Web 工作台
 
-电脑端入口位于 `apps/workbench`。任务视图提供普通任务、研究简报和会议准备三种 composer 模式、状态与结果查看、任务级审批、取消、事件和审计记录；研究模式要求逐行填写公开 HTTPS 来源，会议模式收集主题、目标、参与者、议程和背景，并把已验证结果渲染为六个简报分区。动作视图列出 DSH 或 API 提议的受控 Action，展示目标、参数摘要、期限、授权、回执和 verification，并按服务端状态提供授权、执行、取消或对账。记忆视图提供状态筛选、用途/scope/分级设置、确认、纠正、撤回和二次确认遗忘。它只调用 lumi Gateway，不直接连接 DSH、数据库、source snapshot 或 artifact 目录。
+电脑端入口位于 `apps/workbench`。任务视图提供普通任务、研究简报和会议准备三种 composer 模式、状态与结果查看、任务级审批、取消、事件和审计记录；interrupted Task 会展示服务端恢复判定，只有 `retry_available` 才能创建新 Task。研究模式要求逐行填写公开 HTTPS 来源，会议模式收集主题、目标、参与者、议程和背景，并把已验证结果渲染为六个简报分区。动作视图列出 DSH 或 API 提议的受控 Action，展示目标、参数摘要、期限、授权、回执和 verification，并按服务端状态提供授权、执行、取消或对账；重启后的不确定 Action 仍只允许对账。记忆视图提供状态筛选、用途/scope/分级设置、确认、纠正、撤回和二次确认遗忘。它只调用 lumi Gateway，不直接连接 DSH、数据库、source snapshot 或 artifact 目录。
 
 开发时分别启动 Gateway 和 Vite：
 

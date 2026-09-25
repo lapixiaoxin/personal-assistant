@@ -1,0 +1,17 @@
+{
+  "name": "@lumi/task-recovery",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@lumi/action-runtime": "workspace:*",
+    "@lumi/assistant-core": "workspace:*",
+    "@lumi/contracts": "workspace:*",
+    "@lumi/task-ledger": "workspace:*"
+  },
+  "devDependencies": {
+    "@lumi/capability-registry": "workspace:*",
+    "@lumi/policy": "workspace:*"
+  }
+}

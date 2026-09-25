@@ -104,6 +104,8 @@ M3 Runner 从持久队列 claim，获得 `leaseOwner / leaseExpiresAt / fencingT
 
 若外部系统不支持幂等，也没有稳定业务标识可查询，则不能承诺自动重复执行。租约与单 worker 也无法单独消除“远端成功、本地未记录”的不确定窗口。
 
+2026-09-25 实现状态：SPEC-0010 先落地单机子集。普通 queued Task 可续调度；遗留 running Task 转为 interrupted，安全重试创建新 Task；受控 Action 转为 reconciling 并显式对账。本机 runtime ID + PID 只防止活跃本地进程被误接管，不等同于本节目标中的 lease、heartbeat、fencing token 或检查点恢复。
+
 ## 事件与流式
 
 事件字段为 `eventId / schemaVersion / aggregateId / aggregateType / sequence / type / occurredAt / traceId / causationId / payloadRef`。每个聚合 sequence 单调；消费者用 eventId 去重。事件类型用命名空间，如 `pa.action.succeeded.v1`。

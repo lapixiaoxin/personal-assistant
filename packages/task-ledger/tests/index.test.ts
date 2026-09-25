@@ -133,9 +133,9 @@ describe('SqliteTaskLedger', () => {
 
     const inspected = new DatabaseSync(filename)
     expect((inspected.prepare('PRAGMA user_version').get() as { user_version: number }).user_version)
-      .toBe(2)
+      .toBe(3)
     expect(inspected.prepare('SELECT version FROM migration_history ORDER BY version').all())
-      .toEqual([{ version: 1 }, { version: 2 }])
+      .toEqual([{ version: 1 }, { version: 2 }, { version: 3 }])
     inspected.close()
 
     const rollback = new DatabaseSync(backupFilename)
@@ -146,6 +146,44 @@ describe('SqliteTaskLedger', () => {
       result: 'legacy result',
     })
     rollback.close()
+  })
+
+  it('expands a version 2 database with recovery storage without changing old rows', () => {
+    const directory = mkdtempSync(join(tmpdir(), 'lumi-ledger-v2-'))
+    temporaryDirectories.push(directory)
+    const filename = join(directory, 'assistant.db')
+    const seeded = new SqliteTaskLedger({ filename })
+    seeded.createTask(createTaskRequest({
+      actorId: 'local-user',
+      channel: 'cli',
+      content: 'Persist through the v3 migration',
+      id: 'task-v2-preserved',
+    }))
+    seeded.close()
+    const legacy = new DatabaseSync(filename)
+    legacy.exec(`
+      DROP TABLE task_recoveries;
+      DROP TABLE runtime_recovery_lease;
+      DELETE FROM migration_history WHERE version = 3;
+      PRAGMA user_version = 2;
+    `)
+    legacy.close()
+
+    const migrated = new SqliteTaskLedger({ filename })
+    expect(migrated.getTask('task-v2-preserved')).toMatchObject({
+      content: 'Persist through the v3 migration',
+      state: 'queued',
+    })
+    migrated.close()
+
+    const inspected = new DatabaseSync(filename)
+    expect((inspected.prepare('PRAGMA user_version').get() as { user_version: number }).user_version)
+      .toBe(3)
+    expect(inspected.prepare(`
+      SELECT name FROM sqlite_master
+      WHERE type = 'table' AND name = 'task_recoveries'
+    `).get()).toEqual({ name: 'task_recoveries' })
+    inspected.close()
   })
 
   it('atomically consumes a one-use action authorization', () => {
@@ -165,6 +203,90 @@ describe('SqliteTaskLedger', () => {
     expect(ledger.getAuthorizationForAction(action.id)).toMatchObject({
       remainingUses: 0,
       status: 'consumed',
+    })
+    ledger.close()
+  })
+
+  it('atomically interrupts a running task and records one recovery decision', () => {
+    const ledger = new SqliteTaskLedger({ filename: ':memory:', now: fixedNow })
+    const request = createTaskRequest({
+      actorId: 'local-user',
+      channel: 'meeting-brief',
+      content: 'Prepare the meeting',
+      createdAt: fixedNow(),
+      id: 'task-interrupted',
+    })
+    ledger.createTask(request)
+    ledger.transitionTask(request.id, ['queued'], 'running', {
+      capabilityId: 'meeting-agent',
+    })
+
+    const recovery = ledger.recordTaskRecovery({
+      disposition: 'retry_available',
+      ownerId: 'local-owner',
+      principalId: 'local-user',
+      reasonCode: 'HOST_RESTART_SAFE_TO_RETRY',
+      safeToRetry: true,
+      taskId: request.id,
+    })
+
+    expect(ledger.getTask(request.id)).toMatchObject({
+      state: 'interrupted',
+    })
+    expect(recovery).toMatchObject({
+      actionId: null,
+      disposition: 'retry_available',
+      status: 'pending',
+    })
+    expect(ledger.recordTaskRecovery({
+      disposition: 'retry_available',
+      ownerId: 'local-owner',
+      principalId: 'local-user',
+      reasonCode: 'HOST_RESTART_SAFE_TO_RETRY',
+      safeToRetry: true,
+      taskId: request.id,
+    }).id).toBe(recovery.id)
+    expect(ledger.listEvents(request.id).filter(event => event.type === 'recovery.detected'))
+      .toHaveLength(1)
+    expect(ledger.getRecovery(recovery.id, {
+      ...testPrincipal(),
+      id: 'another-user',
+    })).toBeUndefined()
+    ledger.close()
+  })
+
+  it('moves an executing action to reconciliation without restoring its authorization', () => {
+    const ledger = new SqliteTaskLedger({ filename: ':memory:', now: fixedNow })
+    const principal = testPrincipal()
+    const action = prepareAction(ledger, principal)
+    ledger.authorizeAction(
+      action.id,
+      principal,
+      '2026-09-25T10:10:00.000Z',
+      'local-action-policy/1',
+    )
+    ledger.claimActionExecution(action.id, principal)
+
+    const recovery = ledger.recordTaskRecovery({
+      actionId: action.id,
+      disposition: 'reconcile_action',
+      ownerId: principal.ownerId,
+      principalId: principal.id,
+      reasonCode: 'ACTION_OUTCOME_UNKNOWN',
+      safeToRetry: false,
+      taskId: action.taskId,
+    })
+
+    expect(ledger.getAction(action.id)?.status).toBe('outcome_unknown')
+    expect(ledger.getTask(action.taskId)?.state).toBe('reconciling')
+    expect(ledger.getAuthorizationForAction(action.id)).toMatchObject({
+      remainingUses: 0,
+      status: 'consumed',
+    })
+    expect(recovery).toMatchObject({
+      actionId: action.id,
+      disposition: 'reconcile_action',
+      safeToRetry: false,
     })
     ledger.close()
   })

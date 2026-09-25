@@ -49,8 +49,13 @@ import {
   type ResearchSourceStore,
 } from '@lumi/research-workflow'
 import {
+  RecoveryService,
+  type RecoveryStartupReport,
+} from '@lumi/task-recovery'
+import {
   SqliteTaskLedger,
   type ActionLedger,
+  type RecoveryLedger,
   type TaskLedger,
 } from '@lumi/task-ledger'
 
@@ -60,9 +65,11 @@ export interface AssistantRuntime {
   core: AssistantCore
   executorKind: 'custom' | 'dsh' | 'mock'
   identity: IdentityAuthority
-  ledger: ActionLedger & TaskLedger
+  ledger: ActionLedger & RecoveryLedger & TaskLedger
   memories: PersonalMemoryService
   meeting: MeetingBriefWorkflow
+  ready: Promise<RecoveryStartupReport>
+  recovery: RecoveryService
   research: ResearchBriefWorkflow
   close(): Promise<void>
 }
@@ -158,6 +165,12 @@ export function createAssistantRuntime(options: RuntimeOptions = {}): AssistantR
   const core = new AssistantCore(ledger, router, policy, executor)
   const meeting = new MeetingBriefWorkflow(core)
   const research = new ResearchBriefWorkflow(core)
+  const recovery = new RecoveryService({
+    actions,
+    core,
+    ledger,
+  })
+  const ready = recovery.initialize(identity.localPrincipal())
 
   return {
     actions,
@@ -168,12 +181,18 @@ export function createAssistantRuntime(options: RuntimeOptions = {}): AssistantR
     ledger,
     memories,
     meeting,
+    ready,
+    recovery,
     research,
     close: async () => {
       try {
-        await core.close()
+        await ready
       } finally {
-        memories.close()
+        try {
+          await core.close()
+        } finally {
+          memories.close()
+        }
       }
     },
   }

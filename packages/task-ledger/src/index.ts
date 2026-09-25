@@ -10,6 +10,7 @@ import {
   AuditRecordSchema,
   AuthorizationRecordSchema,
   createId,
+  RecoveryRecordSchema,
   TaskEventSchema,
   TaskRecordSchema,
   VerificationRecordSchema,
@@ -23,6 +24,11 @@ import {
   type AuthorizationRecord,
   type JsonValue,
   type Principal,
+  type RecoveryDisposition,
+  type RecoveryReasonCode,
+  type RecoveryRecord,
+  type RecoveryResolution,
+  type RecoveryStatus,
   type RiskLevel,
   type TaskEvent,
   type TaskEventType,
@@ -65,6 +71,38 @@ export interface VerificationInput {
   reason: string
   status: VerificationRecord['status']
   verifierVersion: string
+}
+
+export interface TaskRecoveryInput {
+  actionId?: string
+  disposition: RecoveryDisposition
+  ownerId: string
+  principalId: string
+  reasonCode: RecoveryReasonCode
+  safeToRetry: boolean
+  taskId: string
+}
+
+export interface RecoveryRetryClaimInput {
+  recoveryId: string
+  replacementCreatedAt: string
+  replacementTaskId: string
+}
+
+export interface RecoveryListOptions {
+  limit?: number
+  status?: RecoveryStatus
+  taskId?: string
+}
+
+export interface RuntimeRecoveryLease {
+  pid: number
+  runtimeId: string
+  startedAt: string
+}
+
+export interface RuntimeRecoveryLeaseClaim extends RuntimeRecoveryLease {
+  expectedRuntimeId: string | null
 }
 
 interface TaskPatch {
@@ -198,6 +236,30 @@ interface VerificationRow {
   verifier_version: string
 }
 
+interface RecoveryRow {
+  action_id: string | null
+  detected_at: string
+  disposition: string
+  id: string
+  owner_id: string
+  principal_id: string
+  reason_code: string
+  replacement_created_at: string | null
+  replacement_task_id: string | null
+  resolution: string | null
+  resolved_at: string | null
+  safe_to_retry: number
+  schema_version: string
+  status: string
+  task_id: string
+}
+
+interface RuntimeRecoveryLeaseRow {
+  pid: number
+  runtime_id: string
+  started_at: string
+}
+
 export class DuplicateTaskError extends Error {
   constructor(readonly taskId: string) {
     super(`Task already exists: ${taskId}`)
@@ -254,6 +316,20 @@ export class ActionAuthorizationError extends Error {
   }
 }
 
+export class RecoveryNotFoundError extends Error {
+  constructor(readonly recoveryId: string) {
+    super(`Recovery not found: ${recoveryId}`)
+    this.name = 'RecoveryNotFoundError'
+  }
+}
+
+export class RecoveryStateConflictError extends Error {
+  constructor(readonly recoveryId: string, message: string) {
+    super(message)
+    this.name = 'RecoveryStateConflictError'
+  }
+}
+
 export interface TaskLedger {
   appendAudit(input: AuditInput): AuditRecord
   appendEvent(taskId: string, type: TaskEventType, payload?: Record<string, JsonValue>): TaskEvent
@@ -284,6 +360,7 @@ export interface ActionLedger {
   cancelAction(actionId: string, principal: Principal): ActionRecord
   claimActionExecution(actionId: string, principal: Principal): ActionRecord
   getAction(actionId: string): ActionRecord | undefined
+  getActionForTask(taskId: string): ActionRecord | undefined
   getActionContent(actionId: string): string
   getAuthorizationForAction(actionId: string): AuthorizationRecord | undefined
   getReceiptForAction(actionId: string): ActionReceipt | undefined
@@ -295,9 +372,28 @@ export interface ActionLedger {
   recordVerification(input: VerificationInput): VerificationRecord
 }
 
-export class SqliteTaskLedger implements TaskLedger, ActionLedger {
+export interface RecoveryLedger {
+  claimRuntimeRecoveryLease(input: RuntimeRecoveryLeaseClaim): boolean
+  claimRecoveryRetry(input: RecoveryRetryClaimInput, principal: Principal): RecoveryRecord
+  getRecovery(recoveryId: string, principal: Principal): RecoveryRecord | undefined
+  getRecoveryForTask(taskId: string, principal: Principal): RecoveryRecord | undefined
+  listRecoveries(principal: Principal, options?: RecoveryListOptions): RecoveryRecord[]
+  listTasksForRecovery(principalId: string): TaskRecord[]
+  getRuntimeRecoveryLease(): RuntimeRecoveryLease | undefined
+  recordTaskRecovery(input: TaskRecoveryInput): RecoveryRecord
+  releaseRecoveryRetry(recoveryId: string, principal: Principal): RecoveryRecord
+  releaseRuntimeRecoveryLease(runtimeId: string): void
+  resolveRecovery(
+    recoveryId: string,
+    principal: Principal,
+    resolution: RecoveryResolution,
+  ): RecoveryRecord
+}
+
+export class SqliteTaskLedger implements TaskLedger, ActionLedger, RecoveryLedger {
   readonly #db: DatabaseSyncType
   readonly #now: () => string
+  #ownedRuntimeRecoveryLeaseId: string | undefined
 
   constructor(options: SqliteTaskLedgerOptions) {
     if (options.filename !== ':memory:') {
@@ -393,6 +489,98 @@ export class SqliteTaskLedger implements TaskLedger, ActionLedger {
     return rows.map(mapTask)
   }
 
+  listTasksForRecovery(principalId: string): TaskRecord[] {
+    const rows = this.#db.prepare(`
+      SELECT * FROM tasks
+      WHERE actor_id = ? AND state IN ('queued', 'running')
+      ORDER BY created_at ASC, id ASC
+    `).all(principalId) as unknown as TaskRow[]
+    return rows.map(mapTask)
+  }
+
+  getRecovery(recoveryId: string, principal: Principal): RecoveryRecord | undefined {
+    const row = this.#db.prepare(`
+      SELECT * FROM task_recoveries
+      WHERE id = ? AND owner_id = ? AND principal_id = ?
+    `).get(recoveryId, principal.ownerId, principal.id) as RecoveryRow | undefined
+    return row ? mapRecovery(row) : undefined
+  }
+
+  getRecoveryForTask(taskId: string, principal: Principal): RecoveryRecord | undefined {
+    const row = this.#db.prepare(`
+      SELECT * FROM task_recoveries
+      WHERE task_id = ? AND owner_id = ? AND principal_id = ?
+    `).get(taskId, principal.ownerId, principal.id) as RecoveryRow | undefined
+    return row ? mapRecovery(row) : undefined
+  }
+
+  listRecoveries(
+    principal: Principal,
+    options: RecoveryListOptions = {},
+  ): RecoveryRecord[] {
+    const clauses = ['owner_id = ?', 'principal_id = ?']
+    const values: Array<number | string> = [principal.ownerId, principal.id]
+    if (options.status) {
+      clauses.push('status = ?')
+      values.push(options.status)
+    }
+    if (options.taskId) {
+      clauses.push('task_id = ?')
+      values.push(options.taskId)
+    }
+    const limit = Math.max(1, Math.min(options.limit ?? 50, 200))
+    const rows = this.#db.prepare(`
+      SELECT * FROM task_recoveries
+      WHERE ${clauses.join(' AND ')}
+      ORDER BY detected_at DESC, id DESC
+      LIMIT ?
+    `).all(...values, limit) as unknown as RecoveryRow[]
+    return rows.map(mapRecovery)
+  }
+
+  getRuntimeRecoveryLease(): RuntimeRecoveryLease | undefined {
+    const row = this.#db.prepare(`
+      SELECT runtime_id, pid, started_at
+      FROM runtime_recovery_lease
+      WHERE singleton = 1
+    `).get() as RuntimeRecoveryLeaseRow | undefined
+    return row
+      ? {
+          pid: row.pid,
+          runtimeId: row.runtime_id,
+          startedAt: row.started_at,
+        }
+      : undefined
+  }
+
+  claimRuntimeRecoveryLease(input: RuntimeRecoveryLeaseClaim): boolean {
+    return this.#transaction(() => {
+      const current = this.getRuntimeRecoveryLease()
+      if (
+        (current && current.runtimeId !== input.expectedRuntimeId)
+        || (!current && input.expectedRuntimeId !== null)
+      ) return false
+      this.#db.prepare('DELETE FROM runtime_recovery_lease WHERE singleton = 1').run()
+      this.#db.prepare(`
+        INSERT INTO runtime_recovery_lease (
+          singleton, runtime_id, pid, started_at
+        ) VALUES (1, ?, ?, ?)
+      `).run(input.runtimeId, input.pid, input.startedAt)
+      this.#ownedRuntimeRecoveryLeaseId = input.runtimeId
+      return true
+    })
+  }
+
+  releaseRuntimeRecoveryLease(runtimeId: string): void {
+    this.#db.prepare(`
+      DELETE FROM runtime_recovery_lease
+      WHERE singleton = 1 AND runtime_id = ?
+    `).run(runtimeId)
+    if (this.#ownedRuntimeRecoveryLeaseId === runtimeId) {
+      this.#ownedRuntimeRecoveryLeaseId = undefined
+    }
+  }
+
   transitionTask(
     taskId: string,
     expected: readonly TaskState[],
@@ -400,6 +588,225 @@ export class SqliteTaskLedger implements TaskLedger, ActionLedger {
     patch: TaskPatch = {},
   ): TaskRecord {
     return this.#transaction(() => this.#transitionTask(taskId, expected, nextState, patch))
+  }
+
+  recordTaskRecovery(input: TaskRecoveryInput): RecoveryRecord {
+    return this.#transaction(() => {
+      const existingRow = this.#db.prepare(
+        'SELECT * FROM task_recoveries WHERE task_id = ?',
+      ).get(input.taskId) as RecoveryRow | undefined
+      if (existingRow) {
+        const existing = mapRecovery(existingRow)
+        if (
+          existing.ownerId !== input.ownerId
+          || existing.principalId !== input.principalId
+          || existing.actionId !== (input.actionId ?? null)
+          || existing.disposition !== input.disposition
+        ) {
+          throw new RecoveryStateConflictError(
+            existing.id,
+            'The task is already bound to a different recovery decision',
+          )
+        }
+        return existing
+      }
+
+      const task = this.getTask(input.taskId)
+      if (!task) throw new TaskNotFoundError(input.taskId)
+      if (task.actorId !== input.principalId) {
+        throw new RecoveryStateConflictError(
+          input.taskId,
+          'The task belongs to another principal',
+        )
+      }
+      if (task.state !== 'running') {
+        throw new TaskStateConflictError(task.id, task.state, ['running'])
+      }
+
+      const now = this.#now()
+      const actionId = input.actionId ?? null
+      const nextState: TaskState = input.disposition === 'reconcile_action'
+        ? 'reconciling'
+        : 'interrupted'
+      if (input.disposition === 'reconcile_action') {
+        if (!actionId || input.safeToRetry) {
+          throw new RecoveryStateConflictError(
+            input.taskId,
+            'Action reconciliation requires a non-retryable action reference',
+          )
+        }
+        const action = this.getActionForTask(input.taskId)
+        if (!action || action.id !== actionId) {
+          throw new RecoveryStateConflictError(
+            input.taskId,
+            'The recovery action does not match the task',
+          )
+        }
+        if (action.status === 'executing') this.#markActionOutcomeUnknown(action.id, now)
+        else if (action.status !== 'outcome_unknown' && action.status !== 'succeeded') {
+          throw new RecoveryStateConflictError(
+            input.taskId,
+            `Action ${action.id} is not recoverable from status ${action.status}`,
+          )
+        }
+      } else if (actionId) {
+        throw new RecoveryStateConflictError(
+          input.taskId,
+          'Non-action recovery cannot reference an action',
+        )
+      }
+
+      const recovery = RecoveryRecordSchema.parse({
+        actionId,
+        detectedAt: now,
+        disposition: input.disposition,
+        id: createId('recovery'),
+        ownerId: input.ownerId,
+        principalId: input.principalId,
+        reasonCode: input.reasonCode,
+        replacementCreatedAt: null,
+        replacementTaskId: null,
+        resolution: null,
+        resolvedAt: null,
+        safeToRetry: input.safeToRetry,
+        schemaVersion: 'lumi.recovery/v1',
+        status: 'pending',
+        taskId: input.taskId,
+      })
+      this.#transitionTask(input.taskId, ['running'], nextState, {
+        error: nextState === 'interrupted'
+          ? 'Execution was interrupted by a host restart'
+          : 'Action outcome requires reconciliation after a host restart',
+      })
+      this.#db.prepare(`
+        INSERT INTO task_recoveries (
+          id, schema_version, owner_id, principal_id, task_id, action_id,
+          disposition, reason_code, safe_to_retry, status, replacement_task_id,
+          replacement_created_at, resolution, detected_at, resolved_at
+        ) VALUES (
+          @id, @schemaVersion, @ownerId, @principalId, @taskId, @actionId,
+          @disposition, @reasonCode, @safeToRetry, @status, @replacementTaskId,
+          @replacementCreatedAt, @resolution, @detectedAt, @resolvedAt
+        )
+      `).run({
+        ...recovery,
+        safeToRetry: recovery.safeToRetry ? 1 : 0,
+      })
+      this.#appendEvent(input.taskId, 'recovery.detected', {
+        actionId,
+        disposition: recovery.disposition,
+        reasonCode: recovery.reasonCode,
+        recoveryId: recovery.id,
+        safeToRetry: recovery.safeToRetry,
+      }, now)
+      return recovery
+    })
+  }
+
+  claimRecoveryRetry(
+    input: RecoveryRetryClaimInput,
+    principal: Principal,
+  ): RecoveryRecord {
+    return this.#transaction(() => {
+      const recovery = this.#requireRecovery(input.recoveryId, principal)
+      if (
+        recovery.status !== 'pending'
+        || recovery.disposition !== 'retry_available'
+        || !recovery.safeToRetry
+      ) {
+        throw new RecoveryStateConflictError(
+          recovery.id,
+          'This recovery cannot create a retry task',
+        )
+      }
+      this.#db.prepare(`
+        UPDATE task_recoveries
+        SET status = 'retrying', replacement_task_id = ?,
+            replacement_created_at = ?
+        WHERE id = ? AND status = 'pending'
+      `).run(
+        input.replacementTaskId,
+        input.replacementCreatedAt,
+        recovery.id,
+      )
+      this.#appendEvent(recovery.taskId, 'recovery.retry_started', {
+        recoveryId: recovery.id,
+        replacementTaskId: input.replacementTaskId,
+      }, this.#now())
+      return this.#requireRecovery(recovery.id, principal)
+    })
+  }
+
+  releaseRecoveryRetry(recoveryId: string, principal: Principal): RecoveryRecord {
+    return this.#transaction(() => {
+      const recovery = this.#requireRecovery(recoveryId, principal)
+      if (recovery.status !== 'retrying') {
+        throw new RecoveryStateConflictError(
+          recovery.id,
+          `Recovery ${recovery.id} is not retrying`,
+        )
+      }
+      if (recovery.replacementTaskId && this.getTask(recovery.replacementTaskId)) {
+        throw new RecoveryStateConflictError(
+          recovery.id,
+          'The replacement task already exists and must remain linked',
+        )
+      }
+      this.#db.prepare(`
+        UPDATE task_recoveries
+        SET status = 'pending', replacement_task_id = NULL,
+            replacement_created_at = NULL
+        WHERE id = ? AND status = 'retrying'
+      `).run(recovery.id)
+      return this.#requireRecovery(recovery.id, principal)
+    })
+  }
+
+  resolveRecovery(
+    recoveryId: string,
+    principal: Principal,
+    resolution: RecoveryResolution,
+  ): RecoveryRecord {
+    return this.#transaction(() => {
+      const recovery = this.#requireRecovery(recoveryId, principal)
+      if (recovery.status === 'resolved') {
+        if (recovery.resolution !== resolution) {
+          throw new RecoveryStateConflictError(
+            recovery.id,
+            `Recovery ${recovery.id} was already resolved as ${recovery.resolution}`,
+          )
+        }
+        return recovery
+      }
+      if (resolution === 'retried' && (
+        recovery.status !== 'retrying'
+        || !recovery.replacementTaskId
+        || !this.getTask(recovery.replacementTaskId)
+      )) {
+        throw new RecoveryStateConflictError(
+          recovery.id,
+          'A persisted replacement task is required to resolve a retry',
+        )
+      }
+      if (resolution === 'reconciled' && recovery.disposition !== 'reconcile_action') {
+        throw new RecoveryStateConflictError(
+          recovery.id,
+          'Only action recoveries can be resolved by reconciliation',
+        )
+      }
+      const resolvedAt = this.#now()
+      this.#db.prepare(`
+        UPDATE task_recoveries
+        SET status = 'resolved', resolution = ?, resolved_at = ?
+        WHERE id = ? AND status IN ('pending', 'retrying')
+      `).run(resolution, resolvedAt, recovery.id)
+      this.#appendEvent(recovery.taskId, 'recovery.resolved', {
+        recoveryId: recovery.id,
+        replacementTaskId: recovery.replacementTaskId,
+        resolution,
+      }, resolvedAt)
+      return this.#requireRecovery(recovery.id, principal)
+    })
   }
 
   appendEvent(
@@ -502,6 +909,13 @@ export class SqliteTaskLedger implements TaskLedger, ActionLedger {
 
   getAction(actionId: string): ActionRecord | undefined {
     const row = this.#db.prepare('SELECT * FROM actions WHERE id = ?').get(actionId) as
+      | ActionRow
+      | undefined
+    return row ? mapAction(row) : undefined
+  }
+
+  getActionForTask(taskId: string): ActionRecord | undefined {
+    const row = this.#db.prepare('SELECT * FROM actions WHERE task_id = ?').get(taskId) as
       | ActionRow
       | undefined
     return row ? mapAction(row) : undefined
@@ -779,24 +1193,7 @@ export class SqliteTaskLedger implements TaskLedger, ActionLedger {
   }
 
   markActionOutcomeUnknown(actionId: string): ActionRecord {
-    return this.#transaction(() => {
-      const action = this.#requireAction(actionId)
-      if (action.status === 'outcome_unknown') return action
-      if (action.status !== 'executing') {
-        throw new ActionStateConflictError(actionId, action.status, ['executing'])
-      }
-      const now = this.#now()
-      this.#db.prepare(`
-        UPDATE actions
-        SET status = 'outcome_unknown', updated_at = ?
-        WHERE id = ?
-      `).run(now, actionId)
-      this.#appendEvent(action.taskId, 'action.outcome_unknown', {
-        actionId,
-        safeToRetry: false,
-      }, now)
-      return this.#requireAction(actionId)
-    })
+    return this.#transaction(() => this.#markActionOutcomeUnknown(actionId, this.#now()))
   }
 
   recordVerification(input: VerificationInput): VerificationRecord {
@@ -844,10 +1241,10 @@ export class SqliteTaskLedger implements TaskLedger, ActionLedger {
         verificationId: verification.id,
       }, now)
       const task = this.getTask(action.taskId)
-      if (task?.state === 'running') {
+      if (task && (task.state === 'running' || task.state === 'reconciling')) {
         this.#transitionTask(
           action.taskId,
-          ['running'],
+          [task.state],
           verification.status === 'passed' ? 'completed' : 'failed',
           verification.status === 'passed'
             ? { error: null, result: `Verified artifact action ${action.id}` }
@@ -859,6 +1256,9 @@ export class SqliteTaskLedger implements TaskLedger, ActionLedger {
   }
 
   close(): void {
+    if (this.#ownedRuntimeRecoveryLeaseId) {
+      this.releaseRuntimeRecoveryLease(this.#ownedRuntimeRecoveryLeaseId)
+    }
     this.#db.close()
   }
 
@@ -940,6 +1340,30 @@ export class SqliteTaskLedger implements TaskLedger, ActionLedger {
     return action
   }
 
+  #markActionOutcomeUnknown(actionId: string, now: string): ActionRecord {
+    const action = this.#requireAction(actionId)
+    if (action.status === 'outcome_unknown') return action
+    if (action.status !== 'executing') {
+      throw new ActionStateConflictError(actionId, action.status, ['executing'])
+    }
+    this.#db.prepare(`
+      UPDATE actions
+      SET status = 'outcome_unknown', updated_at = ?
+      WHERE id = ?
+    `).run(now, actionId)
+    this.#appendEvent(action.taskId, 'action.outcome_unknown', {
+      actionId,
+      safeToRetry: false,
+    }, now)
+    return this.#requireAction(actionId)
+  }
+
+  #requireRecovery(recoveryId: string, principal: Principal): RecoveryRecord {
+    const recovery = this.getRecovery(recoveryId, principal)
+    if (!recovery) throw new RecoveryNotFoundError(recoveryId)
+    return recovery
+  }
+
   #assertActionPrincipal(action: ActionRecord, principal: Principal): void {
     if (action.ownerId !== principal.ownerId || action.principalId !== principal.id) {
       throw new ActionAuthorizationError(
@@ -980,8 +1404,8 @@ export class SqliteTaskLedger implements TaskLedger, ActionLedger {
       PRAGMA busy_timeout = 5000;
     `)
     const versionRow = this.#db.prepare('PRAGMA user_version').get() as { user_version: number }
-    if (versionRow.user_version > 2) {
-      throw new Error(`Database schema version ${versionRow.user_version} is newer than supported version 2`)
+    if (versionRow.user_version > 3) {
+      throw new Error(`Database schema version ${versionRow.user_version} is newer than supported version 3`)
     }
     if (versionRow.user_version < 1) {
       this.#transaction(() => {
@@ -1146,6 +1570,49 @@ export class SqliteTaskLedger implements TaskLedger, ActionLedger {
         `).run(appliedAt)
       })
     }
+    if (versionRow.user_version < 3) {
+      this.#transaction(() => {
+        this.#db.exec(`
+          CREATE TABLE IF NOT EXISTS task_recoveries (
+            id TEXT PRIMARY KEY,
+            schema_version TEXT NOT NULL,
+            owner_id TEXT NOT NULL,
+            principal_id TEXT NOT NULL,
+            task_id TEXT NOT NULL UNIQUE REFERENCES tasks(id),
+            action_id TEXT REFERENCES actions(id),
+            disposition TEXT NOT NULL,
+            reason_code TEXT NOT NULL,
+            safe_to_retry INTEGER NOT NULL,
+            status TEXT NOT NULL,
+            replacement_task_id TEXT,
+            replacement_created_at TEXT,
+            resolution TEXT,
+            detected_at TEXT NOT NULL,
+            resolved_at TEXT
+          );
+
+          CREATE INDEX IF NOT EXISTS task_recoveries_owner_status_idx
+            ON task_recoveries(owner_id, principal_id, status, detected_at);
+
+          CREATE UNIQUE INDEX IF NOT EXISTS task_recoveries_action_idx
+            ON task_recoveries(action_id)
+            WHERE action_id IS NOT NULL;
+
+          CREATE TABLE IF NOT EXISTS runtime_recovery_lease (
+            singleton INTEGER PRIMARY KEY CHECK (singleton = 1),
+            runtime_id TEXT NOT NULL,
+            pid INTEGER NOT NULL,
+            started_at TEXT NOT NULL
+          );
+
+          PRAGMA user_version = 3;
+        `)
+        this.#db.prepare(`
+          INSERT OR IGNORE INTO migration_history (version, name, applied_at)
+          VALUES (3, 'task-recovery', ?)
+        `).run(this.#now())
+      })
+    }
   }
 
   #transaction<T>(operation: () => T): T {
@@ -1289,6 +1756,26 @@ function mapVerification(row: VerificationRow): VerificationRecord {
     status: row.status,
     taskId: row.task_id,
     verifierVersion: row.verifier_version,
+  })
+}
+
+function mapRecovery(row: RecoveryRow): RecoveryRecord {
+  return RecoveryRecordSchema.parse({
+    actionId: row.action_id,
+    detectedAt: row.detected_at,
+    disposition: row.disposition,
+    id: row.id,
+    ownerId: row.owner_id,
+    principalId: row.principal_id,
+    reasonCode: row.reason_code,
+    replacementCreatedAt: row.replacement_created_at,
+    replacementTaskId: row.replacement_task_id,
+    resolution: row.resolution,
+    resolvedAt: row.resolved_at,
+    safeToRetry: row.safe_to_retry === 1,
+    schemaVersion: row.schema_version,
+    status: row.status,
+    taskId: row.task_id,
   })
 }
 

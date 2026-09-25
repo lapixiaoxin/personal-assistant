@@ -2,11 +2,18 @@ import { describe, expect, it } from 'vitest'
 import {
   ActionProposalSubmissionSchema,
   createTaskRequest,
+  RecoveryRecordSchema,
   TaskRequestSchema,
+  TaskStateSchema,
   TaskSubmissionSchema,
 } from '../src/index.ts'
 
 describe('task contracts', () => {
+  it('accepts explicit interrupted and reconciliation states', () => {
+    expect(TaskStateSchema.parse('interrupted')).toBe('interrupted')
+    expect(TaskStateSchema.parse('reconciling')).toBe('reconciling')
+  })
+
   it('normalizes an entry-specific submission into one stable request', () => {
     const request = createTaskRequest({
       actorId: 'user-1',
@@ -43,6 +50,32 @@ describe('task contracts', () => {
       content: 'Internal normalized meeting context',
       contextRefs: ['lumi-workflow:meeting-brief/v1'],
     }).contextRefs).toEqual(['lumi-workflow:meeting-brief/v1'])
+  })
+})
+
+describe('recovery contracts', () => {
+  it('requires retry lineage to use the versioned recovery shape', () => {
+    expect(RecoveryRecordSchema.parse({
+      actionId: null,
+      detectedAt: '2026-09-25T10:00:00.000Z',
+      disposition: 'retry_available',
+      id: 'recovery-one',
+      ownerId: 'owner-one',
+      principalId: 'user-one',
+      reasonCode: 'HOST_RESTART_SAFE_TO_RETRY',
+      replacementCreatedAt: null,
+      replacementTaskId: null,
+      resolution: null,
+      resolvedAt: null,
+      safeToRetry: true,
+      schemaVersion: 'lumi.recovery/v1',
+      status: 'pending',
+      taskId: 'task-one',
+    })).toMatchObject({
+      disposition: 'retry_available',
+      safeToRetry: true,
+      status: 'pending',
+    })
   })
 })
 
