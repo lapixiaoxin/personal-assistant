@@ -2,7 +2,8 @@
   "compilerOptions": {
     "allowImportingTsExtensions": true,
     "exactOptionalPropertyTypes": true,
-    "lib": ["ES2023", "ESNext.Disposable"],
+    "jsx": "react-jsx",
+    "lib": ["DOM", "DOM.Iterable", "ES2023", "ESNext.Disposable"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "noEmit": true,

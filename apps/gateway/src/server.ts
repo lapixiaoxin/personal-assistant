@@ -1,3 +1,6 @@
+import { existsSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
+import { resolve } from 'node:path'
 import Fastify, { type FastifyInstance } from 'fastify'
 import { createTaskRequest, TaskListQuerySchema, TaskSubmissionSchema } from '@lumi/contracts'
 import { createAssistantRuntime, type AssistantRuntime } from '@lumi/runtime'
@@ -6,6 +9,9 @@ import { z, ZodError } from 'zod'
 const TaskParamsSchema = z.object({
   taskId: z.string().trim().min(1).max(128),
 })
+const AssetParamsSchema = z.object({
+  filename: z.string().regex(/^[A-Za-z0-9._-]+$/),
+})
 const DecisionBodySchema = z.object({
   actorId: z.string().trim().min(1).max(128),
 })
@@ -13,6 +19,7 @@ const DecisionBodySchema = z.object({
 export interface GatewayOptions {
   logger?: boolean
   runtime?: AssistantRuntime
+  workbenchDir?: false | string
 }
 
 export function buildGateway(options: GatewayOptions = {}): FastifyInstance {
@@ -97,6 +104,23 @@ export function buildGateway(options: GatewayOptions = {}): FastifyInstance {
     return { data: runtime.core.cancel(taskId, actorId) }
   })
 
+  if (options.workbenchDir) {
+    const root = resolve(options.workbenchDir)
+    if (!existsSync(root)) {
+      throw new Error(`Workbench build not found: ${root}`)
+    }
+    app.get('/', async (_request, reply) => {
+      const content = await readFile(resolve(root, 'index.html'))
+      return reply.type('text/html; charset=utf-8').send(content)
+    })
+    app.get('/assets/:filename', async (request, reply) => {
+      const { filename } = AssetParamsSchema.parse(request.params)
+      const content = await readFile(resolve(root, 'assets', filename))
+      reply.header('cache-control', 'public, max-age=31536000, immutable')
+      return reply.type(assetContentType(filename)).send(content)
+    })
+  }
+
   app.setErrorHandler((error, _request, reply) => {
     if (error instanceof ZodError) {
       reply.code(400).send({
@@ -129,4 +153,11 @@ export function buildGateway(options: GatewayOptions = {}): FastifyInstance {
     app.addHook('onClose', async () => runtime.close())
   }
   return app
+}
+
+function assetContentType(filename: string): string {
+  if (filename.endsWith('.css')) return 'text/css; charset=utf-8'
+  if (filename.endsWith('.js')) return 'text/javascript; charset=utf-8'
+  if (filename.endsWith('.map')) return 'application/json; charset=utf-8'
+  return 'application/octet-stream'
 }

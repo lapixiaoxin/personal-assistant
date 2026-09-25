@@ -77,6 +77,14 @@ NPM_CONFIG_CACHE=./data/tooling/npm-cache NPM_CONFIG_REGISTRY=https://registry.n
 
 公共 SDK 仍只有 initialize、session/prompt、shutdown 三个请求；内部 Agent 接口则有更丰富的取消、输入与恢复控制。实验语音输入是录音后转写到草稿，尚非实时双向语音。后续产品讨论将 DSH 定位为复杂任务主要 Harness，实时交互、感知和物理控制保留独立运行时空间；这项认识尚未实施为新架构。
 
+## 2026-09-25 · 本地 Web 工作台
+
+`apps/workbench` 已提供 React + Vite 单页工作台，通过现有 Gateway 提交和查询任务，显示结果、错误、事件与审计，并支持已有任务级审批、拒绝和取消。生产构建输出到 `dist/workbench`，Gateway 在产物存在时从同一 loopback 地址托管页面和哈希资源。
+
+当前 Gateway 的提交与批准调用仍等待执行结束；页面以客户端 task ID 和并发轮询呈现中间状态。它不是产品级多轮对话或流式协议。参数级 Action Authorization、远程身份、重启恢复、记忆接线和真实工作工具仍未实现。
+
+验证包括 Vitest API/组件/静态托管测试，以及 Playwright 在桌面 Chrome 和移动 Chromium 视口上的 mock 任务与审批流程；细节见 [SPEC-0004 证据](../specs/0004-web-workbench/evidence.md) 和 [Workbench SOP](runbooks/web-workbench.md)。
+
 ## 状态标注规则
 
 `Proposed`：设计建议；`Specified`：验收和边界已写清；`Implemented`：代码存在；`Verified`：指定环境和版本有证据；`Enabled`：部署配置已启用。后一个状态不能由前一个自动推断。

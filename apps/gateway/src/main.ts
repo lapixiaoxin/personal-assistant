@@ -1,10 +1,16 @@
+import { existsSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { buildGateway } from './server.ts'
 import { loadLocalEnvironment } from '@lumi/runtime'
 
 loadLocalEnvironment()
 const host = process.env.PA_HOST ?? '127.0.0.1'
 const port = parsePort(process.env.PA_PORT)
-const app = buildGateway({ logger: true })
+const workbenchDir = resolve(process.cwd(), 'dist/workbench')
+const app = buildGateway({
+  logger: true,
+  workbenchDir: existsSync(workbenchDir) ? workbenchDir : false,
+})
 
 const shutdown = async (): Promise<void> => {
   await app.close()

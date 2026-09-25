@@ -143,6 +143,31 @@ curl -sS http://127.0.0.1:4310/v1/tasks/task-http-demo/audit
 
 当前 HTTP 提交会等待任务完成后返回。流式响应和 WebSocket 属于下一阶段。
 
+## Web 工作台
+
+第一版电脑端入口位于 `apps/workbench`，提供任务提交、状态与结果查看、任务级审批、取消、事件和审计记录。它调用 lumi Gateway，不直接连接 DSH 或数据库。
+
+开发时分别启动 Gateway 和 Vite：
+
+```bash
+# 终端一
+PA_EXECUTOR=mock pnpm dev
+
+# 终端二
+pnpm dev:web
+```
+
+打开 `http://127.0.0.1:4311`。根目录 `.env` 会由 CLI 和 Gateway 自动加载；不要将密钥提交到仓库。
+
+生产方式先构建，再由 Gateway 同源托管：
+
+```bash
+pnpm build
+PA_EXECUTOR=mock pnpm start
+```
+
+打开 `http://127.0.0.1:4310`。将 `PA_EXECUTOR=mock` 移除或改为 `dsh` 后使用配置好的真实模型。当前 Gateway 仍只应监听 loopback。
+
 ## 接入真实 DSH
 
 ### MiniMax

@@ -1,12 +1,19 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { TaskExecutor } from '@lumi/assistant-core'
 import { createAssistantRuntime, type AssistantRuntime } from '@lumi/runtime'
 import { buildGateway } from '../src/server.ts'
 
 const openRuntimes: AssistantRuntime[] = []
+const temporaryDirectories: string[] = []
 
 afterEach(async () => {
   for (const runtime of openRuntimes.splice(0)) await runtime.close()
+  for (const directory of temporaryDirectories.splice(0)) {
+    rmSync(directory, { force: true, recursive: true })
+  }
 })
 
 function testRuntime(): AssistantRuntime {
@@ -95,6 +102,27 @@ describe('gateway', () => {
     const missing = await app.inject({ method: 'GET', url: '/v1/tasks/missing' })
     expect(missing.statusCode).toBe(404)
     expect(missing.json().error.code).toBe('TASK_NOT_FOUND')
+    await app.close()
+  })
+
+  it('serves the built workbench when a static directory is configured', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'lumi-workbench-'))
+    temporaryDirectories.push(directory)
+    mkdirSync(join(directory, 'assets'))
+    writeFileSync(join(directory, 'index.html'), '<main>lumi workbench</main>')
+    writeFileSync(join(directory, 'assets', 'app.js'), 'globalThis.lumi = true')
+    const app = buildGateway({
+      runtime: testRuntime(),
+      workbenchDir: directory,
+    })
+
+    const index = await app.inject({ method: 'GET', url: '/' })
+    const asset = await app.inject({ method: 'GET', url: '/assets/app.js' })
+
+    expect(index.statusCode).toBe(200)
+    expect(index.body).toContain('lumi workbench')
+    expect(asset.statusCode).toBe(200)
+    expect(asset.body).toContain('globalThis.lumi')
     await app.close()
   })
 })
