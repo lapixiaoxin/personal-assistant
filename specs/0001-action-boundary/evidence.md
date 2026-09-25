@@ -2,6 +2,8 @@
 
 状态：passed / locally verified。2026-09-25，macOS、Node 22.19.0、pnpm 10.20.0、DSH 0.1.7-rc.1。验证只产生专用目录内的本地文件；未调用真实模型或外部服务。
 
+实现提交：`d8fc3b9 feat: enforce verified local actions (SPEC-0001)`。
+
 | 证据 | 关联验收 | 实际观察 | 状态 |
 | --- | --- | --- | --- |
 | E-01 身份、契约与迁移 | AC-001、009 | Bearer 缺失 401、伪造 actor 403；v1 API 与 DSH contract 通过；v1 SQLite 保留任务迁移到 v2，迁移前备份仍为 v1 且数据可读 | passed |
