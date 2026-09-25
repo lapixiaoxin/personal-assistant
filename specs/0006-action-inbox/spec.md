@@ -1,6 +1,6 @@
 # SPEC-0006：Workbench Action Inbox
 
-状态：Accepted · v0.1 · 2026-09-25。
+状态：Implemented / verified_once · v0.1 · 2026-09-25。
 
 负责人：lumi Agent。关联 Goal：超级个人助手 MVP。
 

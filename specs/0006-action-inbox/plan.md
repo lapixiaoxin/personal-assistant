@@ -1,6 +1,6 @@
 # SPEC-0006 实现计划
 
-状态：In Progress。对应 `spec.md` v0.1。
+状态：Complete。对应 `spec.md` v0.1。
 
 ## 边界
 

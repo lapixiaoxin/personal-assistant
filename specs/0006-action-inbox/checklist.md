@@ -9,13 +9,13 @@
 
 ## Done
 
-- [ ] FR-001–007 已实现。
-- [ ] prepared / authorized / outcome_unknown 命令门禁有组件证据。
-- [ ] Action 授权、执行、回执和 verification 有浏览器证据。
-- [ ] 任务工作台行为无回归。
-- [ ] 桌面与移动视口无溢出、遮挡和 console error。
-- [ ] `pnpm check` 通过。
-- [ ] 事实文档、SOP、证据和回滚说明已同步。
+- [x] FR-001–007 已实现。
+- [x] prepared / authorized / outcome_unknown 命令门禁有组件证据。
+- [x] Action 授权、执行、回执和 verification 有浏览器证据。
+- [x] 任务工作台行为无回归。
+- [x] 桌面与移动视口无溢出、遮挡和 console error。
+- [x] `pnpm check` 通过。
+- [x] 事实文档、SOP、证据和回滚说明已同步。
 
 ## 发布
 
