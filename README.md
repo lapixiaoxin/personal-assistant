@@ -13,6 +13,7 @@
 - 规则路由可将编程请求委派给 `coding-agent`。
 - 规则识别出的外部发送、支付、删除和设备控制等高风险任务进入任务级审批。
 - v2 动作 API 对一个受控 `artifact.write` 能力执行参数摘要绑定、一次性授权、原子额度消费、独占文件创建、读回核验和崩溃后显式对账。
+- `personal-assistant` 的 DSH profile 通过每 Run loopback bridge 提议/执行同一 v2 Action；未知工具以及直接文件写、Shell、网络、workflow/`run_code` 在工具主体前失败关闭。
 - Gateway 使用本地 Bearer token 派生 owner/principal；请求体中的 `actorId` 不能用于切换身份。
 - 任务事件、工具调用摘要、审批动作和执行结果可查询，服务重启后仍保留。
 - DSH 通过独立 adapter 接入，固定为 `0.1.7-rc.1`；核心层不导入 DSH。
@@ -226,7 +227,19 @@ DSH 凭据由 DSH 自己的配置或环境变量提供。默认 DSH home 是 `./
 [`profiles/dsh-lumi/cordis.patch.yml`](profiles/dsh-lumi/cordis.patch.yml)
 或 [`profiles/dsh-coding/cordis.patch.yml`](profiles/dsh-coding/cordis.patch.yml)。
 
-`pnpm test:dsh` 是不需要真实凭据的 DSH runtime contract test：它启动真正的 DSH SDK 子进程，通过官方本地模拟模型端点完成整条任务链，并验证 MiniMax catalog 可以完成 SDK 初始化。该测试也包含在 `pnpm test` 中。真实提供方 smoke 仍需对应的 API Key。
+`personal-assistant` profile 会加载 [`plugins/dsh-action-bridge`](plugins/dsh-action-bridge)。插件启动后先向本 Run 的短期 bridge 完成认证握手；握手缺失时 adapter 在发送首个模型请求前失败。DSH 子进程不继承 `PA_*` 或旧 bridge 变量，不能取得 Gateway Bearer token。
+
+DSH 准备动作后不会自动授权或执行。用户通过 `action get/authorize` 审阅并批准；后续任务必须显式携带同一个 Action 引用：
+
+```bash
+pnpm cli -- action get <action-id>
+pnpm cli -- action authorize <action-id>
+pnpm cli -- submit "执行我已批准的动作" --context "lumi-action:<action-id>"
+```
+
+也可以继续使用 `pnpm cli -- action execute <action-id>` 直接走确定性的 Host 路径。两条路径都消费同一份参数绑定授权和 Verification。
+
+`pnpm test:dsh` 是不需要真实凭据的 DSH runtime contract test：它启动真正的 DSH SDK 子进程，通过官方本地模拟模型端点验证 coding 兼容、MiniMax catalog、插件握手、Action prepare/execute，以及 `write`/`bash` 旁路阻断。该测试也包含在 `pnpm test` 中。真实提供方 smoke 仍需对应的 API Key。
 
 上游依赖和升级规则见 [`docs/upstream-strategy.md`](docs/upstream-strategy.md)。
 
@@ -250,14 +263,16 @@ export PA_DSH_PROVIDER_PATCH=profiles/providers/my-provider.patch.yml
 pnpm dsh:web:minimax-cn
 ```
 
-打开命令输出的带 `token` 本地 URL，在模型设置中选择 `minimax-cn / MiniMax-M3` 后即可连续对话。这条链路用于直接验证 DSH，会使用 DSH 自己的会话存储，不经过 lumi Task Ledger。
+打开命令输出的带 `token` 本地 URL，在模型设置中选择 `minimax-cn / MiniMax-M3` 后即可连续对话。这条链路用于直接验证 DSH，会使用 DSH 自己的会话存储，不经过 lumi Task Ledger 或 Action Broker，因此不能用于携带生产权限的真实动作。
 
 当前 lumi Gateway 是单任务接口：每次 `POST /v1/tasks` 都是独立任务，尚未提供多轮会话 API。
 
 ## 安全边界
 
 - Gateway 默认只监听 loopback，并使用单 owner 的本地 Bearer token；这不是公网所需的多用户认证、TLS、限流或来源控制。
-- `artifact.write` 已使用参数级授权和受控 provider；DSH 任意 Shell、网络和文件工具仍未接入该门禁，任务级审批不能据此认定所有危险工具动作均被阻止。
+- `personal-assistant` 的固定 rc.1 profile 已将 `artifact.write` 接到参数级 Broker，并用显式 allowlist guard 阻断直接文件写、Shell、网络、MCP、workflow/`run_code` 和未知工具。
+- `coding-agent` 仍是本机开发态宽权限 profile；它不属于生产动作边界，不能持有真实 Connector 凭据。进程内 guard 也不是对恶意插件或同机进程的 OS 沙箱。
+- 受控 profile 仍能读取 workspace 内允许的资料；敏感读取、模型出境和通用 secret store 尚未完成。
 - 工具审计只保存工具名、调用 ID 和成功状态，不复制参数或返回正文。
 - Personal Memory 当前只提供显式候选、确认和撤回模型，不会自动从对话写入长期记忆。
 

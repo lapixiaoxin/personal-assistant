@@ -5,6 +5,21 @@ import type {
   ExecutionResult,
   TaskExecutor,
 } from '@lumi/assistant-core'
+import {
+  createDshChildEnvironment,
+  startDshActionBridge,
+  type DshActionBroker,
+} from './action-bridge.ts'
+
+export {
+  actionIdsFromContextRefs,
+  createDshChildEnvironment,
+  startDshActionBridge,
+  type DshActionBridgeOptions,
+  type DshActionBridgeRun,
+  type DshActionBroker,
+  type DshBrokerInvocation,
+} from './action-bridge.ts'
 
 interface HarnessNotification {
   method: string
@@ -31,6 +46,9 @@ interface HarnessPort {
 type HarnessFactory = (input: ExecutionInput) => Promise<HarnessPort>
 
 export interface DshAdapterOptions {
+  actionBridgeCapabilities?: readonly string[]
+  actionBridgeReadyTimeoutMs?: number
+  actionBroker?: DshActionBroker
   capabilityPatchFiles?: Readonly<Record<string, readonly string[]>>
   cwd: string
   dshHome?: string
@@ -153,23 +171,68 @@ function createDshHarnessFactory(options: DshAdapterOptions): HarnessFactory {
     options.cwd,
     options.patchFile ?? 'profiles/dsh-lumi/cordis.patch.yml',
   )
+  const actionBridgeCapabilities = new Set(options.actionBridgeCapabilities ?? [])
   return async (input) => {
+    const bridge = actionBridgeCapabilities.has(input.capability.id)
+      ? await createActionBridge(options, input)
+      : undefined
     const { DeepSeekHarness } = await import('@deepseek-ai/dsh-sdk-client')
     const commonPatches = (options.patchFiles ?? []).map((patch) => resolve(options.cwd, patch))
     const configuredPatches = options.capabilityPatchFiles?.[input.capability.id]
     const capabilityPatches = configuredPatches
       ? configuredPatches.map((patch) => resolve(options.cwd, patch))
       : [defaultPatchFile]
-    return new DeepSeekHarness({
-      cwd: resolve(options.cwd),
-      ...(options.dshHome ? { dshHome: options.dshHome } : {}),
-      maxTokens: options.maxTokens ?? 8_192,
-      model: options.model ?? 'deepseek-v4-flash',
-      patches: [...commonPatches, ...capabilityPatches],
-      profile: options.profile ?? 'sdk',
-      provider: options.provider ?? 'deepseek-official',
-    })
+    try {
+      const harness = new DeepSeekHarness({
+        cwd: resolve(options.cwd),
+        ...(options.dshHome ? { dshHome: options.dshHome } : {}),
+        env: createDshChildEnvironment(process.env, bridge?.environment),
+        maxTokens: options.maxTokens ?? 8_192,
+        model: options.model ?? 'deepseek-v4-flash',
+        patches: [...commonPatches, ...capabilityPatches],
+        processCwd: resolve(options.cwd),
+        profile: options.profile ?? 'sdk',
+        provider: options.provider ?? 'deepseek-official',
+      })
+      try {
+        await harness.start()
+        await bridge?.waitUntilReady(options.actionBridgeReadyTimeoutMs)
+      } catch (error) {
+        await harness.close().catch(() => undefined)
+        throw error
+      }
+      if (!bridge) return harness
+      return {
+        close: async () => {
+          try {
+            await harness.close()
+          } finally {
+            await bridge.close()
+          }
+        },
+        run: (prompt, runOptions) => harness.run(prompt, runOptions),
+      }
+    } catch (error) {
+      await bridge?.close()
+      throw error
+    }
   }
+}
+
+async function createActionBridge(
+  options: DshAdapterOptions,
+  input: ExecutionInput,
+) {
+  if (!options.actionBroker) {
+    throw new DshExecutionError(
+      `DSH capability ${input.capability.id} requires a configured lumi action broker`,
+    )
+  }
+  return startDshActionBridge({
+    broker: options.actionBroker,
+    contextRefs: input.task.contextRefs,
+    taskId: input.task.id,
+  })
 }
 
 function buildPrompt(input: ExecutionInput): string {
@@ -217,7 +280,7 @@ function mapNotification(notification: HarnessNotification): ExecutionEvent | un
     return {
       kind: 'tool.completed',
       ...(callId ? { callId } : {}),
-      isError: data?.error !== undefined,
+      isError: toolResultIsError(data),
     }
   }
   return undefined
@@ -227,6 +290,17 @@ function toolResultCallId(data: Record<string, unknown> | undefined): string | u
   const message = asRecord(data?.message)
   const source = asRecord(message?.source)
   return typeof source?.callId === 'string' ? source.callId : undefined
+}
+
+function toolResultIsError(data: Record<string, unknown> | undefined): boolean {
+  if (data?.error !== undefined) return true
+  const message = asRecord(data?.message)
+  if (message?.isError === true) return true
+  if (!Array.isArray(message?.content)) return false
+  return message.content.some((block) => {
+    const record = asRecord(block)
+    return record?.type === 'tool-result' && record.isError === true
+  })
 }
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {

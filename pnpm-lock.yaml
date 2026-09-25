@@ -236,6 +236,12 @@ importers:
         specifier: workspace:*
         version: link:../contracts
 
+  plugins/dsh-action-bridge:
+    dependencies:
+      '@deepseek-ai/dsh-tools':
+        specifier: 0.1.7-rc.1
+        version: 0.1.7-rc.1(6324813fb9cb1806690265a65e1db43b)
+
 packages:
 
   '@agentclientprotocol/sdk@1.4.0':

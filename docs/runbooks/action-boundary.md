@@ -1,6 +1,6 @@
 # 本地动作门禁、对账与回滚
 
-状态：verified_once。2026-09-25，macOS、Node 22.19.0、pnpm 10.20.0、SQLite schema v2。适用于内置 `local-artifact/1`，不适用于 DSH 任意工具或外部服务。
+状态：verified_once。2026-09-25，macOS、Node 22.19.0、pnpm 10.20.0、SQLite schema v2。适用于内置 `local-artifact/1` 的 Host 路径；DSH personal profile 的接线与旁路边界见 [DSH Action Bridge SOP](dsh-action-bridge.md)，真实外部服务仍不适用。
 
 ## 前置与边界
 

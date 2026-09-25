@@ -21,7 +21,7 @@
 
 - 任务记录跨重启保存；**运行中任务不会因此自动恢复**。没有持久 worker 租约、检查点与动作对账。
 - HTTP 已使用本地 Bearer token 映射单 owner/principal 并执行对象归属检查；仍没有公网所需的多用户认证、TLS、限流与来源控制。
-- v1 审批仍针对任务。v2 仅对受控 `artifact.write` 绑定具体参数摘要；DSH 任意工具尚未接入该门禁，DSH persona 的约束仍只是提示词。
+- v1 审批仍针对任务。v2 仅对受控 `artifact.write` 绑定具体参数摘要；`personal-assistant` DSH profile 已接入该 Broker 并阻断默认高风险工具，但 `coding-agent`、读取隔离、真实 Connector 和 OS 级沙箱尚未纳入。
 - `operations` 列表进入提示词，不构成工具权限隔离。不能宣称“风险意图被识别”就等于“所有危险动作都被阻止”。
 - v1 Core 收到执行器非空结果后仍可标记 completed；v2 `artifact.write` 已要求独立读回核验，其他任务尚无通用验收器。
 - `TaskRecord.dshSessionId` 带有上游命名；需要兼容迁移到中性执行引用。
@@ -95,7 +95,17 @@ Gateway 的 `/v1` 与 `/v2` 数据端点现在要求 `PA_HTTP_TOKEN`，并以认
 
 本机验证包括 14 个测试文件、59 个测试（其中 DSH SDK contract 2 项）、桌面/移动 Playwright 2 项，以及独立 CLI/HTTP 真实文件写入、读回和清理。HTTP 观察值为准备约 5.1 ms、授权约 2.2 ms、执行及核验约 14.8 ms；单次 CLI 验收 SQLite 为 128 KiB。精确命令与边界见 [SPEC-0001 证据](../specs/0001-action-boundary/evidence.md) 和 [动作门禁 SOP](runbooks/action-boundary.md)。
 
-该切片不证明 DSH Shell、网络、MCP 或外部 connector 已受参数级控制，也没有启用真实外部写入。固定 DSH 版本保持 `0.1.7-rc.1`。
+SPEC-0001 单独不证明 DSH Shell、网络、MCP 或外部 connector 已受参数级控制，也没有启用真实外部写入。固定 DSH 版本保持 `0.1.7-rc.1`；后续 personal profile 接线见下一节。
+
+## 2026-09-25 · DSH Action Bridge
+
+`SPEC-0005` 将 `personal-assistant` 的固定 DSH `0.1.7-rc.1` profile 接到既有 ActionService。每个 Run 启动独立的 `127.0.0.1` bridge，使用 32-byte 随机 token，并只允许执行 Task `contextRefs` 中显式携带的 `lumi-action:<id>`。插件可准备 `artifact.write` 或执行已授权 Action；准备不会自动批准或落文件。
+
+同一 Cordis 插件注册全局单调 guard，显式允许只读发现、内部协调和两个 lumi broker tool，其余工具默认拒绝。真实 SDK 子进程测试已证明 `write` 与 `bash` 在工具主体前返回错误且目标文件不存在；单元矩阵同时覆盖 `edit`、web、workflow、`run_code` 与未知 MCP 名称。插件必须向 Host 完成启动握手，否则 adapter 在首个模型请求前关闭 Run。
+
+DSH 子进程环境会移除全部 `PA_*` 和旧 `LUMI_ACTION_BRIDGE_*` 变量，再注入本 Run bridge URL/token；Gateway Bearer token 未出现在 mock provider 请求。新增测试也修正了 adapter 对 rc.1 `tool/result.message.isError` 的识别。
+
+边界仍然存在：该 guard 是受信 profile 内的进程内控制，不是恶意插件或同机进程隔离；`read`/`grep` 等仍可访问 workspace 授权范围；开发态 `coding-agent` 仍有文件、Shell 与网络工具，不能持有生产 Connector 凭据。真实外部写入尚未启用。
 
 ## 状态标注规则
 

@@ -7,7 +7,11 @@ import {
   RuleBasedRouter,
   type CapabilityRegistry,
 } from '@lumi/capability-registry'
-import { DshAdapter, MockDshAdapter } from '@lumi/dsh-adapter'
+import {
+  DshAdapter,
+  MockDshAdapter,
+  type DshActionBroker,
+} from '@lumi/dsh-adapter'
 import {
   LocalIdentityAuthority,
   type IdentityAuthority,
@@ -94,7 +98,11 @@ export function createAssistantRuntime(options: RuntimeOptions = {}): AssistantR
   })
   const configured = options.executor
     ? { executor: options.executor, kind: 'custom' as const }
-    : createConfiguredExecutor(cwd, dataDir)
+    : createConfiguredExecutor(
+        cwd,
+        dataDir,
+        createDshActionBroker(actions, ledger, identity),
+      )
   const { executor } = configured
   const core = new AssistantCore(ledger, router, policy, executor)
 
@@ -109,7 +117,93 @@ export function createAssistantRuntime(options: RuntimeOptions = {}): AssistantR
   }
 }
 
-function createConfiguredExecutor(cwd: string, dataDir: string): {
+function createDshActionBroker(
+  actions: ActionService,
+  ledger: ActionLedger & TaskLedger,
+  identity: IdentityAuthority,
+): DshActionBroker {
+  return {
+    async execute(actionId, invocation) {
+      const principal = identity.localPrincipal()
+      try {
+        const detail = await actions.execute(principal, actionId)
+        const verified = detail.action.status === 'succeeded'
+          && detail.verification?.status === 'passed'
+        ledger.appendEvent(
+          invocation.sourceTaskId,
+          verified ? 'action.succeeded' : 'verification.completed',
+          {
+            actionDigest: detail.action.actionDigest,
+            actionId: detail.action.id,
+            status: detail.action.status,
+            verificationId: detail.verification?.id ?? null,
+            verificationStatus: detail.verification?.status ?? null,
+          },
+        )
+        ledger.appendAudit({
+          action: 'dsh.bridge.execute',
+          actorId: principal.id,
+          detail: {
+            actionDigest: detail.action.actionDigest,
+            actionId: detail.action.id,
+            status: detail.action.status,
+            verificationStatus: detail.verification?.status ?? null,
+          },
+          outcome: verified ? 'succeeded' : 'failed',
+          targetId: invocation.sourceTaskId,
+        })
+        return detail
+      } catch (error) {
+        ledger.appendAudit({
+          action: 'dsh.bridge.execute',
+          actorId: principal.id,
+          detail: {
+            actionId,
+            code: errorCode(error),
+          },
+          outcome: 'denied',
+          targetId: invocation.sourceTaskId,
+        })
+        throw error
+      }
+    },
+    prepare(input, invocation) {
+      const principal = identity.localPrincipal()
+      const detail = actions.prepare(principal, input)
+      ledger.appendEvent(invocation.sourceTaskId, 'action.prepared', {
+        actionDigest: detail.action.actionDigest,
+        actionId: detail.action.id,
+        status: detail.action.status,
+      })
+      ledger.appendAudit({
+        action: 'dsh.bridge.prepare',
+        actorId: principal.id,
+        detail: {
+          actionDigest: detail.action.actionDigest,
+          actionId: detail.action.id,
+          status: detail.action.status,
+        },
+        outcome: 'requested',
+        targetId: invocation.sourceTaskId,
+      })
+      return detail
+    },
+  }
+}
+
+function errorCode(error: unknown): string {
+  if (typeof error === 'object' && error !== null) {
+    const code = Reflect.get(error, 'code')
+    if (typeof code === 'string') return code
+  }
+  return 'BRIDGE_FAILURE'
+}
+
+function createConfiguredExecutor(
+  cwd: string,
+  dataDir: string,
+  actionBroker: DshActionBroker,
+): {
   executor: TaskExecutor
   kind: 'dsh' | 'mock'
 } {
@@ -129,6 +223,8 @@ function createConfiguredExecutor(cwd: string, dataDir: string): {
 
   return {
     executor: new DshAdapter({
+      actionBridgeCapabilities: ['personal-assistant'],
+      actionBroker,
       capabilityPatchFiles: {
         'coding-agent': ['profiles/dsh-coding/cordis.patch.yml'],
         'personal-assistant': ['profiles/dsh-lumi/cordis.patch.yml'],

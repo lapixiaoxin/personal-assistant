@@ -4,6 +4,7 @@
 | --- | --- | --- |
 | [本机检查与 mock CLI](local-validation.md) | verified_once | 本机 Node22/pnpm10、现有检查；独立进程间任务/审批持久化 |
 | [本地动作门禁、对账与回滚](action-boundary.md) | verified_once | 单 owner 认证、`artifact.write` 参数授权、读回核验、故障对账与 v1→v2 迁移 |
+| [DSH 受控动作桥验证](dsh-action-bridge.md) | verified_once | rc.1 personal profile、每 Run bridge、跨 Run Action 引用和 Shell/文件旁路阻断 |
 | [工作区、依赖与测试布局](workspace-layout.md) | verified_once | lumi 包链接刷新、测试分离与全量检查；编辑器配置已静态核验 |
 | [本地 Web 工作台](web-workbench.md) | verified_once | mock Gateway、生产静态托管、桌面/移动浏览器任务与审批流程 |
 | [设计文档发布与读回](design-publication.md) | verified_once | v0.2 系列及 DSH 六图专题、正文/源码读回、父节点与逐图预览 |

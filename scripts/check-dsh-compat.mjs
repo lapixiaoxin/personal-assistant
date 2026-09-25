@@ -5,18 +5,30 @@ import process from 'node:process'
 
 const require = createRequire(import.meta.url)
 const root = resolve(import.meta.dirname, '..')
+const pluginRequire = createRequire(resolve(root, 'plugins/dsh-action-bridge/package.json'))
 
-const [adapter, project, upstream, installedMockServer, installedSdk] = await Promise.all([
+const [
+  adapter,
+  plugin,
+  project,
+  upstream,
+  installedMockServer,
+  installedSdk,
+  installedTools,
+] = await Promise.all([
   readJson(resolve(root, 'adapters/dsh/package.json')),
+  readJson(resolve(root, 'plugins/dsh-action-bridge/package.json')),
   readJson(resolve(root, 'package.json')),
   readJson(resolve(root, 'upstream.lock.json')),
   readJson(require.resolve('@deepseek-ai/dsh-llm-mock-server/package.json')),
   readJson(require.resolve('@deepseek-ai/dsh-sdk-client/package.json')),
+  readJson(pluginRequire.resolve('@deepseek-ai/dsh-tools/package.json')),
 ])
 
 const declaredSdk = project.dependencies?.['@deepseek-ai/dsh-sdk-client']
 const lockedSdk = upstream.deepseekHarness?.packages?.['@deepseek-ai/dsh-sdk-client']
 const lockedDsh = upstream.deepseekHarness?.packages?.['@deepseek-ai/dsh']
+const lockedTools = upstream.deepseekHarness?.packages?.['@deepseek-ai/dsh-tools']
 const bundledDsh = installedSdk.dependencies?.['@deepseek-ai/dsh']
 const versions = {
   adapterSdk: adapter.dependencies?.['@deepseek-ai/dsh-sdk-client'],
@@ -26,9 +38,12 @@ const versions = {
   declaredMockServer: project.devDependencies?.['@deepseek-ai/dsh-llm-mock-server'],
   installedMockServer: installedMockServer.version,
   installedSdk: installedSdk.version,
+  installedTools: installedTools.version,
   lockedDsh,
   lockedMockServer: upstream.deepseekHarness?.packages?.['@deepseek-ai/dsh-llm-mock-server'],
   lockedSdk,
+  lockedTools,
+  pluginTools: plugin.dependencies?.['@deepseek-ai/dsh-tools'],
   release: upstream.deepseekHarness?.version,
 }
 

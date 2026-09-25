@@ -162,7 +162,7 @@ Context Builder 按任务、时效、范围、相关性与 token 预算组合信
 
 ## 8. 建设顺序与设计验收
 
-SPEC-0001 已证明内置 `artifact.write` 经过 Host 能授权、阻断、读回和故障对账。下一张工程验证卡是 M1.3 DSH 接线：证明固定版本 DSH 的工具调用不能绕过同一 Broker，再扩展更多外围能力。
+SPEC-0001 已证明内置 `artifact.write` 经过 Host 能授权、阻断、读回和故障对账。SPEC-0005 进一步在固定 DSH `0.1.7-rc.1` 的 `personal-assistant` profile 中接入每 Run bridge：模型可准备 Action，批准后的新 Run 只能凭显式 Action 引用执行同一摘要；默认文件写、Shell、网络、workflow/`run_code` 和未知工具由单调 guard 失败关闭。该证据不覆盖开发态 `coding-agent`、敏感读取或 OS 级恶意代码隔离。
 
 | 切片 | 要证明的场景 | 实现前保留的约束 |
 | --- | --- | --- |

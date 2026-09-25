@@ -9,6 +9,7 @@
 | 理解 DSH 当前源码与能力 | [rc.2 源码分析](research/2026-09-25-dsh-source-analysis.md)：插件理念、执行链路、能力开关、与 lumi 固定 rc.1 的差异 |
 | 检查当前真实能力 | [工程事实基线](current-state.md) |
 | 使用电脑端任务工作台 | [Workbench SOP](runbooks/web-workbench.md)、[SPEC-0004](../specs/0004-web-workbench/spec.md) |
+| 验证 DSH 受控动作与旁路阻断 | [Action Bridge SOP](runbooks/dsh-action-bridge.md)、[SPEC-0005](../specs/0005-dsh-action-bridge/spec.md) |
 | 理解产品与个人模型 | [产品宪章](design/01-product.md)、[记忆与主动性](design/04-personal-model.md) |
 | 实现或接入新能力 | [架构](design/02-architecture.md)、[协议](design/03-protocols.md)、[安全](design/05-safety.md) |
 | 建设自我升级 | [进化工厂](design/06-evolution.md)、[里程碑](design/07-roadmap.md) |
@@ -19,7 +20,7 @@
 | 运行和验证 | [SOP](runbooks/README.md)、[评测](design/09-evaluation.md)、[本次证据](evidence/2026-09-24-design-baseline.md) |
 | 升级 DSH | [现有上游策略](upstream-strategy.md) |
 
-设计 v0.2 与 DSH 专题 v0.3 状态均为 Proposed；首个 SDD 包已完成本地实现与验证，但仅覆盖内置 `artifact.write`。DSH 职责、插件装配和多端技术路线以 v0.3 及 ADR-003 为最新提案，产品与验收原则继续沿用。数量阈值是首轮建议，不能当作已测成绩或既有授权。
+设计 v0.2 与 DSH 专题 v0.3 状态均为 Proposed；SPEC-0001 已完成 Host 内 `artifact.write`，SPEC-0005 已将 `personal-assistant` 的固定 rc.1 profile 接到同一 Broker。DSH 职责、插件装配和多端技术路线以 v0.3 及 ADR-003 为最新提案，产品与验收原则继续沿用。数量阈值是首轮建议，不能当作已测成绩或既有授权。
 
 后续讨论与源码分析将 DSH 的适用范围明确为“复杂任务的主要 Harness”；实时对话、感知和物理控制可使用独立运行时。v0.3 中较宽的核心定位尚待对应设计修订。源码报告同时补充 rc.2 调度器变化，不代表 lumi 已升级或新能力已启用。
 

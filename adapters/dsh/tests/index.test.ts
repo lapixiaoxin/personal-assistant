@@ -11,6 +11,31 @@ const capability: CapabilityDescriptor = {
 }
 
 describe('DshAdapter', () => {
+  it('fails closed when a protected capability has no action broker', async () => {
+    const adapter = new DshAdapter({
+      actionBridgeCapabilities: ['personal-assistant'],
+      cwd: process.cwd(),
+    })
+
+    await expect(adapter.execute({
+      capability: {
+        description: 'General personal assistance',
+        id: 'personal-assistant',
+        kind: 'agent',
+        operations: ['answer'],
+        riskLevel: 'read',
+      },
+      emit: () => undefined,
+      signal: new AbortController().signal,
+      task: createTaskRequest({
+        actorId: 'user-1',
+        channel: 'test',
+        content: 'Answer safely',
+        id: 'task-missing-action-broker',
+      }),
+    })).rejects.toThrow('requires a configured lumi action broker')
+  })
+
   it('maps the SDK result and redacted tool lifecycle into core events', async () => {
     const close = vi.fn(async () => undefined)
     const adapter = new DshAdapter({ cwd: process.cwd() }, async () => ({
@@ -35,7 +60,15 @@ describe('DshAdapter', () => {
             event: {
               type: 'tool/result',
               data: {
-                message: { source: { callId: 'call-1' } },
+                message: {
+                  content: [{
+                    content: [{ type: 'text', text: 'written' }],
+                    isError: false,
+                    toolCallId: 'call-1',
+                    type: 'tool-result',
+                  }],
+                  source: { callId: 'call-1' },
+                },
               },
             },
           },
@@ -64,6 +97,48 @@ describe('DshAdapter', () => {
     ])
     expect(JSON.stringify(events)).not.toContain('secret')
     expect(close).toHaveBeenCalledOnce()
+  })
+
+  it('maps a DSH tool-result error marker into a failed tool event', async () => {
+    const adapter = new DshAdapter({ cwd: process.cwd() }, async () => ({
+      close: async () => undefined,
+      run: async (_prompt, options) => {
+        options.onNotification?.({
+          method: 'session.event',
+          params: {
+            event: {
+              type: 'tool/result',
+              data: {
+                message: {
+                  content: [{ type: 'text', text: 'denied' }],
+                  isError: true,
+                  source: { callId: 'call-denied' },
+                  toolCallId: 'call-denied',
+                },
+              },
+            },
+          },
+        })
+        return { finalResponse: 'Handled', sessionId: 'session-denied' }
+      },
+    }))
+    const events: unknown[] = []
+
+    await adapter.execute({
+      capability,
+      emit: event => events.push(event),
+      signal: new AbortController().signal,
+      task: createTaskRequest({
+        actorId: 'user-1',
+        channel: 'test',
+        content: 'Try a denied tool',
+        id: 'task-denied-adapter',
+      }),
+    })
+
+    expect(events).toEqual([
+      { kind: 'tool.completed', callId: 'call-denied', isError: true },
+    ])
   })
 
   it('closes the owned DSH process when execution is cancelled', async () => {
