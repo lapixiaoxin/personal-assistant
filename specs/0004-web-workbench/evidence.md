@@ -2,6 +2,8 @@
 
 状态：passed。本次使用 mock executor 验证本地产品闭环；未调用真实模型或外部服务。
 
+实现提交：`d85b2ce feat: add local web workbench (SPEC-0004)`，已快进集成到本地 `main`。
+
 | 证据 | 验收 | 状态 |
 | --- | --- | --- |
 | E-01 API 与展示逻辑测试 | AC-001、003、005 | passed：`apps/workbench/tests/api.test.ts` 8 项 |
