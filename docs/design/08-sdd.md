@@ -1,6 +1,6 @@
 # SDD 与工程治理
 
-状态：Proposed v0.2 · 2026-09-24。整体为后续开发建议流程；其中“Agent 主动提交到 main”的版本管理规则已按用户本日明确指令生效。本轮不启动业务重构。
+状态：Proposed v0.2 · 2026-09-25。整体为后续开发建议流程；其中“Agent 主动提交并推送 main”的版本管理规则已按用户明确指令生效。
 
 ## 规范驱动开发的含义
 
@@ -70,7 +70,7 @@
 
 能力新增采用 `adapters/<system>`、独立模块或插件，不往 Core 中累计业务条件分支。没有真实调用方时不预建抽象。每个可扩展端口至少有一个实际 provider 和 consumer。
 
-版本管理由 Agent 托管：完成已授权工作及必要验证后，主动提交到本地 `main`，无需逐次请求提交许可。常规变更直接形成小而完整的提交；复杂或并行工作可使用 `feat/<spec-id>-<slug>` 或 `fix/<spec-id>-<slug>` 临时分支/worktree，验证后由 Agent 集成回 main。提交前检查差异、暂存范围和必要证据，保护用户无关改动，不提交私人数据或凭据。交付报告包含 commit 与验证结果；远端 push 和部署按具体授权执行。操作标准见仓库 `docs/runbooks/version-control.md`。
+版本管理由 Agent 托管：完成已授权工作及必要验证后，主动提交到本地 `main` 并推送其跟踪的 `origin/main`，无需逐次请求 commit/push 许可。常规变更直接形成小而完整的提交；复杂或并行工作可使用 `feat/<spec-id>-<slug>` 或 `fix/<spec-id>-<slug>` 临时分支/worktree，验证后由 Agent 集成回 main。提交前检查差异、暂存范围和必要证据，保护用户无关改动，不提交私人数据或凭据；推送前先确认远端没有未整合提交，禁止 force push 或改写共享历史。交付报告包含 commit、push 与验证结果；部署和正式发布仍按具体目标与授权执行。操作标准见仓库 `docs/runbooks/version-control.md`。
 
 ## CI 分阶段
 

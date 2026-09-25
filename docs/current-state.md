@@ -4,6 +4,8 @@
 
 2026-09-25：本地单 owner `v0.1` 已完成总体验收；结论、综合证据和明确非目标见 [MVP 验收记录](evidence/2026-09-25-mvp-acceptance.md)。
 
+2026-09-25：`main` 已首次推送到 `origin/main` 并建立 upstream。用户持续授权 Agent 在完成必要验证后主动 commit 并普通 push；force push、改写/删除远端历史、release/tag、部署和正式发布仍不在该授权内。
+
 ## 已观察的实现
 
 | 项目 | 事实 | 证据 |
