@@ -1,21 +1,17 @@
-import { existsSync, mkdtempSync, readdirSync, rmSync } from 'node:fs'
+import { mkdtempSync, rmSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { DatabaseSync as DatabaseSyncType } from 'node:sqlite'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { ActionRecord, Principal } from '@lumi/contracts'
-import {
-  LocalArtifactProvider,
-  type ArtifactProvider,
-} from '@lumi/local-artifact'
 import { DefaultActionPolicyEngine } from '@lumi/policy'
 import {
   ActionAuthorizationError,
   ActionConflictError,
   SqliteTaskLedger,
 } from '@lumi/task-ledger'
-import { ActionService } from '../src/index.ts'
+import { ActionService, digest, type ArtifactProvider } from '../src/index.ts'
 
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite') as {
   DatabaseSync: new (path: string) => DatabaseSyncType
@@ -56,8 +52,7 @@ describe('ActionService', () => {
       task: { state: 'completed' },
       verification: { status: 'passed' },
     })
-    expect(readdirSync(fixture.artifactRoot).filter(name => name.endsWith('.artifact')))
-      .toHaveLength(1)
+    expect(fixture.writeCount()).toBe(1)
     expect(JSON.stringify(fixture.ledger.listAudit(first.action.id))).not.toContain('hello')
     fixture.ledger.close()
   })
@@ -73,7 +68,7 @@ describe('ActionService', () => {
 
     await expect(fixture.service.execute(principal, prepared.action.id))
       .rejects.toThrow(ActionAuthorizationError)
-    expect(existsSync(fixture.artifactRoot)).toBe(false)
+    expect(fixture.writeCount()).toBe(0)
     fixture.ledger.close()
   })
 
@@ -97,7 +92,7 @@ describe('ActionService', () => {
       tamper.close()
 
       await expect(fixture.service.execute(principal, prepared.action.id)).rejects.toBeDefined()
-      expect(existsSync(fixture.artifactRoot)).toBe(false)
+      expect(fixture.writeCount()).toBe(0)
       fixture.ledger.close()
     }
   })
@@ -107,13 +102,13 @@ describe('ActionService', () => {
     let current = '2026-09-25T10:00:00.000Z'
     const now = () => current
     const ledger = new SqliteTaskLedger({ filename: join(root, 'assistant.db'), now })
-    const artifactRoot = join(root, 'artifacts')
+    const provider = new InMemoryArtifactProvider()
     const service = new ActionService({
       authorizationTtlMs: 1_000,
       ledger,
       now,
       policy: new DefaultActionPolicyEngine(),
-      provider: new LocalArtifactProvider(artifactRoot),
+      provider,
     })
     const prepared = service.prepare(principal, proposal('expired', 'content'))
     service.authorize(principal, prepared.action.id)
@@ -122,13 +117,13 @@ describe('ActionService', () => {
     await expect(service.execute(principal, prepared.action.id)).rejects.toMatchObject({
       code: 'APPROVAL_EXPIRED',
     })
-    expect(existsSync(artifactRoot)).toBe(false)
+    expect(provider.size).toBe(0)
     ledger.close()
   })
 
   it('allows only one concurrent execution to consume the authorization', async () => {
     const root = temporaryRoot()
-    const local = new LocalArtifactProvider(join(root, 'artifacts'))
+    const local = new InMemoryArtifactProvider()
     let releaseWrite: (() => void) | undefined
     let reportStarted: (() => void) | undefined
     const started = new Promise<void>(resolve => {
@@ -167,15 +162,14 @@ describe('ActionService', () => {
       },
       task: { state: 'completed' },
     })
-    expect(readdirSync(fixture.artifactRoot).filter(name => name.endsWith('.artifact')))
-      .toHaveLength(1)
+    expect(fixture.writeCount()).toBe(1)
     fixture.ledger.close()
   })
 
   it('reconciles a file written before the receipt commit after reopening the ledger', async () => {
     const root = temporaryRoot()
     const dbPath = join(root, 'assistant.db')
-    const artifactRoot = join(root, 'artifacts')
+    const provider = new InMemoryArtifactProvider()
     const firstLedger = new SqliteTaskLedger({ filename: dbPath, now: fixedNow })
     const firstService = new ActionService({
       afterProviderWrite: () => {
@@ -184,7 +178,7 @@ describe('ActionService', () => {
       ledger: firstLedger,
       now: fixedNow,
       policy: new DefaultActionPolicyEngine(),
-      provider: new LocalArtifactProvider(artifactRoot),
+      provider,
     })
     const prepared = firstService.prepare(principal, proposal('recover', 'survives restart'))
     firstService.authorize(principal, prepared.action.id)
@@ -200,7 +194,7 @@ describe('ActionService', () => {
       ledger: secondLedger,
       now: fixedNow,
       policy: new DefaultActionPolicyEngine(),
-      provider: new LocalArtifactProvider(artifactRoot),
+      provider,
     })
     const recovered = await secondService.reconcile(principal, prepared.action.id)
 
@@ -210,7 +204,7 @@ describe('ActionService', () => {
       task: { state: 'completed' },
       verification: { status: 'passed' },
     })
-    expect(readdirSync(artifactRoot).filter(name => name.endsWith('.artifact'))).toHaveLength(1)
+    expect(provider.size).toBe(1)
     secondLedger.close()
   })
 
@@ -237,6 +231,30 @@ describe('ActionService', () => {
       action: { status: 'failed' },
       task: { state: 'failed' },
       verification: { status: 'failed' },
+    })
+    fixture.ledger.close()
+  })
+
+  it('maps bounded provider errors without depending on an adapter error class', async () => {
+    const provider: ArtifactProvider = {
+      read: async action => ({
+        artifactRef: `memory://${action.id}`,
+        contentDigest: null,
+        exists: false,
+      }),
+      write: async () => {
+        throw Object.assign(new Error('provider conflict'), { code: 'CONFLICT' })
+      },
+    }
+    const fixture = createFixture({ provider })
+    const prepared = fixture.service.prepare(principal, proposal('provider-error', 'content'))
+    fixture.service.authorize(principal, prepared.action.id)
+
+    await expect(fixture.service.execute(principal, prepared.action.id)).rejects.toMatchObject({
+      code: 'CONFLICT',
+      message: 'provider conflict',
+      retryable: false,
+      safeToRetry: false,
     })
     fixture.ledger.close()
   })
@@ -270,15 +288,23 @@ function createFixture(options: {
 } = {}) {
   const root = options.root ?? temporaryRoot()
   const dbPath = join(root, 'assistant.db')
-  const artifactRoot = join(root, 'artifacts')
   const ledger = new SqliteTaskLedger({ filename: dbPath, now: fixedNow })
+  const delegate = options.provider ?? new InMemoryArtifactProvider()
+  let writes = 0
+  const provider: ArtifactProvider = {
+    read: action => delegate.read(action),
+    write: (action, content) => {
+      writes += 1
+      return delegate.write(action, content)
+    },
+  }
   const service = new ActionService({
     ledger,
     now: fixedNow,
     policy: new DefaultActionPolicyEngine(),
-    provider: options.provider ?? new LocalArtifactProvider(artifactRoot),
+    provider,
   })
-  return { artifactRoot, dbPath, ledger, service }
+  return { dbPath, ledger, service, writeCount: () => writes }
 }
 
 function proposal(idempotencyKey: string, content: string) {
@@ -299,4 +325,31 @@ function temporaryRoot(): string {
 
 function fixedNow(): string {
   return '2026-09-25T10:00:00.000Z'
+}
+
+class InMemoryArtifactProvider implements ArtifactProvider {
+  readonly #artifacts = new Map<string, string>()
+
+  get size(): number {
+    return this.#artifacts.size
+  }
+
+  async read(action: ActionRecord) {
+    const contentDigest = this.#artifacts.get(action.id) ?? null
+    return {
+      artifactRef: `memory://${action.id}`,
+      contentDigest,
+      exists: contentDigest !== null,
+    }
+  }
+
+  async write(action: ActionRecord, content: string) {
+    const contentDigest = digest(content)
+    this.#artifacts.set(action.id, contentDigest)
+    return {
+      artifactRef: `memory://${action.id}`,
+      contentDigest,
+      providerVersion: 'in-memory-artifact/1',
+    }
+  }
 }

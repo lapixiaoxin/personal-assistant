@@ -21,6 +21,7 @@
 | Agent 开始工作 | [AGENTS](../AGENTS.md)、[SDD](design/08-sdd.md)、[模板](templates/README.md) |
 | 工程命名与测试布局 | [SPEC-0002](../specs/0002-lumi-workspace/spec.md)、[测试约定](../tests/README.md) |
 | 查看 v0.1 架构与模块边界收敛 | [SPEC-0012](../specs/0012-architecture-consolidation/spec.md)、[ADR-004](adr/0004-host-ownership-and-module-boundaries.md) |
+| 维护依赖边界与本机数据卫生 | [SPEC-0013](../specs/0013-repository-architecture-hygiene/spec.md)、[本机数据说明](../data/README.md) |
 | 查看可信动作闭环 | [SPEC-0001](../specs/0001-action-boundary/spec.md)、[动作门禁 SOP](runbooks/action-boundary.md) |
 | 查看本地 MVP 总体验收 | [v0.1 验收记录](evidence/2026-09-25-mvp-acceptance.md) |
 | 理解关键取舍 | [ADR](adr/README.md) |

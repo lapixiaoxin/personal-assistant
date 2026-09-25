@@ -9,7 +9,7 @@
 ## 当前能力
 
 - CLI 与 HTTP 共用同一份 `TaskRequest`、Assistant Core 和 SQLite Task Ledger。
-- 任务状态覆盖 `queued`、`running`、`waiting_approval`、`completed`、`failed`、`cancelled`。
+- 任务状态覆盖 `queued`、`running`、`waiting_approval`、`interrupted`、`reconciling`、`completed`、`failed`、`cancelled`。
 - 规则路由可将编程请求委派给 `coding-agent`。
 - 规则识别出的外部发送、支付、删除和设备控制等高风险任务进入任务级审批。
 - v2 动作 API 对一个受控 `artifact.write` 能力执行参数摘要绑定、一次性授权、原子额度消费、独占文件创建、读回核验和崩溃后显式对账。
@@ -17,7 +17,7 @@
 - 结构化研究简报接收 1-8 个用户声明的公开 HTTPS 来源；`research-agent` 只能抓取本次 Task 绑定的 URL，保存不可变来源快照，并在全部来源已抓取且 source ID 引用覆盖通过后完成。
 - 结构化会议准备接收主题、目标、参与者、议程和背景；`meeting-agent` 不获得 Host 工具，只有固定六段简报通过确定性结构校验后才完成。
 - 个人记忆支持 SQLite 持久化、候选确认、纠正、撤回和彻底遗忘；任务只注入 owner、用途、scope 和分级均匹配的已确认 public/personal 记录。
-- 本地 Web 工作台提供任务、动作和记忆三视图；用户可管理个人记忆，或审阅参数摘要、授权/取消动作并读取回执和独立验证。
+- 本地 Web 工作台提供任务、动作、记忆和提醒四个视图；用户可管理个人记忆与本地通知，或审阅参数摘要、授权/取消动作并读取回执和独立验证。
 - Gateway 使用本地 Bearer token 派生 owner/principal；请求体中的 `actorId` 不能用于切换身份。
 - 任务事件、工具调用摘要、审批动作和执行结果可查询，服务重启后仍保留。
 - runtime 启动会续调度尚未开始的普通 queued Task；遗留 running Task 转为 interrupted，只有确定性规则判定无副作用风险时才允许用户显式创建新的重试 Task。
@@ -29,17 +29,18 @@
 ## 架构
 
 ```text
-CLI / HTTP
-    |
-Gateway normalization
-    |
-Assistant Core
-  |-- Router -> Capability Registry
-  |-- Policy -> Approval gate
-  |-- Task Ledger -> SQLite
-  `-- TaskExecutor interface
+CLI / HTTP / Workbench
           |
-          `-- adapters/dsh -> DSH TypeScript SDK subprocess
+     apps/runtime
+  (composition root)
+    |-- Identity
+    |-- Assistant Core + workflows
+    |     `-- TaskExecutor port -> adapters/dsh -> DSH subprocess
+    |-- ActionService
+    |     `-- ArtifactProvider port -> adapters/local-artifact
+    |-- Task Ledger + Recovery
+    |-- Personal Memory
+    `-- Reminders + local Notification inbox
 ```
 
 主要目录：
@@ -66,7 +67,9 @@ profiles/dsh-research/         Protected public-source research profile
 tests/contract/                Cross-module DSH runtime contracts
 ```
 
-每个模块的生产代码放在 `src/`，测试放在同级 `tests/`，例如 `packages/assistant-core/{src,tests}/`。跨模块测试放在根 `tests/` 下，按 contract、integration 等用途逐步扩展。内部包统一使用 `@lumi/*`，模块目录按职责命名。详见 [测试约定](tests/README.md)。
+每个模块的生产代码放在 `src/`，模块自有测试放在同级 `tests/`，使测试跟随包的所有权、依赖和删除生命周期；不是把测试混回生产源码。只有 contract、integration、e2e 等跨模块场景放在根 `tests/`。内部包统一使用 `@lumi/*`，模块目录按职责命名。详见 [测试约定](tests/README.md)。
+
+运行数据库、缓存、隔离验证与发布草稿统一位于 `data/`，不属于工程源码；具体保留和清理边界见 [本机数据目录](data/README.md)。根目录不保留生成的 `draft_*_folder`。
 
 打开 [lumi.code-workspace](lumi.code-workspace) 可将编辑器工作区显示为 `lumi`，并隐藏 `node_modules`、构建和覆盖率目录。当前磁盘根目录保留原路径，避免已有工具路径失效。
 
@@ -82,6 +85,8 @@ corepack enable
 pnpm install
 pnpm check
 ```
+
+`pnpm check` 包含架构边界、lint、typecheck、DSH 版本对齐、Vitest 和生产构建。
 
 若内部 npm 镜像缺少 DSH 的预发布传递依赖，可显式使用公开源：
 

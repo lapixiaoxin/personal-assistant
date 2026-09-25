@@ -5,6 +5,7 @@
   "type": "module",
   "exports": "./src/index.ts",
   "dependencies": {
+    "@lumi/action-runtime": "workspace:*",
     "@lumi/contracts": "workspace:*"
   }
 }

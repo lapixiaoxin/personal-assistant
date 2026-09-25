@@ -84,6 +84,9 @@ importers:
 
   adapters/local-artifact:
     dependencies:
+      '@lumi/action-runtime':
+        specifier: workspace:*
+        version: link:../../packages/action-runtime
       '@lumi/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
@@ -227,9 +230,6 @@ importers:
       '@lumi/contracts':
         specifier: workspace:*
         version: link:../contracts
-      '@lumi/local-artifact':
-        specifier: workspace:*
-        version: link:../../adapters/local-artifact
       '@lumi/policy':
         specifier: workspace:*
         version: link:../policy

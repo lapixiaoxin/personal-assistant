@@ -6,7 +6,6 @@
   "exports": "./src/index.ts",
   "dependencies": {
     "@lumi/contracts": "workspace:*",
-    "@lumi/local-artifact": "workspace:*",
     "@lumi/policy": "workspace:*",
     "@lumi/task-ledger": "workspace:*"
   }

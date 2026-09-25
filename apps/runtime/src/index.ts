@@ -1,6 +1,10 @@
 import { resolve } from 'node:path'
 import { loadEnvFile } from 'node:process'
-import { ActionService, type ActionServiceOptions } from '@lumi/action-runtime'
+import {
+  ActionService,
+  type ActionServiceOptions,
+  type ArtifactProvider,
+} from '@lumi/action-runtime'
 import { AssistantCore, type TaskExecutor } from '@lumi/assistant-core'
 import {
   createDefaultCapabilityRegistry,
@@ -23,7 +27,6 @@ import {
 } from '@lumi/meeting-workflow'
 import {
   LocalArtifactProvider,
-  type ArtifactProvider,
 } from '@lumi/local-artifact'
 import {
   MemoryContextExecutor,

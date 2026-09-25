@@ -8,7 +8,7 @@
 
 已读回 revision **4**，正文、41 处源码引用链接与 Mermaid 图源核验一致；一张 SVG 和一张 Mermaid 画板均下载并目视检查。节点 `RpbxwUVK1iGK3Ckw4ybcRyU3nve` 的父节点确为“个人助手”。源文件 SHA-256：`dce3f0b7a40aad0cef53fe86eb5d5219d5a2c2018d51a918756f10eac7d78427`。
 
-证据见 [源码研究记录](evidence/2026-09-25-dsh-source-analysis.md)，本机回执与预览在 `data/dsh-source-analysis-20260925/`。lumi 未升级依赖，未运行上游测试。最新讨论将 DSH 限定为复杂任务主要 Harness，实时对话、感知和物理控制可有独立运行时；下方 v0.3 的较宽定位尚待正式修订。
+证据见 [源码研究记录](evidence/2026-09-25-dsh-source-analysis.md)，本机回执与预览在 `data/dsh-source-analysis-20260925/`。lumi 未升级依赖，未运行上游测试。当前设计已将 DSH 限定为复杂任务主要 Harness，实时对话、感知和物理控制可有独立运行时。
 
 ## DSH 中心架构 · v0.3
 
@@ -48,7 +48,7 @@
 
 每篇保留源文件路径、版本、日期和能力状态。已发布专题提供返回总纲链接；总纲文档地图可点击进入各篇。仅在工程内交付的 AGENTS、模板、spec、SOP 保留仓库相对路径说明，不伪造无法打开的网页链接。
 
-本机证据位于 `data/design-publication-20260924/`：每篇创建回执、parse、fetch、源文件摘要、URL map。草稿保留在 `draft_*_folder/` 并加入 Git ignore；总纲画板源在 [closed-loops.svg](design/assets/closed-loops.svg)。这些操作通过文档工具完成，不代表个人助手本身已实现飞书能力。
+本机证据位于 `data/design-publication-20260924/`：每篇创建回执、parse、fetch、源文件摘要、URL map。历史根目录 `draft_*_folder` 已在 [SPEC-0013](../specs/0013-repository-architecture-hygiene/spec.md) 中清理；后续草稿统一进入 `data/publication-drafts/` 并在读回后删除。总纲画板源在 [closed-loops.svg](design/assets/closed-loops.svg)。这些操作通过文档工具完成，不代表个人助手本身已实现飞书能力。
 
 ## 后续维护
 

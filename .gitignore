@@ -5,8 +5,8 @@ coverage/
 .DS_Store
 .env
 .env.local
-data/
+data/*
+!data/README.md
 *.db
 *.db-shm
 *.db-wal
-draft_*_folder/

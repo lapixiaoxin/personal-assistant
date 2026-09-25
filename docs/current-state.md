@@ -12,7 +12,7 @@
 | --- | --- | --- |
 | 语言和构建 | TypeScript、pnpm 10.20.0、Node >=22.19.0、tsup | 根 `package.json`、`.nvmrc` |
 | 入口 | CLI 与 HTTP 通过 runtime 装配同一个 Core | `apps/local-runner`、`apps/gateway`、`apps/runtime` |
-| 任务 | 六状态、任务提交、批准、拒绝、取消 | `packages/contracts`、`packages/assistant-core` |
+| 任务 | 八状态、任务提交、批准、拒绝、取消；含 interrupted/reconciling | `packages/contracts`、`packages/assistant-core` |
 | 持久化 | SQLite 任务、事件、审批、审计，状态与对应迁移事件同事务 | `packages/task-ledger` |
 | 路由 | 正则规则选 personal-assistant 或 coding-agent | `packages/capability-registry` |
 | 策略 | 任务文字与 capability 风险等级判定，external/critical 需审批 | `packages/policy` |
@@ -21,7 +21,7 @@
 | 记忆 | SQLite 持久化、candidate/confirmed/retracted、纠正、遗忘 tombstone 与受控任务注入 | `packages/personal-memory`、`apps/runtime` |
 | 恢复 | 单机 runtime 所有权、queued 续调度、running 中断判定、显式新 Task 重试与 Action 对账 | `packages/task-recovery`、`packages/task-ledger` |
 | 提醒 | SQLite 一次性 trigger、latest/skip 误点处理、单 timer 与本地通知确认 | `packages/reminders`、`apps/runtime` |
-| 工程检查 | lint、typecheck、版本对齐、测试、构建 | `pnpm check`、`.github/workflows/ci.yml` |
+| 工程检查 | lint、typecheck、架构边界、版本对齐、测试、构建 | `pnpm check`、`.github/workflows/ci.yml` |
 
 ## 必须明确的缺口
 

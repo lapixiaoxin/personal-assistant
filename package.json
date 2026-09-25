@@ -20,7 +20,8 @@
   "scripts": {
     "build": "pnpm build:server && pnpm --filter @lumi/workbench build",
     "build:server": "tsup",
-    "check": "pnpm lint && pnpm typecheck && pnpm check:dsh && pnpm test && pnpm build",
+    "check": "pnpm lint && pnpm typecheck && pnpm check:architecture && pnpm check:dsh && pnpm test && pnpm build",
+    "check:architecture": "node scripts/check-architecture.mjs",
     "check:dsh": "node scripts/check-dsh-compat.mjs",
     "cli": "tsx apps/local-runner/src/main.ts",
     "dev": "tsx watch apps/gateway/src/main.ts",

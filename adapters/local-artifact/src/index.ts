@@ -3,24 +3,18 @@ import { constants } from 'node:fs'
 import { link, lstat, mkdir, open, realpath, unlink } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import type {
+  ArtifactObservation,
+  ArtifactProvider,
+  ArtifactWriteResult,
+} from '@lumi/action-runtime'
 import { ArtifactTargetSchema, type ActionRecord } from '@lumi/contracts'
 
-export interface ArtifactObservation {
-  artifactRef: string
-  contentDigest: string | null
-  exists: boolean
-}
-
-export interface ArtifactWriteResult {
-  artifactRef: string
-  contentDigest: string
-  providerVersion: string
-}
-
-export interface ArtifactProvider {
-  read(action: ActionRecord): Promise<ArtifactObservation>
-  write(action: ActionRecord, content: string): Promise<ArtifactWriteResult>
-}
+export type {
+  ArtifactObservation,
+  ArtifactProvider,
+  ArtifactWriteResult,
+} from '@lumi/action-runtime'
 
 export class ArtifactBoundaryError extends Error {
   constructor(

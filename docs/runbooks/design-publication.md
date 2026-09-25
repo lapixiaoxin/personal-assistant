@@ -11,8 +11,8 @@
 ## 已成功流程
 
 1. 读取原愿景、当前实现、上游参考，按当前技能选择读者任务与体裁；明确事实、设计和未知。初次方案使用当时的 design_rfc，不能将其套用于所有后续文档。
-2. 用 `lark-cli docs +script --command init-draft --presentation-decision ...` 创建专属草稿目录。总纲包含一张解释双闭环的 SVG；专题使用精确表格和文字。
-3. 使用 `python3 scripts/docs-to-lark.py <source.md> <draft.xml>` 生成当前语法子集的 XML。总纲传入 `--board docs/design/assets/closed-loops.svg`；转换器拒绝覆盖已有草稿。
+2. 用 `lark-cli docs +script --command init-draft --presentation-decision ...` 创建专属草稿目录。能指定位置时统一放入 `data/publication-drafts/`；工具必须在根目录生成时，记录返回路径并在本次验证结束后删除。总纲包含一张解释双闭环的 SVG；专题使用精确表格和文字。
+3. 使用 `python3 scripts/docs-to-lark.py <source.md> <draft.xml>` 生成当前语法子集的 XML。总纲传入 `--board docs/design/assets/closed-loops.svg`；转换器拒绝覆盖已有草稿。`docs/` 中的 Markdown/SVG 是事实源，draft 只是传输格式。
 4. 用 `docs +script --command parse --content @./<draft.xml>` 检查；除 `ok=true` 外确认 `assessment.status=passed`，再检查标签和正文。
 5. 用 `docs +create --doc-format xml --content @./<draft.xml> --parent-token <已核验父节点> --as user` 创建，立即保存 document_id、URL、revision 和 warning。
 6. `docs +fetch --doc <id> --detail full --as user` 读回全文，规范化文本与草稿比较；列表、表格、标题、关键状态和引用不能丢失。
@@ -32,9 +32,9 @@ Markdown 转换器只支持本次用到的标题、段落、简单列表、表�
 
 ## 保留和更新
 
-保留 draft 及 `.presentation-decision.json`、创建回执和最终 fetch。发布快照含源文件摘要；它不替代 Git commit。回查时先比较版本与内容，防止覆盖用户已编辑的正文。
+Git 中保留 Markdown/SVG 源与脱敏 evidence；本机 `data/` 可按需保留创建回执和最终 fetch。发布快照含源文件摘要，但不替代 Git commit。回查时先比较版本与内容，防止覆盖用户已编辑的正文。
 
-只清理本次生成的临时目录；默认保留草稿及证据在忽略目录中。敏感认证数据不得进入 SOP、fixture 或发布记录。下一次跨版本成功后追加证据，不能凭本次成功推断永久兼容。
+发布完成并读回后精确删除本次 draft 目录及 `.presentation-decision.json`，不在仓库根长期保留 `draft_*_folder`。敏感认证数据不得进入 SOP、fixture 或发布记录。下一次跨版本成功后追加证据，不能凭本次成功推断永久兼容。
 
 ## 2026-09-25 · 多画板专题的已验证补充
 

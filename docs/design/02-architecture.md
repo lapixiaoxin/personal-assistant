@@ -39,7 +39,7 @@ flowchart TB
 | `packages/capability-registry` | 能力元数据与路由 | discover、resolve | 安装即启用、隐式提权 | v0.1 已有规则注册 |
 | `packages/personal-memory` | 记忆版本、来源、撤回与删除 | create、confirm、retrieve、correct、erase | 直接从外部材料写确认事实 | v0.1 已有 SQLite 显式记忆 |
 | `packages/identity` | principal 与本地认证绑定 | authenticate、resolveOwner | 信任请求体中的身份 | v0.1 已有 local process/bearer |
-| `packages/action-runtime` | 动作准备、门禁、执行、对账 | prepare、execute、reconcile | 未经策略调用外部能力 | v0.1 已有 `artifact.write` |
+| `packages/action-runtime` | 动作准备、门禁、执行、对账及 provider 端口 | prepare、execute、reconcile、ArtifactProvider | 依赖具体 adapter 或未经策略调用外部能力 | v0.1 已有 `artifact.write` |
 | `packages/task-recovery` | 重启后的 Task/Action 分类与恢复编排 | initialize、retry、acknowledge | 把进程退出当作动作撤销 | v0.1 已有单机恢复 |
 | `packages/reminders` | 一次性触发与本地通知原子投递 | schedule、cancel、acknowledge | 调用 DSH 或外部推送 | v0.1 已有本地能力 |
 | `packages/verification`（拟设） | 通用结果检查和证据判定 | verify | 仅采纳执行者自报成功 | 当前分散在 action/workflow |
@@ -59,7 +59,7 @@ flowchart TB
 
 当前 `TaskExecutor` 在 `assistant-core` 中、Core 依赖 registry / policy / ledger 包的接口，这是已有事实。`apps/runtime` 是 composition root；Gateway、CLI 和 Workbench 不直接访问 SQLite。未来在实际变更时提取端口，避免为“纯净架构”一次性搬迁。`TaskRecord.dshSessionId` 已经泄漏执行器命名，迁移为中性 `ExecutionRef` 时保留旧 API 映射，不突删字段。
 
-当前 CI 已执行 lint、typecheck、DSH 版本对齐、Vitest 与 build；文档检查和依赖边界还不是完整自动门禁。后续检查禁止循环依赖、外部 SDK 泄漏和入口绕过控制层。
+当前 `pnpm check` / CI 已执行 lint、typecheck、workspace 架构边界、DSH 版本对齐、Vitest 与 build。架构门禁检查生产依赖环、packages→adapter 反向依赖、未声明内部依赖、跨 package 相对 import 和 `src` 测试回流；文档链接检查仍单独执行。外部 SDK 泄漏和入口绕过控制层继续由专项契约检查逐步扩展。
 
 ## “一切皆插件”的采用边界
 

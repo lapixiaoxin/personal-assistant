@@ -15,12 +15,19 @@ import {
   type Principal,
 } from '@lumi/contracts'
 import {
-  ArtifactBoundaryError,
+  artifactProviderErrorCode,
   type ArtifactProvider,
   type ArtifactWriteResult,
-} from '@lumi/local-artifact'
+} from './provider.ts'
 import type { ActionPolicyEngine } from '@lumi/policy'
 import type { ActionLedger, TaskLedger } from '@lumi/task-ledger'
+
+export type {
+  ArtifactObservation,
+  ArtifactProvider,
+  ArtifactProviderErrorCode,
+  ArtifactWriteResult,
+} from './provider.ts'
 
 export class ActionServiceError extends Error {
   constructor(
@@ -231,8 +238,9 @@ export class ActionService {
         targetId: action.id,
         targetType: 'action',
       })
-      if (error instanceof ArtifactBoundaryError) {
-        throw new ActionServiceError(error.code, error.message, false, false)
+      const providerCode = artifactProviderErrorCode(error)
+      if (providerCode) {
+        throw new ActionServiceError(providerCode, errorMessage(error), false, false)
       }
       throw error
     }

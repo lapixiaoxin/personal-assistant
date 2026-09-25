@@ -74,9 +74,9 @@
 
 ## CI 分阶段
 
-当前：lint → typecheck → DSH 版本对齐 → Vitest → build。
+当前：lint → typecheck → workspace 架构边界 → DSH 版本对齐 → Vitest → build。文档链接检查由 `python3 scripts/check-docs.py` 独立执行。
 
-M1 增加：文档链接和状态检查、契约样例校验、依赖边界、迁移、授权负向、动作未知结果。
+M1 已覆盖依赖方向、迁移、授权负向和动作未知结果；仍需将文档状态检查与更多契约样例纳入 CI。
 
 M2–M4 增加：记忆纠正/删除、场景评测、持久恢复、跨入口、设备撤销。真实外部测试按授权环境 opt-in，不让 fork PR 拿生产秘密。
 

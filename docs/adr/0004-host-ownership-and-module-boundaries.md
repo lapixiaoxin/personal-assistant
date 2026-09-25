@@ -23,7 +23,7 @@ MVP 迭代使 `packages/task-ledger/src/index.ts` 同时承担公开端口、迁
 - `packages/personal-memory` 独立拥有 Memory 表与迁移；只通过受控检索结果向任务提供上下文。
 - `packages/reminders` 独立拥有 Reminder、Notification 和调度事务；一次性触发与本地收件箱在当前阶段不拆包。
 - `packages/task-recovery` 负责恢复判定和编排，不直接拥有 Ledger 表。
-- `packages/action-runtime` 负责动作服务、provider 调用和读回核验；持久状态仍经 Task Ledger。
+- `packages/action-runtime` 负责动作服务、provider 端口、调用和读回核验；具体 provider 位于 `adapters/*`，持久状态仍经 Task Ledger。
 - `apps/runtime` 只作 composition root，不成为业务数据拥有者。
 
 文件拆分不产生新的 package subpath API。`SqliteTaskLedger` 保留一个连接、一个时钟和 `BEGIN IMMEDIATE` 事务入口；Task/Action/Recovery 只有出现独立部署、不同安全域或不同扩缩需求时，才另立 ADR 讨论拆进程。
