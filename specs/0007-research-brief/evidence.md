@@ -1,6 +1,6 @@
 # SPEC-0007 验证证据
 
-时间：2026-09-25。验证者：lumi Agent。规范：`spec.md` v0.1。实现基线：`33fd434`；实现提交在本文件后续证据提交中绑定。
+时间：2026-09-25。验证者：lumi Agent。规范：`spec.md` v0.1。实现基线：`33fd434`；实现提交：`356159e`。
 
 环境：macOS arm64；Node `22.19.0`；pnpm `10.20.0`；DSH、SDK、tools、mock server 均为 `0.1.7-rc.1`。安装使用仓库忽略目录 `data/tooling/{npm-cache,pnpm-store}`；新增直接依赖固定为 `ipaddr.js@2.5.0`、`parse5@7.3.0`，未升级其他依赖。
 
