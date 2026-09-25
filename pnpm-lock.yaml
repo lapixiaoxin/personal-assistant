@@ -117,6 +117,9 @@ importers:
       '@lumi/personal-memory':
         specifier: workspace:*
         version: link:../../packages/personal-memory
+      '@lumi/reminders':
+        specifier: workspace:*
+        version: link:../../packages/reminders
       '@lumi/research-workflow':
         specifier: workspace:*
         version: link:../../packages/research-workflow
@@ -180,6 +183,9 @@ importers:
       '@lumi/policy':
         specifier: workspace:*
         version: link:../../packages/policy
+      '@lumi/reminders':
+        specifier: workspace:*
+        version: link:../../packages/reminders
       '@lumi/research-sources':
         specifier: workspace:*
         version: link:../../adapters/research-sources
@@ -299,6 +305,16 @@ importers:
       '@lumi/contracts':
         specifier: workspace:*
         version: link:../contracts
+
+  packages/reminders:
+    dependencies:
+      '@lumi/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+    devDependencies:
+      '@lumi/task-ledger':
+        specifier: workspace:*
+        version: link:../task-ledger
 
   packages/research-workflow:
     dependencies:

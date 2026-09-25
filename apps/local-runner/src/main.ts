@@ -4,7 +4,10 @@ import { resolve } from 'node:path'
 import { Command } from 'commander'
 import {
   createTaskRequest,
+  NotificationListQuerySchema,
   RecoveryListQuerySchema,
+  ReminderCreateSchema,
+  ReminderListQuerySchema,
   TaskStateSchema,
   TaskSubmissionSchema,
 } from '@lumi/contracts'
@@ -307,6 +310,85 @@ recovery
     print(runtime.recovery.acknowledge(runtime.identity.localPrincipal(), recoveryId))
   }))
 
+const reminder = program
+  .command('reminder')
+  .description('Schedule persistent one-time local reminders')
+
+reminder
+  .command('add')
+  .argument('<content...>', 'reminder content')
+  .requiredOption('--at <rfc3339>', 'absolute trigger time with UTC offset')
+  .requiredOption('--key <idempotency-key>', 'stable idempotency key')
+  .option('--misfire <policy>', 'latest or skip', 'latest')
+  .option('--timezone <iana>', 'IANA timezone', localTimeZone())
+  .action(async (
+    words: string[],
+    options: { at: string; key: string; misfire: string; timezone: string },
+  ) => withRuntime(async (runtime) => {
+    const input = ReminderCreateSchema.parse({
+      content: words.join(' '),
+      fireAt: options.at,
+      idempotencyKey: options.key,
+      misfirePolicy: options.misfire,
+      timezone: options.timezone,
+    })
+    print(runtime.reminders.create(runtime.identity.localPrincipal(), input))
+  }))
+
+reminder
+  .command('list')
+  .option('--limit <count>', 'maximum rows', '100')
+  .option('--status <status>', 'scheduled, fired, skipped, or cancelled')
+  .action(async (options: { limit: string; status?: string }) =>
+    withRuntime(async (runtime) => {
+      const query = ReminderListQuerySchema.parse({
+        limit: parseLimit(options.limit),
+        ...(options.status ? { status: options.status } : {}),
+      })
+      print(runtime.reminders.list(runtime.identity.localPrincipal(), query))
+    }))
+
+reminder
+  .command('get')
+  .argument('<reminder-id>')
+  .action(async (reminderId: string) => withRuntime(async (runtime) => {
+    print(runtime.reminders.get(runtime.identity.localPrincipal(), reminderId))
+  }))
+
+reminder
+  .command('cancel')
+  .argument('<reminder-id>')
+  .action(async (reminderId: string) => withRuntime(async (runtime) => {
+    print(runtime.reminders.cancel(runtime.identity.localPrincipal(), reminderId))
+  }))
+
+const notification = program
+  .command('notification')
+  .description('Read and acknowledge local reminder notifications')
+
+notification
+  .command('list')
+  .option('--limit <count>', 'maximum rows', '100')
+  .option('--status <status>', 'unread or acknowledged')
+  .action(async (options: { limit: string; status?: string }) =>
+    withRuntime(async (runtime) => {
+      const query = NotificationListQuerySchema.parse({
+        limit: parseLimit(options.limit),
+        ...(options.status ? { status: options.status } : {}),
+      })
+      print(runtime.reminders.listNotifications(runtime.identity.localPrincipal(), query))
+    }))
+
+notification
+  .command('acknowledge')
+  .argument('<notification-id>')
+  .action(async (notificationId: string) => withRuntime(async (runtime) => {
+    print(runtime.reminders.acknowledge(
+      runtime.identity.localPrincipal(),
+      notificationId,
+    ))
+  }))
+
 const memory = program
   .command('memory')
   .description('Manage persistent, user-controlled personal memories')
@@ -474,4 +556,8 @@ function assertV1Task(channel: string, taskId: string): void {
 
 function collectOption(value: string, previous: string[]): string[] {
   return [...previous, value]
+}
+
+function localTimeZone(): string {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
 }

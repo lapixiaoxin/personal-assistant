@@ -6,7 +6,10 @@ import { ActionServiceError } from '@lumi/action-runtime'
 import {
   ActionProposalSubmissionSchema,
   createTaskRequest,
+  NotificationListQuerySchema,
   RecoveryListQuerySchema,
+  ReminderCreateSchema,
+  ReminderListQuerySchema,
   TaskListQuerySchema,
   TaskSubmissionSchema,
   type ActionErrorCode,
@@ -29,6 +32,7 @@ import {
   PersonalMemoryCreateSchema,
   PersonalMemoryListQuerySchema,
 } from '@lumi/personal-memory'
+import { ReminderServiceError } from '@lumi/reminders'
 import { createAssistantRuntime, type AssistantRuntime } from '@lumi/runtime'
 import { RecoveryServiceError } from '@lumi/task-recovery'
 import {
@@ -59,6 +63,12 @@ const MemoryParamsSchema = z.object({
 })
 const RecoveryParamsSchema = z.object({
   recoveryId: z.string().trim().min(1).max(128),
+})
+const ReminderParamsSchema = z.object({
+  reminderId: z.string().trim().min(1).max(128),
+})
+const NotificationParamsSchema = z.object({
+  notificationId: z.string().trim().min(1).max(128),
 })
 
 export interface GatewayOptions {
@@ -251,6 +261,50 @@ export function buildGateway(options: GatewayOptions = {}): FastifyInstance {
     return { data: runtime.recovery.acknowledge(principal, recoveryId) }
   })
 
+  app.post('/v2/reminders', async (request, reply) => {
+    const principal = authenticate(runtime, request)
+    const input = ReminderCreateSchema.parse(request.body)
+    const reminder = runtime.reminders.create(principal, input)
+    reply.code(201)
+    return { data: reminder }
+  })
+
+  app.get('/v2/reminders', async (request) => {
+    const principal = authenticate(runtime, request)
+    const query = ReminderListQuerySchema.parse(request.query)
+    return { data: runtime.reminders.list(principal, query) }
+  })
+
+  app.get('/v2/reminders/:reminderId', async (request) => {
+    const principal = authenticate(runtime, request)
+    const { reminderId } = ReminderParamsSchema.parse(request.params)
+    return { data: runtime.reminders.get(principal, reminderId) }
+  })
+
+  app.post('/v2/reminders/:reminderId/cancel', async (request) => {
+    const principal = authenticate(runtime, request)
+    const { reminderId } = ReminderParamsSchema.parse(request.params)
+    return { data: runtime.reminders.cancel(principal, reminderId) }
+  })
+
+  app.get('/v2/notifications', async (request) => {
+    const principal = authenticate(runtime, request)
+    const query = NotificationListQuerySchema.parse(request.query)
+    return { data: runtime.reminders.listNotifications(principal, query) }
+  })
+
+  app.get('/v2/notifications/:notificationId', async (request) => {
+    const principal = authenticate(runtime, request)
+    const { notificationId } = NotificationParamsSchema.parse(request.params)
+    return { data: runtime.reminders.getNotification(principal, notificationId) }
+  })
+
+  app.post('/v2/notifications/:notificationId/acknowledge', async (request) => {
+    const principal = authenticate(runtime, request)
+    const { notificationId } = NotificationParamsSchema.parse(request.params)
+    return { data: runtime.reminders.acknowledge(principal, notificationId) }
+  })
+
   app.post('/v2/memories', async (request, reply) => {
     const principal = authenticate(runtime, request)
     const input = PersonalMemoryCreateSchema.parse(request.body)
@@ -419,6 +473,27 @@ export function buildGateway(options: GatewayOptions = {}): FastifyInstance {
     }
     if (error instanceof RecoveryServiceError) {
       reply.code(error.code === 'RECOVERY_NOT_FOUND' ? 404 : 409).send({
+        error: {
+          code: error.code,
+          message: error.message,
+          retryable: false,
+          safeToRetry: false,
+        },
+      })
+      return
+    }
+    if (error instanceof ReminderServiceError) {
+      const notFound = error.code === 'REMINDER_NOT_FOUND'
+        || error.code === 'NOTIFICATION_NOT_FOUND'
+      reply.code(
+        notFound
+          ? 404
+          : error.code === 'INVALID_REMINDER_TIME'
+            ? 422
+            : error.code === 'REMINDER_SERVICE_CLOSED'
+              ? 503
+              : 409,
+      ).send({
         error: {
           code: error.code,
           message: error.message,

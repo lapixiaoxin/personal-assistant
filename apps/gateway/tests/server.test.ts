@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { TaskExecutor } from '@lumi/assistant-core'
 import { createTaskRequest } from '@lumi/contracts'
 import {
@@ -410,6 +410,80 @@ describe('gateway', () => {
     })
     expect(hidden.statusCode).toBe(404)
     expect(hidden.json().error.code).toBe('RECOVERY_NOT_FOUND')
+    await app.close()
+  })
+
+  it('exposes the authenticated reminder and local notification lifecycle', async () => {
+    let now = '2026-09-25T10:00:00.000Z'
+    const execute = vi.fn(async () => ({ output: 'must not run' }))
+    const runtime = createAssistantRuntime({
+      dbPath: ':memory:',
+      executor: { execute },
+      httpToken: token,
+      principalId: 'user-1',
+      reminderService: { now: () => now },
+    })
+    openRuntimes.push(runtime)
+    const app = buildGateway({ runtime })
+    const payload = {
+      content: 'Review the local notification',
+      fireAt: '2026-09-25T10:05:00.000Z',
+      idempotencyKey: 'gateway-reminder',
+      misfirePolicy: 'latest',
+      timezone: 'UTC',
+    }
+
+    const created = await app.inject({
+      headers: authenticatedHeaders(true),
+      method: 'POST',
+      payload,
+      url: '/v2/reminders',
+    })
+    expect(created.statusCode).toBe(201)
+    expect(created.json().data).toMatchObject({
+      content: payload.content,
+      status: 'scheduled',
+    })
+    const reminderId = created.json().data.id as string
+
+    const duplicate = await app.inject({
+      headers: authenticatedHeaders(true),
+      method: 'POST',
+      payload,
+      url: '/v2/reminders',
+    })
+    expect(duplicate.json().data.id).toBe(reminderId)
+    const conflict = await app.inject({
+      headers: authenticatedHeaders(true),
+      method: 'POST',
+      payload: { ...payload, content: 'Changed reminder' },
+      url: '/v2/reminders',
+    })
+    expect(conflict.statusCode).toBe(409)
+    expect(conflict.json().error.code).toBe('REMINDER_CONFLICT')
+
+    now = '2026-09-25T10:05:00.000Z'
+    runtime.reminders.wake()
+    const notifications = await app.inject({
+      headers: authenticatedHeaders(),
+      method: 'GET',
+      url: '/v2/notifications?status=unread',
+    })
+    expect(notifications.json().data).toEqual([
+      expect.objectContaining({
+        content: payload.content,
+        status: 'unread',
+      }),
+    ])
+    const notificationId = notifications.json().data[0].id as string
+    const acknowledged = await app.inject({
+      headers: authenticatedHeaders(),
+      method: 'POST',
+      url: `/v2/notifications/${notificationId}/acknowledge`,
+    })
+    expect(acknowledged.json().data.status).toBe('acknowledged')
+    expect(runtime.ledger.listTasks({ limit: 200 })).toEqual([])
+    expect(execute).not.toHaveBeenCalled()
     await app.close()
   })
 

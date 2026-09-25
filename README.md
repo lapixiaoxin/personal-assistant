@@ -22,6 +22,7 @@
 - 任务事件、工具调用摘要、审批动作和执行结果可查询，服务重启后仍保留。
 - runtime 启动会续调度尚未开始的普通 queued Task；遗留 running Task 转为 interrupted，只有确定性规则判定无副作用风险时才允许用户显式创建新的重试 Task。
 - executing / outcome_unknown Action 在重启后进入 reconciling，只能读回对账；本机 PID 所有权会阻止另一个仍存活的 runtime 被误判为崩溃。
+- 一次性提醒持久保存绝对触发时间、IANA timezone、幂等键和 `latest / skip` 误点策略；在线到点或启动补发只生成一条本地通知，可在 Workbench/CLI 确认。
 - DSH 通过独立 adapter 接入，固定为 `0.1.7-rc.1`；核心层不导入 DSH。
 - 默认通过 DSH SDK 执行；`PA_EXECUTOR=mock` 仅用于离线开发和故障隔离。
 
@@ -54,6 +55,7 @@ packages/task-recovery/        Restart classification and explicit recovery
 packages/policy/               Risk classification and approval policy
 packages/capability-registry/  Capability discovery and routing
 packages/personal-memory/      Persistent memory lifecycle and bounded context
+packages/reminders/            One-time scheduling and local notification inbox
 packages/meeting-workflow/     Meeting input normalization and structure verification
 packages/research-workflow/    Research submission, source records, citation verification
 adapters/dsh/                  DSH-only types and event mapping
@@ -127,6 +129,14 @@ pnpm cli recovery list --status pending
 pnpm cli recovery get <recovery-id>
 pnpm cli recovery retry <recovery-id>
 pnpm cli recovery acknowledge <recovery-id>
+pnpm cli reminder add "检查发布状态" \
+  --at 2026-09-26T09:00:00+08:00 \
+  --timezone Asia/Shanghai \
+  --key release-check
+pnpm cli reminder list
+pnpm cli reminder cancel <reminder-id>
+pnpm cli notification list --status unread
+pnpm cli notification acknowledge <notification-id>
 pnpm cli list
 pnpm cli get <task-id>
 pnpm cli events <task-id>
@@ -205,6 +215,11 @@ curl -sS http://127.0.0.1:4310/v1/tasks/task-http-demo/audit \
 | `GET` | `/v2/recoveries`、`/v2/recoveries/:id` | 查询当前 principal 的重启恢复记录 |
 | `POST` | `/v2/recoveries/:id/retry` | 为允许重试的 interrupted Task 创建唯一替代 Task |
 | `POST` | `/v2/recoveries/:id/acknowledge` | 确认已人工检查不可自动重试的中断 |
+| `POST`、`GET` | `/v2/reminders` | 创建或列出一次性提醒 |
+| `GET` | `/v2/reminders/:id` | 读取当前 principal 的提醒 |
+| `POST` | `/v2/reminders/:id/cancel` | 取消尚未触发的提醒 |
+| `GET` | `/v2/notifications`、`/v2/notifications/:id` | 查询本地通知收件箱 |
+| `POST` | `/v2/notifications/:id/acknowledge` | 确认一条本地通知 |
 | `POST`、`GET` | `/v2/memories` | 创建或列出当前 owner 的个人记忆 |
 | `GET` | `/v2/memories/:id` | 读取当前 owner 的一条记忆 |
 | `POST` | `/v2/memories/:id/confirm` | 确认候选记忆 |
@@ -218,7 +233,7 @@ curl -sS http://127.0.0.1:4310/v1/tasks/task-http-demo/audit \
 
 ## Web 工作台
 
-电脑端入口位于 `apps/workbench`。任务视图提供普通任务、研究简报和会议准备三种 composer 模式、状态与结果查看、任务级审批、取消、事件和审计记录；interrupted Task 会展示服务端恢复判定，只有 `retry_available` 才能创建新 Task。研究模式要求逐行填写公开 HTTPS 来源，会议模式收集主题、目标、参与者、议程和背景，并把已验证结果渲染为六个简报分区。动作视图列出 DSH 或 API 提议的受控 Action，展示目标、参数摘要、期限、授权、回执和 verification，并按服务端状态提供授权、执行、取消或对账；重启后的不确定 Action 仍只允许对账。记忆视图提供状态筛选、用途/scope/分级设置、确认、纠正、撤回和二次确认遗忘。它只调用 lumi Gateway，不直接连接 DSH、数据库、source snapshot 或 artifact 目录。
+电脑端入口位于 `apps/workbench`。任务视图提供普通任务、研究简报和会议准备三种 composer 模式、状态与结果查看、任务级审批、取消、事件和审计记录；interrupted Task 会展示服务端恢复判定，只有 `retry_available` 才能创建新 Task。研究模式要求逐行填写公开 HTTPS 来源，会议模式收集主题、目标、参与者、议程和背景，并把已验证结果渲染为六个简报分区。动作视图列出 DSH 或 API 提议的受控 Action，展示目标、参数摘要、期限、授权、回执和 verification，并按服务端状态提供授权、执行、取消或对账；重启后的不确定 Action 仍只允许对账。记忆视图提供状态筛选、用途/scope/分级设置、确认、纠正、撤回和二次确认遗忘。提醒视图提供一次性时间、误点策略、计划状态和本地通知确认。它只调用 lumi Gateway，不直接连接 DSH、数据库、source snapshot 或 artifact 目录。
 
 开发时分别启动 Gateway 和 Vite：
 

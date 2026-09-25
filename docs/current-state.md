@@ -16,6 +16,7 @@
 | 上游 | SDK/runtime/mock server 精确固定 0.1.7-rc.1 | `upstream.lock.json`、`pnpm-lock.yaml` |
 | 记忆 | SQLite 持久化、candidate/confirmed/retracted、纠正、遗忘 tombstone 与受控任务注入 | `packages/personal-memory`、`apps/runtime` |
 | 恢复 | 单机 runtime 所有权、queued 续调度、running 中断判定、显式新 Task 重试与 Action 对账 | `packages/task-recovery`、`packages/task-ledger` |
+| 提醒 | SQLite 一次性 trigger、latest/skip 误点处理、单 timer 与本地通知确认 | `packages/reminders`、`apps/runtime` |
 | 工程检查 | lint、typecheck、版本对齐、测试、构建 | `pnpm check`、`.github/workflows/ci.yml` |
 
 ## 必须明确的缺口
@@ -30,7 +31,7 @@
 - 记忆已接入 runtime / Gateway / CLI / Workbench，但只支持显式写入和确定性 purpose/scope 检索；没有自动抽取、语义索引、字段级加密或跨设备同步。
 - 当前 coding-agent 是路由到另一份 DSH profile，不是已接入 A2A 的独立外部专家。
 - 无产品级多轮会话；DSH Web UI 使用 DSH 会话，绕开助手 Task Ledger。
-- 尚无 MCP/A2A adapter、持久 scheduler、设备协议、自动学习或自主发布。
+- 尚无 MCP/A2A adapter、周期/cron scheduler、外部通知推送、设备协议、自动学习或自主发布。
 - Task Ledger 已按 `user_version` 执行 v1→v2→v3 expand 迁移并记录 `migration_history`；自动 contract migration 和数据库回滚仍未实现。
 - 数据内容、错误、任务结果和 DSH 会话仍可能含敏感信息；只减少工具审计正文不等于全链路脱敏。
 
@@ -153,6 +154,14 @@ Task 执行前的确定性检索按 owner、confirmed 状态、classification、
 executing / outcome_unknown 以及已有回执但未验证的 Action Task 转为 `reconciling`。executing 同事务改为 outcome_unknown，授权仍为 consumed；后续只调用现有 provider read、摘要比对和 Verification，不重复 write。Gateway、CLI 和 Workbench 提供恢复查询、retry、acknowledge 与动作对账入口。
 
 SQLite 保存单个本机 runtime ID 与 PID；仍存活的进程会阻止另一个入口把它的 running Task 误判为崩溃。该机制不是分布式 lease/fencing；PID 复用只会延迟恢复，跨主机共享数据库不在支持范围。真实子进程在 Task running 后经 `SIGKILL`，独立 CLI 随后识别 stale runtime 并创建 Recovery；桌面/移动 Workbench 可创建唯一 replacement Task。完整边界和命令见 [SPEC-0010 证据](../specs/0010-task-recovery/evidence.md) 与 [任务恢复 SOP](runbooks/task-recovery.md)。
+
+## 2026-09-25 · 持久一次性提醒与本地通知
+
+`SPEC-0011` 新增独立 `packages/reminders`。Reminder 保存 owner/principal、绝对 fireAt、IANA timezone、`latest / skip` 误点策略和幂等摘要；Notification 使用 Host 生成的 dedupe key。提醒终结与通知创建在同一 SQLite 事务中，重复 timer、重复启动和幂等重传不会产生第二条通知。
+
+runtime owner 在线时只维护一个最早 timer；启动前错过的 latest 提醒补一条本地通知，skip 提醒明确终结为 skipped。检测到另一个活跃 runtime 时，临时 CLI 以 passive 模式访问已有数据，不启动第二个 scheduler，也不创建新提醒。提醒不创建 Task、不调用 DSH 或 Action。
+
+Gateway、CLI 和 Workbench 支持创建/取消提醒、查看计划、读取和确认本地通知。本机真实 timer 与独立 CLI 进程 catch-up 已验证；`pnpm check` 通过 25 个测试文件、195 项，Playwright 桌面/320px 移动共 14 项通过。该能力不包含系统通知、移动 push、周期任务、自然语言时间解析、安静时间或离线唤醒。细节见 [SPEC-0011 证据](../specs/0011-reminders/evidence.md) 与 [提醒 SOP](runbooks/reminders.md)。
 
 ## 状态标注规则
 

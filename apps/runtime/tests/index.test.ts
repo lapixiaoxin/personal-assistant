@@ -145,4 +145,81 @@ describe('runtime composition', () => {
     expect(execute).not.toHaveBeenCalled()
     await runtime.close()
   })
+
+  it('catches up a persistent reminder without creating a task or calling the executor', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'lumi-runtime-reminder-'))
+    temporaryDirectories.push(directory)
+    const dbPath = join(directory, 'assistant.db')
+    const execute = vi.fn(async () => ({ output: 'must not run' }))
+    const first = createAssistantRuntime({
+      dbPath,
+      executor: { execute },
+      ownerId: 'owner-one',
+      principalId: 'user-one',
+      reminderService: {
+        now: () => '2026-09-25T10:00:00.000Z',
+      },
+    })
+    await first.ready
+    first.reminders.create(first.identity.localPrincipal(), {
+      content: 'Review the persistent reminder',
+      fireAt: '2026-09-25T10:05:00.000Z',
+      idempotencyKey: 'runtime-reminder',
+      misfirePolicy: 'latest',
+      timezone: 'UTC',
+    })
+    await first.close()
+
+    const second = createAssistantRuntime({
+      dbPath,
+      executor: { execute },
+      ownerId: 'owner-one',
+      principalId: 'user-one',
+      reminderService: {
+        now: () => '2026-09-25T10:10:00.000Z',
+      },
+    })
+    await second.ready
+
+    expect(second.reminders.list(second.identity.localPrincipal())).toEqual([
+      expect.objectContaining({ status: 'fired' }),
+    ])
+    expect(second.reminders.listNotifications(second.identity.localPrincipal())).toEqual([
+      expect.objectContaining({
+        content: 'Review the persistent reminder',
+        status: 'unread',
+      }),
+    ])
+    expect(second.ledger.listTasks({ limit: 200 })).toEqual([])
+    expect(execute).not.toHaveBeenCalled()
+    await second.close()
+  })
+
+  it('keeps a second local runtime passive while the scheduler owner is alive', async () => {
+    const directory = mkdtempSync(join(tmpdir(), 'lumi-runtime-reminder-owner-'))
+    temporaryDirectories.push(directory)
+    const dbPath = join(directory, 'assistant.db')
+    const first = createAssistantRuntime({
+      dbPath,
+      executor: { execute: async () => ({ output: 'unused' }) },
+    })
+    await first.ready
+    const second = createAssistantRuntime({
+      dbPath,
+      executor: { execute: async () => ({ output: 'unused' }) },
+    })
+
+    await expect(second.ready).resolves.toMatchObject({
+      skippedActiveRuntime: true,
+    })
+    expect(() => second.reminders.create(second.identity.localPrincipal(), {
+      content: 'Must use the active runtime',
+      fireAt: new Date(Date.now() + 60_000).toISOString(),
+      idempotencyKey: 'passive-runtime-reminder',
+      misfirePolicy: 'latest',
+      timezone: 'UTC',
+    })).toThrow('Another local runtime owns reminder scheduling')
+    await second.close()
+    await first.close()
+  })
 })

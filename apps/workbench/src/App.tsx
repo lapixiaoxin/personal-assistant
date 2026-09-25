@@ -25,6 +25,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ActionInbox } from './ActionInbox.tsx'
 import { MemoryVault } from './MemoryVault.tsx'
+import { ReminderInbox } from './ReminderInbox.tsx'
 import {
   ApiError,
   createTaskId,
@@ -70,18 +71,27 @@ const stateLabels: Record<TaskState, string> = {
 export function App({ api = defaultApi }: AppProps) {
   const [workspace, setWorkspace] = useState<WorkspaceView>('tasks')
   const [actionCount, setActionCount] = useState(0)
+  const [notificationCount, setNotificationCount] = useState(0)
 
   useEffect(() => {
     let active = true
-    void api.listActions()
-      .then(actions => {
-        if (active) {
-          setActionCount(actions.filter(item => isActionAwaitingUser(item.action)).length)
-        }
-      })
-      .catch(() => undefined)
+    const refreshCounts = (): void => {
+      void Promise.all([api.listActions(), api.listNotifications()])
+        .then(([actions, notifications]) => {
+          if (active) {
+            setActionCount(actions.filter(item => isActionAwaitingUser(item.action)).length)
+            setNotificationCount(
+              notifications.filter(item => item.status === 'unread').length,
+            )
+          }
+        })
+        .catch(() => undefined)
+    }
+    refreshCounts()
+    const timer = window.setInterval(refreshCounts, 2_000)
     return () => {
       active = false
+      window.clearInterval(timer)
     }
   }, [api])
 
@@ -90,6 +100,7 @@ export function App({ api = defaultApi }: AppProps) {
       <ActionInbox
         actionCount={actionCount}
         api={api}
+        notificationCount={notificationCount}
         onActionCountChange={setActionCount}
         onWorkspaceChange={setWorkspace}
       />
@@ -100,6 +111,18 @@ export function App({ api = defaultApi }: AppProps) {
       <MemoryVault
         actionCount={actionCount}
         api={api}
+        notificationCount={notificationCount}
+        onWorkspaceChange={setWorkspace}
+      />
+    )
+  }
+  if (workspace === 'reminders') {
+    return (
+      <ReminderInbox
+        actionCount={actionCount}
+        api={api}
+        notificationCount={notificationCount}
+        onNotificationCountChange={setNotificationCount}
         onWorkspaceChange={setWorkspace}
       />
     )
@@ -109,6 +132,7 @@ export function App({ api = defaultApi }: AppProps) {
     <TaskWorkspace
       actionCount={actionCount}
       api={api}
+      notificationCount={notificationCount}
       onWorkspaceChange={setWorkspace}
     />
   )
@@ -117,10 +141,12 @@ export function App({ api = defaultApi }: AppProps) {
 function TaskWorkspace({
   actionCount,
   api,
+  notificationCount,
   onWorkspaceChange,
 }: {
   actionCount: number
   api: LumiApiClient
+  notificationCount: number
   onWorkspaceChange: (view: WorkspaceView) => void
 }) {
   const [health, setHealth] = useState<HealthStatus>()
@@ -329,6 +355,7 @@ function TaskWorkspace({
 
         <WorkspaceSwitcher
           actionCount={actionCount}
+          notificationCount={notificationCount}
           onChange={onWorkspaceChange}
           value="tasks"
         />

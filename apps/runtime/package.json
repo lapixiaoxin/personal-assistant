@@ -16,6 +16,7 @@
     "@lumi/policy": "workspace:*",
     "@lumi/research-sources": "workspace:*",
     "@lumi/research-workflow": "workspace:*",
+    "@lumi/reminders": "workspace:*",
     "@lumi/task-recovery": "workspace:*",
     "@lumi/task-ledger": "workspace:*"
   },

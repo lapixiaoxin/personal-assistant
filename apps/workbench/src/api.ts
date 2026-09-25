@@ -10,10 +10,13 @@ import type {
   MemoryPurpose,
   MemoryScope,
   MemoryStatus,
+  NotificationRecord,
   PersonalMemory,
   PersonalMemoryTombstone,
   RecoveryRecord,
   RecoveryRetryResult,
+  ReminderMisfirePolicy,
+  ReminderRecord,
   TaskDetail,
   TaskEvent,
   TaskRecord,
@@ -57,6 +60,14 @@ export interface MemoryCorrectionInput {
   scope?: MemoryScope
 }
 
+export interface ReminderInput {
+  content: string
+  fireAt: string
+  idempotencyKey: string
+  misfirePolicy: ReminderMisfirePolicy
+  timezone: string
+}
+
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -70,6 +81,7 @@ export class ApiError extends Error {
 
 export interface LumiApiClient {
   acknowledgeRecovery(recoveryId: string): Promise<RecoveryRecord>
+  acknowledgeNotification(notificationId: string): Promise<NotificationRecord>
   authorizeAction(actionId: string): Promise<ActionDetail>
   approve(taskId: string): Promise<TaskRecord>
   cancel(taskId: string): Promise<TaskRecord>
@@ -78,6 +90,7 @@ export interface LumiApiClient {
   confirmMemory(memoryId: string): Promise<PersonalMemory>
   correctMemory(memoryId: string, input: MemoryCorrectionInput): Promise<PersonalMemory>
   createMemory(input: MemoryInput): Promise<PersonalMemory>
+  createReminder(input: ReminderInput): Promise<ReminderRecord>
   executeAction(actionId: string): Promise<ActionDetail>
   forgetMemory(memoryId: string): Promise<PersonalMemoryTombstone>
   getAction(actionId: string): Promise<ActionDetail>
@@ -88,10 +101,13 @@ export interface LumiApiClient {
   health(): Promise<HealthStatus>
   listActions(): Promise<ActionDetail[]>
   listMemories(): Promise<PersonalMemory[]>
+  listNotifications(): Promise<NotificationRecord[]>
+  listReminders(): Promise<ReminderRecord[]>
   listTasks(): Promise<TaskRecord[]>
   reconcileAction(actionId: string): Promise<ActionDetail>
   reject(taskId: string): Promise<TaskRecord>
   retractMemory(memoryId: string): Promise<PersonalMemory>
+  cancelReminder(reminderId: string): Promise<ReminderRecord>
   retryRecovery(recoveryId: string): Promise<RecoveryRetryResult>
   submitMeetingBrief(input: MeetingBriefInput, id: string): Promise<TaskDetail>
   submitResearchBrief(question: string, sources: string[], id: string): Promise<TaskDetail>
@@ -125,6 +141,16 @@ export class LumiApi implements LumiApiClient {
 
   listMemories(): Promise<PersonalMemory[]> {
     return this.request<DataEnvelope<PersonalMemory[]>>('/v2/memories?limit=100')
+      .then(response => response.data)
+  }
+
+  listReminders(): Promise<ReminderRecord[]> {
+    return this.request<DataEnvelope<ReminderRecord[]>>('/v2/reminders?limit=100')
+      .then(response => response.data)
+  }
+
+  listNotifications(): Promise<NotificationRecord[]> {
+    return this.request<DataEnvelope<NotificationRecord[]>>('/v2/notifications?limit=100')
       .then(response => response.data)
   }
 
@@ -202,6 +228,14 @@ export class LumiApi implements LumiApiClient {
     }).then(response => response.data)
   }
 
+  createReminder(input: ReminderInput): Promise<ReminderRecord> {
+    return this.request<DataEnvelope<ReminderRecord>>('/v2/reminders', {
+      body: JSON.stringify(input),
+      headers: { 'content-type': 'application/json' },
+      method: 'POST',
+    }).then(response => response.data)
+  }
+
   confirmMemory(memoryId: string): Promise<PersonalMemory> {
     return this.memoryCommand(memoryId, 'confirm')
   }
@@ -254,6 +288,28 @@ export class LumiApi implements LumiApiClient {
 
   cancelAction(actionId: string): Promise<ActionCancellationResult> {
     return this.actionCommand<ActionCancellationResult>(actionId, 'cancel')
+  }
+
+  cancelReminder(reminderId: string): Promise<ReminderRecord> {
+    return this.request<DataEnvelope<ReminderRecord>>(
+      `/v2/reminders/${encodeURIComponent(reminderId)}/cancel`,
+      {
+        body: JSON.stringify({}),
+        headers: { 'content-type': 'application/json' },
+        method: 'POST',
+      },
+    ).then(response => response.data)
+  }
+
+  acknowledgeNotification(notificationId: string): Promise<NotificationRecord> {
+    return this.request<DataEnvelope<NotificationRecord>>(
+      `/v2/notifications/${encodeURIComponent(notificationId)}/acknowledge`,
+      {
+        body: JSON.stringify({}),
+        headers: { 'content-type': 'application/json' },
+        method: 'POST',
+      },
+    ).then(response => response.data)
   }
 
   retryRecovery(recoveryId: string): Promise<RecoveryRetryResult> {

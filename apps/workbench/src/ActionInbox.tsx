@@ -41,11 +41,13 @@ const actionStatusLabels: Record<ActionStatus, string> = {
 export function ActionInbox({
   actionCount,
   api,
+  notificationCount,
   onActionCountChange,
   onWorkspaceChange,
 }: {
   actionCount: number
   api: LumiApiClient
+  notificationCount: number
   onActionCountChange: (count: number) => void
   onWorkspaceChange: (view: WorkspaceView) => void
 }) {
@@ -160,6 +162,7 @@ export function ActionInbox({
 
         <WorkspaceSwitcher
           actionCount={actionCount}
+          notificationCount={notificationCount}
           onChange={onWorkspaceChange}
           value="actions"
         />

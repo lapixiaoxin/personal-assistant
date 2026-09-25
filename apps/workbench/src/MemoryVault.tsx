@@ -71,12 +71,14 @@ const allPurposes = Object.keys(purposeLabels) as MemoryPurpose[]
 interface MemoryVaultProps {
   actionCount: number
   api: LumiApiClient
+  notificationCount: number
   onWorkspaceChange: (view: WorkspaceView) => void
 }
 
 export function MemoryVault({
   actionCount,
   api,
+  notificationCount,
   onWorkspaceChange,
 }: MemoryVaultProps) {
   const [memories, setMemories] = useState<PersonalMemory[]>([])
@@ -224,6 +226,7 @@ export function MemoryVault({
 
         <WorkspaceSwitcher
           actionCount={actionCount}
+          notificationCount={notificationCount}
           onChange={onWorkspaceChange}
           value="memories"
         />

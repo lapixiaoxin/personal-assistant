@@ -317,3 +317,69 @@ test('reviews an interrupted task and creates one replacement task', async ({ pa
   })
   expect(consoleErrors).toEqual([])
 })
+
+test('schedules and acknowledges a local reminder notification', async ({ page, request }, testInfo) => {
+  const consoleErrors: string[] = []
+  page.on('console', (message) => {
+    if (message.type() === 'error') consoleErrors.push(message.text())
+  })
+  page.on('pageerror', error => consoleErrors.push(error.message))
+
+  const suffix = `${testInfo.project.name}-${Date.now()}`
+  const content = `检查提醒 ${suffix}`
+  const fireAt = new Date(Date.now() + 3_000)
+  if (testInfo.project.name === 'mobile') {
+    await page.setViewportSize({ height: 800, width: 320 })
+  }
+  await page.goto(`/#token=${token}`)
+  await page.getByRole('tab', { name: /提醒/ }).click()
+  await page.getByLabel('提醒内容').fill(content)
+  await page.getByLabel('提醒时间').fill(localDateTimeValue(fireAt))
+  await page.getByRole('button', { name: '创建提醒' }).click()
+
+  await expect(page.locator('.state-badge.reminder-scheduled')).toHaveText('待提醒')
+  const acknowledge = page.getByRole('button', { name: `确认通知 ${content}` })
+  await expect(acknowledge).toBeVisible({ timeout: 8_000 })
+  await acknowledge.click()
+  await expect(acknowledge).toHaveCount(0)
+
+  const notifications = await request.get('/v2/notifications?limit=100', {
+    headers: { authorization: `Bearer ${token}` },
+  })
+  expect(notifications.status()).toBe(200)
+  expect(((await notifications.json()).data as Array<{
+    content: string
+    status: string
+  }>)).toContainEqual(expect.objectContaining({
+    content,
+    status: 'acknowledged',
+  }))
+  const reminders = await request.get('/v2/reminders?limit=100', {
+    headers: { authorization: `Bearer ${token}` },
+  })
+  expect(((await reminders.json()).data as Array<{
+    content: string
+    status: string
+  }>)).toContainEqual(expect.objectContaining({
+    content,
+    status: 'fired',
+  }))
+
+  const noHorizontalOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth <= window.innerWidth,
+  )
+  expect(noHorizontalOverflow).toBe(true)
+
+  const screenshotDir = join(process.cwd(), 'data', 'workbench-evidence')
+  await mkdir(screenshotDir, { recursive: true })
+  await page.screenshot({
+    fullPage: true,
+    path: join(screenshotDir, `reminder-${testInfo.project.name}.png`),
+  })
+  expect(consoleErrors).toEqual([])
+})
+
+function localDateTimeValue(date: Date): string {
+  const offset = date.getTimezoneOffset() * 60_000
+  return new Date(date.getTime() - offset).toISOString().slice(0, 19)
+}

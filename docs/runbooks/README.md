@@ -11,6 +11,7 @@
 | [结构化会议准备简报](meeting-brief.md) | verified_once | 显式会议上下文、无 Host 工具 profile、六段结构校验及一次 MiniMax 虚构样本 |
 | [可控个人记忆](personal-memory.md) | verified_once | SQLite 生命周期、owner/用途/分级过滤、Workbench 控制及一次 MiniMax 非敏感记忆样本 |
 | [单机任务重启恢复](task-recovery.md) | verified_once | stale PID、queued 续调度、interrupted 新 Task 重试、Action reconciling 与桌面/移动流程 |
+| [一次性提醒与本地通知](reminders.md) | verified_once | 单 timer、latest/skip、跨进程 catch-up、通知去重/确认与桌面/移动流程 |
 | [设计文档发布与读回](design-publication.md) | verified_once | v0.2 系列及 DSH 六图专题、正文/源码读回、父节点与逐图预览 |
 | [Agent 版本管理](version-control.md) | verified_once | main 初始提交、暂存边界与提交后核验 |
 | [真实任务验收](live-acceptance.md) | planned | 尚未通过个人助手执行真实外部服务操作 |

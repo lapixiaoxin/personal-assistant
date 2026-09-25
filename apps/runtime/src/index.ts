@@ -49,6 +49,12 @@ import {
   type ResearchSourceStore,
 } from '@lumi/research-workflow'
 import {
+  ReminderService,
+  SqliteReminderStore,
+  type ReminderServiceOptions,
+  type ReminderStore,
+} from '@lumi/reminders'
+import {
   RecoveryService,
   type RecoveryStartupReport,
 } from '@lumi/task-recovery'
@@ -70,6 +76,7 @@ export interface AssistantRuntime {
   meeting: MeetingBriefWorkflow
   ready: Promise<RecoveryStartupReport>
   recovery: RecoveryService
+  reminders: ReminderService
   research: ResearchBriefWorkflow
   close(): Promise<void>
 }
@@ -89,6 +96,8 @@ export interface RuntimeOptions {
   policy?: PolicyEngine
   principalId?: string
   publicSourceFetcher?: PublicSourceFetcher
+  reminderService?: Omit<ReminderServiceOptions, 'store'>
+  reminderStore?: ReminderStore
   researchRoot?: string
   researchSourceStore?: ResearchSourceStore
 }
@@ -165,12 +174,25 @@ export function createAssistantRuntime(options: RuntimeOptions = {}): AssistantR
   const core = new AssistantCore(ledger, router, policy, executor)
   const meeting = new MeetingBriefWorkflow(core)
   const research = new ResearchBriefWorkflow(core)
+  const reminders = new ReminderService({
+    ...options.reminderService,
+    store: options.reminderStore ?? new SqliteReminderStore({
+      filename: dbPath,
+    }),
+  })
   const recovery = new RecoveryService({
     actions,
     core,
     ledger,
   })
-  const ready = recovery.initialize(identity.localPrincipal())
+  const principal = identity.localPrincipal()
+  const ready = recovery.initialize(principal).then((report) => {
+    reminders.initialize(
+      principal,
+      report.skippedActiveRuntime ? 'passive' : 'active',
+    )
+    return report
+  })
 
   return {
     actions,
@@ -183,15 +205,20 @@ export function createAssistantRuntime(options: RuntimeOptions = {}): AssistantR
     meeting,
     ready,
     recovery,
+    reminders,
     research,
     close: async () => {
       try {
         await ready
       } finally {
         try {
-          await core.close()
+          reminders.close()
         } finally {
-          memories.close()
+          try {
+            await core.close()
+          } finally {
+            memories.close()
+          }
         }
       }
     },

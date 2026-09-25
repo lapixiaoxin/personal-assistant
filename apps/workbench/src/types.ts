@@ -237,3 +237,42 @@ export interface PersonalMemoryTombstone {
   lastRevision: number
   ownerId: string
 }
+
+export type ReminderMisfirePolicy = 'latest' | 'skip'
+export type ReminderStatus = 'scheduled' | 'fired' | 'skipped' | 'cancelled'
+
+export interface ReminderRecord {
+  cancelledAt: string | null
+  content: string
+  createdAt: string
+  fireAt: string
+  firedAt: string | null
+  id: string
+  idempotencyKey: string
+  misfirePolicy: ReminderMisfirePolicy
+  nextFireAt: string | null
+  notificationId: string | null
+  ownerId: string
+  principalId: string
+  requestDigest: string
+  schemaVersion: 'lumi.reminder/v1'
+  skippedAt: string | null
+  status: ReminderStatus
+  timezone: string
+  updatedAt: string
+}
+
+export type NotificationStatus = 'unread' | 'acknowledged'
+
+export interface NotificationRecord {
+  acknowledgedAt: string | null
+  content: string
+  createdAt: string
+  dedupeKey: string
+  id: string
+  ownerId: string
+  principalId: string
+  reminderId: string
+  schemaVersion: 'lumi.notification/v1'
+  status: NotificationStatus
+}

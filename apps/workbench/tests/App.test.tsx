@@ -8,8 +8,10 @@ import type {
   ActionDetail,
   ActionStatus,
   ApprovalRecord,
+  NotificationRecord,
   PersonalMemory,
   RecoveryRecord,
+  ReminderRecord,
   TaskRecord,
 } from '../src/types.ts'
 
@@ -71,10 +73,14 @@ function fakeApiWithActions(
   initialActions: ActionDetail[] = [],
   initialMemories: PersonalMemory[] = [],
   initialRecoveries: RecoveryRecord[] = [],
+  initialReminders: ReminderRecord[] = [],
+  initialNotifications: NotificationRecord[] = [],
 ): LumiApiClient {
   let actions = initialActions
   let memoryRecords = initialMemories
+  let notificationRecords = initialNotifications
   let recoveries = initialRecoveries
+  let reminderRecords = initialReminders
   let taskRecords = tasks
   const replaceAction = (actionId: string, status: ActionStatus): ActionDetail => {
     const current = actions.find(item => item.action.id === actionId)
@@ -111,6 +117,18 @@ function fakeApiWithActions(
   }
 
   return {
+    acknowledgeNotification: vi.fn(async notificationId => {
+      const current = notificationRecords.find(item => item.id === notificationId)
+      if (!current) throw new Error(`Notification not found: ${notificationId}`)
+      const next: NotificationRecord = {
+        ...current,
+        acknowledgedAt: '2026-09-25T09:06:00.000Z',
+        status: 'acknowledged',
+      }
+      notificationRecords = notificationRecords.map(item =>
+        item.id === notificationId ? next : item)
+      return next
+    }),
     acknowledgeRecovery: vi.fn(async recoveryId => {
       const current = recoveries.find(recovery => recovery.id === recoveryId)
       if (!current) throw new Error(`Recovery not found: ${recoveryId}`)
@@ -131,6 +149,19 @@ function fakeApiWithActions(
       effectMayRemain: false,
       preventedExecution: true,
     })),
+    cancelReminder: vi.fn(async reminderId => {
+      const current = reminderRecords.find(item => item.id === reminderId)
+      if (!current) throw new Error(`Reminder not found: ${reminderId}`)
+      const next: ReminderRecord = {
+        ...current,
+        cancelledAt: '2026-09-25T09:04:00.000Z',
+        nextFireAt: null,
+        status: 'cancelled',
+        updatedAt: '2026-09-25T09:04:00.000Z',
+      }
+      reminderRecords = reminderRecords.map(item => item.id === reminderId ? next : item)
+      return next
+    }),
     capabilities: vi.fn(async () => []),
     confirmMemory: vi.fn(async memoryId => {
       const current = memoryRecords.find(memory => memory.id === memoryId)
@@ -175,6 +206,30 @@ function fakeApiWithActions(
       memoryRecords = [next, ...memoryRecords]
       return next
     }),
+    createReminder: vi.fn(async input => {
+      const next: ReminderRecord = {
+        cancelledAt: null,
+        content: input.content,
+        createdAt: '2026-09-25T09:00:00.000Z',
+        fireAt: input.fireAt,
+        firedAt: null,
+        id: 'reminder-created',
+        idempotencyKey: input.idempotencyKey,
+        misfirePolicy: input.misfirePolicy,
+        nextFireAt: input.fireAt,
+        notificationId: null,
+        ownerId: 'local-owner',
+        principalId: 'local-user',
+        requestDigest: `sha256:${'a'.repeat(64)}`,
+        schemaVersion: 'lumi.reminder/v1',
+        skippedAt: null,
+        status: 'scheduled',
+        timezone: input.timezone,
+        updatedAt: '2026-09-25T09:00:00.000Z',
+      }
+      reminderRecords = [next, ...reminderRecords]
+      return next
+    }),
     executeAction: vi.fn(async actionId => replaceAction(actionId, 'succeeded')),
     forgetMemory: vi.fn(async memoryId => {
       const current = memoryRecords.find(memory => memory.id === memoryId)
@@ -204,6 +259,8 @@ function fakeApiWithActions(
     health: vi.fn(async () => ({ executor: 'mock', status: 'ok' })),
     listActions: vi.fn(async () => actions),
     listMemories: vi.fn(async () => memoryRecords),
+    listNotifications: vi.fn(async () => notificationRecords),
+    listReminders: vi.fn(async () => reminderRecords),
     listTasks: vi.fn(async () => taskRecords),
     reconcileAction: vi.fn(async actionId => replaceAction(actionId, 'succeeded')),
     reject: vi.fn(async () => ({ ...waitingTask, state: 'cancelled' as const })),
@@ -334,6 +391,44 @@ function recoveryRecord(
   }
 }
 
+function reminderRecord(status: ReminderRecord['status'] = 'scheduled'): ReminderRecord {
+  return {
+    cancelledAt: null,
+    content: 'Review the release checklist',
+    createdAt: '2026-09-25T09:00:00.000Z',
+    fireAt: '2026-09-25T09:05:00.000Z',
+    firedAt: status === 'fired' ? '2026-09-25T09:05:00.000Z' : null,
+    id: 'reminder-one',
+    idempotencyKey: 'reminder-one-key',
+    misfirePolicy: 'latest',
+    nextFireAt: status === 'scheduled' ? '2026-09-25T09:05:00.000Z' : null,
+    notificationId: status === 'fired' ? 'notification-one' : null,
+    ownerId: 'local-owner',
+    principalId: 'local-user',
+    requestDigest: `sha256:${'b'.repeat(64)}`,
+    schemaVersion: 'lumi.reminder/v1',
+    skippedAt: null,
+    status,
+    timezone: 'UTC',
+    updatedAt: '2026-09-25T09:05:00.000Z',
+  }
+}
+
+function notificationRecord(): NotificationRecord {
+  return {
+    acknowledgedAt: null,
+    content: 'Review the release checklist',
+    createdAt: '2026-09-25T09:05:00.000Z',
+    dedupeKey: 'reminder:reminder-one',
+    id: 'notification-one',
+    ownerId: 'local-owner',
+    principalId: 'local-user',
+    reminderId: 'reminder-one',
+    schemaVersion: 'lumi.notification/v1',
+    status: 'unread',
+  }
+}
+
 function actionDetail(status: ActionStatus): ActionDetail {
   return {
     action: {
@@ -450,6 +545,53 @@ describe('Workbench', () => {
     expect(screen.queryByRole('button', { name: '创建新任务' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: '前往动作对账' }))
     expect(await screen.findByText('暂无动作')).toBeTruthy()
+  })
+
+  it('creates a one-time reminder with an explicit misfire policy', async () => {
+    const api = fakeApi()
+    render(<App api={api} />)
+
+    fireEvent.click(await screen.findByRole('tab', { name: '提醒' }))
+    fireEvent.change(screen.getByLabelText('提醒内容'), {
+      target: { value: 'Review the release checklist' },
+    })
+    const localTime = '2026-09-26T10:00:00'
+    fireEvent.change(screen.getByLabelText('提醒时间'), {
+      target: { value: localTime },
+    })
+    fireEvent.click(screen.getByRole('button', { name: '过时跳过' }))
+    fireEvent.click(screen.getByRole('button', { name: '创建提醒' }))
+
+    await waitFor(() => {
+      expect(api.createReminder).toHaveBeenCalledWith({
+        content: 'Review the release checklist',
+        fireAt: new Date(localTime).toISOString(),
+        idempotencyKey: expect.stringMatching(/^reminder-/),
+        misfirePolicy: 'skip',
+        timezone: expect.any(String),
+      })
+    })
+    expect(await screen.findAllByText('待提醒')).toHaveLength(2)
+  })
+
+  it('shows and acknowledges an unread reminder notification', async () => {
+    const reminder = reminderRecord('fired')
+    const notification = notificationRecord()
+    const api = fakeApiWithActions([], [], [], [], [reminder], [notification])
+    render(<App api={api} />)
+
+    fireEvent.click(await screen.findByRole('tab', { name: /提醒/ }))
+    expect(await screen.findAllByText(notification.content)).not.toHaveLength(0)
+    fireEvent.click(screen.getByRole('button', {
+      name: `确认通知 ${notification.content}`,
+    }))
+
+    await waitFor(() => {
+      expect(api.acknowledgeNotification).toHaveBeenCalledWith(notification.id)
+    })
+    expect(screen.queryByRole('button', {
+      name: `确认通知 ${notification.content}`,
+    })).toBeNull()
   })
 
   it('submits a research brief with explicit source URLs', async () => {

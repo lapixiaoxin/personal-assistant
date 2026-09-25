@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { ApiError, isTaskActive, LumiApi, type MemoryInput } from '../src/api.ts'
 import type {
   ActionDetail,
+  NotificationRecord,
   PersonalMemory,
   RecoveryRecord,
+  ReminderRecord,
   TaskRecord,
 } from '../src/types.ts'
 
@@ -90,6 +92,40 @@ const recovery: RecoveryRecord = {
   schemaVersion: 'lumi.recovery/v1',
   status: 'pending',
   taskId: task.id,
+}
+
+const reminder: ReminderRecord = {
+  cancelledAt: null,
+  content: 'Review release',
+  createdAt: '2026-09-25T09:00:00.000Z',
+  fireAt: '2026-09-25T09:05:00.000Z',
+  firedAt: null,
+  id: 'reminder-one',
+  idempotencyKey: 'reminder-one-key',
+  misfirePolicy: 'latest',
+  nextFireAt: '2026-09-25T09:05:00.000Z',
+  notificationId: null,
+  ownerId: 'local-owner',
+  principalId: 'local-user',
+  requestDigest: `sha256:${'c'.repeat(64)}`,
+  schemaVersion: 'lumi.reminder/v1',
+  skippedAt: null,
+  status: 'scheduled',
+  timezone: 'UTC',
+  updatedAt: '2026-09-25T09:00:00.000Z',
+}
+
+const notification: NotificationRecord = {
+  acknowledgedAt: null,
+  content: reminder.content,
+  createdAt: reminder.fireAt,
+  dedupeKey: `reminder:${reminder.id}`,
+  id: 'notification-one',
+  ownerId: reminder.ownerId,
+  principalId: reminder.principalId,
+  reminderId: reminder.id,
+  schemaVersion: 'lumi.notification/v1',
+  status: 'unread',
 }
 
 describe('LumiApi', () => {
@@ -352,6 +388,55 @@ describe('LumiApi', () => {
       expect(request?.method).toBe('POST')
       expect(request?.body).toBe(JSON.stringify({}))
     }
+  })
+
+  it('uses the reminder and notification lifecycle endpoints', async () => {
+    const calls: Array<[RequestInfo | URL, RequestInit | undefined]> = []
+    const fetcher: typeof fetch = async (input, init) => {
+      calls.push([input, init])
+      const path = String(input)
+      const data = path === '/v2/reminders'
+        ? reminder
+        : path === '/v2/reminders?limit=100'
+          ? [reminder]
+          : path === '/v2/notifications?limit=100'
+            ? [notification]
+            : path.includes('/notifications/')
+              ? { ...notification, status: 'acknowledged' }
+              : { ...reminder, status: 'cancelled' }
+      return new Response(JSON.stringify({ data }), {
+        headers: { 'content-type': 'application/json' },
+        status: path === '/v2/reminders' ? 201 : 200,
+      })
+    }
+    const api = new LumiApi(fetcher, 'test-token')
+    const input = {
+      content: reminder.content,
+      fireAt: reminder.fireAt,
+      idempotencyKey: reminder.idempotencyKey,
+      misfirePolicy: reminder.misfirePolicy,
+      timezone: reminder.timezone,
+    }
+
+    await api.createReminder(input)
+    await api.listReminders()
+    await api.cancelReminder(reminder.id)
+    await api.listNotifications()
+    await api.acknowledgeNotification(notification.id)
+
+    expect(calls.map(([path]) => path)).toEqual([
+      '/v2/reminders',
+      '/v2/reminders?limit=100',
+      '/v2/reminders/reminder-one/cancel',
+      '/v2/notifications?limit=100',
+      '/v2/notifications/notification-one/acknowledge',
+    ])
+    expect(calls[0]?.[1]).toMatchObject({
+      body: JSON.stringify(input),
+      method: 'POST',
+    })
+    expect(calls[2]?.[1]?.method).toBe('POST')
+    expect(calls[4]?.[1]?.method).toBe('POST')
   })
 })
 

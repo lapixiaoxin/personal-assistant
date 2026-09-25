@@ -3,6 +3,7 @@ import {
   ActionProposalSubmissionSchema,
   createTaskRequest,
   RecoveryRecordSchema,
+  ReminderCreateSchema,
   TaskRequestSchema,
   TaskStateSchema,
   TaskSubmissionSchema,
@@ -76,6 +77,31 @@ describe('recovery contracts', () => {
       safeToRetry: true,
       status: 'pending',
     })
+  })
+})
+
+describe('reminder contracts', () => {
+  it('accepts an absolute time and supported IANA timezone', () => {
+    expect(ReminderCreateSchema.parse({
+      content: 'Review the release checklist',
+      fireAt: '2026-09-25T18:30:00+08:00',
+      idempotencyKey: 'release-checklist',
+      timezone: 'Asia/Shanghai',
+    })).toMatchObject({
+      misfirePolicy: 'latest',
+      timezone: 'Asia/Shanghai',
+    })
+  })
+
+  it.each([
+    { fireAt: '2026-09-25T18:30:00', timezone: 'Asia/Shanghai' },
+    { fireAt: '2026-09-25T18:30:00+08:00', timezone: 'Mars/Olympus' },
+  ])('rejects ambiguous reminder time %#', (input) => {
+    expect(() => ReminderCreateSchema.parse({
+      content: 'Invalid reminder',
+      idempotencyKey: 'invalid-reminder',
+      ...input,
+    })).toThrow()
   })
 })
 

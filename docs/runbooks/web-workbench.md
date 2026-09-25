@@ -1,6 +1,6 @@
 # 本地 Web 工作台
 
-状态：verified_once · 2026-09-25。适用版本：SPEC-0004 v0.1、SPEC-0006 v0.1、SPEC-0007 v0.1、SPEC-0008 v0.1、SPEC-0009 v0.1、SPEC-0010 v0.1，本机 Node 22.19.0、pnpm 10.20.0。浏览器任务 executor 使用 mock；Action、Personal Memory 与 Recovery 经过真实本地运行时和 SQLite。研究、会议和记忆真实模型的独立验收分别见对应 SOP。
+状态：verified_once · 2026-09-25。适用版本：SPEC-0004 v0.1、SPEC-0006 v0.1、SPEC-0007 v0.1、SPEC-0008 v0.1、SPEC-0009 v0.1、SPEC-0010 v0.1、SPEC-0011 v0.1，本机 Node 22.19.0、pnpm 10.20.0。浏览器任务 executor 使用 mock；Action、Personal Memory、Recovery 与 Reminder 经过真实本地运行时和 SQLite。研究、会议和记忆真实模型的独立验收分别见对应 SOP。
 
 ## 前置
 
@@ -31,6 +31,7 @@ pnpm dev:web
 - 成功动作显示 Authorization、Receipt、Verification 和产物引用，不显示动作正文。
 - 顶部“记忆”视图可按状态筛选记录，显式设置用途/scope/分级，并执行确认、纠正、撤回或二次确认遗忘。
 - interrupted Task 显示恢复原因；`retry_available` 可创建新 Task，manual_review 只允许确认已检查，Action 未知结果转到动作页对账。
+- 顶部“提醒”视图可创建一次性提醒、选择 latest/skip、查看计划和确认本地通知。
 
 ## 生产构建运行
 
@@ -55,7 +56,7 @@ PLAYWRIGHT_BROWSERS_PATH=./data/playwright-browsers pnpm exec playwright install
 PLAYWRIGHT_BROWSERS_PATH=./data/playwright-browsers pnpm test:e2e
 ```
 
-测试启动 mock executor 的 Gateway，在桌面 Chrome 和移动 Chromium 视口执行六组流程：
+测试启动 mock executor 的 Gateway，在桌面 Chrome 和移动 Chromium 视口执行七组流程：
 
 1. 任务提交、任务级审批和状态刷新。
 2. API 准备 Action，页面授权并执行，随后经 API 读取 Receipt/Verification，并从回执文件 URL 独立读回正文。
@@ -63,8 +64,9 @@ PLAYWRIGHT_BROWSERS_PATH=./data/playwright-browsers pnpm test:e2e
 4. 提交结构化会议准备，确认路由、六段结果渲染和 structure verifier 通过。
 5. 创建候选记忆并依次确认、纠正、撤回和彻底遗忘，API 读回确认正文已不可访问。
 6. 注入持久 interrupted Task，页面读取 Recovery 判定并创建唯一 replacement Task，原记录保留。
+7. 创建三秒后的本地提醒，等待真实 timer 生成通知并确认，API 读回 Reminder fired / Notification acknowledged。
 
-六组流程均检查横向溢出和浏览器 console error。截图、隔离数据库、artifact 与 trace 写入 `data/`，不提交。
+七组流程均检查横向溢出和浏览器 console error。截图、隔离数据库、artifact 与 trace 写入 `data/`，不提交。
 
 ## 已知限制
 
@@ -72,6 +74,7 @@ PLAYWRIGHT_BROWSERS_PATH=./data/playwright-browsers pnpm test:e2e
 - 任务视图的审批仍是任务级；Action Inbox 才提供参数摘要绑定的动作授权，两者不合并。
 - Action Inbox 当前只支持已注册的 `local-artifact@1.0.0 / artifact.write`，不代表真实外部 connector 已启用。
 - Memory Vault 只管理显式记录；没有自动对话抽取、语义检索或跨设备同步。`personal` 会进入模型，sensitive/secret 不自动注入。
+- Reminder 只有一次性本地 inbox；没有系统/移动 push、周期规则、自然语言时间、安静时间或离线唤醒。
 - 当前没有产品级 Conversation、token 流、远程认证、模型检查点/原地 resume、分布式 lease/fencing 或原生桌面能力。
 
 ## 停止与清理

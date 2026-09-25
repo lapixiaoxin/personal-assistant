@@ -72,6 +72,7 @@ async function assertCoreHasNoDshImports() {
     'packages/contracts',
     'packages/assistant-core',
     'packages/policy',
+    'packages/reminders',
     'packages/task-ledger',
     'packages/task-recovery',
   ]
