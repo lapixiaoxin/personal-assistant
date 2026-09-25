@@ -1,6 +1,6 @@
 # SPEC-0008 验收证据
 
-状态：verified_once。采集时间：2026-09-25。实现提交：待本地提交后回填。环境：macOS arm64、Node 22.19.0、pnpm 10.20.0、DSH `0.1.7-rc.1`。
+状态：verified_once。采集时间：2026-09-25。实现提交：`36db187`。环境：macOS arm64、Node 22.19.0、pnpm 10.20.0、DSH `0.1.7-rc.1`。
 
 所有测试数据库、DSH home、浏览器状态和真实 smoke 数据均位于 Git 忽略的隔离目录；本文件不记录模型凭据、Bearer token、完整私人会议内容或 DSH Run token。
 
