@@ -8,6 +8,6 @@
 | T-04 | 增加 Gateway 与 CLI 恢复入口 | T-03 | done | Builder | FR-008–010 / AC-004、005、008 | E-03、E-04 |
 | T-05 | 增加 Workbench 恢复状态与命令面板 | T-04 | done | Builder | FR-010 / AC-009 | E-05 |
 | T-06 | 完成 migration、故障注入、独立进程和浏览器验证 | T-02–T-05 | done | Verifier | FR-001–011 / AC-001–011 | E-01–E-05 |
-| T-07 | 完整门禁、事实文档、SOP、证据和 main 集成 | T-06 | in_progress | Maintainer | NFR-001–004 / AC-010 | E-06 |
+| T-07 | 完整门禁、事实文档、SOP、证据和 main 集成 | T-06 | done | Maintainer | NFR-001–004 / AC-010 | E-06 |
 
 状态：todo / in_progress / blocked / done。

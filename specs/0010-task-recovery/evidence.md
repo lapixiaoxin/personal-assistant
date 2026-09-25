@@ -1,6 +1,6 @@
 # SPEC-0010 验证证据
 
-时间：2026-09-25。验证者：lumi Agent。规格：SPEC-0010 v0.1。实现 commit：`00382cf`。
+时间：2026-09-25。验证者：lumi Agent。规格：SPEC-0010 v0.1。实现 commit：`00382cf`；证据绑定 commit：`0034815`。
 
 环境：macOS arm64；Node 22.19.0；pnpm 10.20.0；SQLite `node:sqlite`；DSH SDK/runtime/mock `0.1.7-rc.1`。测试数据均位于系统临时目录或仓库忽略的 `data/`；未使用私人正文、生产凭据或真实外部写入。
 
