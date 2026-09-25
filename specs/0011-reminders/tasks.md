@@ -8,6 +8,6 @@
 | T-04 | 增加 Gateway 与 CLI 提醒/通知入口 | T-03 | done | Builder | FR-001、006、007、010 / AC-002–007 | E-03、E-04 |
 | T-05 | 增加 Workbench 提醒与本地通知收件箱 | T-04 | done | Builder | FR-010 / AC-010 | E-05 |
 | T-06 | 完成独立进程、真实 timer、浏览器与完整门禁 | T-02–T-05 | done | Verifier | FR-001–012 / AC-001–012 | E-01–E-05 |
-| T-07 | 同步事实文档、SOP、证据并集成 main | T-06 | in_progress | Maintainer | NFR-001–004 / AC-011 | E-06 |
+| T-07 | 同步事实文档、SOP、证据并集成 main | T-06 | done | Maintainer | NFR-001–004 / AC-011 | E-06 |
 
 状态：todo / in_progress / blocked / done。

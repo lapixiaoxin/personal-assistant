@@ -1,6 +1,6 @@
 # SPEC-0011 验证证据
 
-时间：2026-09-25。验证者：lumi Agent。规格：SPEC-0011 v0.1。实现 commit：`e2386a8`。
+时间：2026-09-25。验证者：lumi Agent。规格：SPEC-0011 v0.1。实现 commit：`e2386a8`；证据绑定 commit：`5e643c3`。
 
 环境：macOS arm64；Node 22.19.0；pnpm 10.20.0；SQLite `node:sqlite`；DSH `0.1.7-rc.1`。所有提醒均为隔离测试文本，本地通知未发送到系统或外部服务。
 
