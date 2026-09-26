@@ -1,5 +1,7 @@
 # DSH 与 Desktop 上游策略
 
+当前有效策略仍是下文的精确 npm 依赖与 SDK adapter。2026-09-26 的 [原生定制方案](design/11-dsh-native-customization.md) / [ADR-005](adr/0005-dsh-native-customization.md) 提出外部 bundle + DSH Web 的候选路线，尚未实施。若通过兼容性实验，将增加具体插件层的依赖与构建边界，继续保持领域包不依赖 DSH；不会因设计文档出现而自动扩大当前允许目录或升级版本。
+
 ## 决策
 
 ### DSH

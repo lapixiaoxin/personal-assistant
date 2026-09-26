@@ -185,6 +185,14 @@ Gateway、CLI 和 Workbench 支持创建/取消提醒、查看计划、读取和
 
 Node 22.19.0 下完整 `pnpm check` 通过 25 个测试文件、196 项测试及 server/Workbench build；文档检查通过 100 个 Markdown、209 个本地链接。实现提交 `aadf89c` 已推送 `origin/main`；完整证据见 [SPEC-0013](../specs/0013-repository-architecture-hygiene/evidence.md)。
 
+## 2026-09-26 · DSH 原生定制路线评估
+
+[SPEC-0014](../specs/0014-dsh-native-design/spec.md)、[原生定制方案](design/11-dsh-native-customization.md) 与 [ADR-005](adr/0005-dsh-native-customization.md) 提出候选路线：复用 DSH Web / Session，以外部 bundle 将 lumi 领域服务装配到 DSH Host，验证后收缩独立工作台、SDK 包装和内部 HTTP bridge。
+
+本次只核验固定源码与发行产物并编写设计。lumi 仍固定 `0.1.7-rc.1`，分析快照仍为 `477b4f420553e8a52c2fbccc464d7561b239c443`（根版本 rc.2）；没有升级、外部插件安装、服务切换或数据库迁移。现有 SDK 支持多次 run 与具名 Session，当前每 Task 单独创建进程及 Workbench 无产品级多轮对话，是本仓的集成选择。
+
+P0/P1/P2 均为 `not_run`。Web 客户端外部构建、Remote 接线、Preset 版本恢复、记忆纠正后的旧上下文处理、单写入者及动作门禁都需要新证据，不能从既有 MVP 验收推断迁移成功。个人数据可由 Host 内插件服务持有，领域所有权仍独立于 DSH Session；ADR-004 继续描述现行实现。
+
 ## 状态标注规则
 
 `Proposed`：设计建议；`Specified`：验收和边界已写清；`Implemented`：代码存在；`Verified`：指定环境和版本有证据；`Enabled`：部署配置已启用。后一个状态不能由前一个自动推断。
