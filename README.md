@@ -271,25 +271,33 @@ PA_EXECUTOR=mock pnpm start
 
 当前 DSH 版本已经内置 MiniMax provider catalog。本仓只启用对应路由，不复制 MiniMax 的端点、协议或模型元数据。
 
-中国区：
+中国区在仓库根目录 `.env` 中配置：
+
+```dotenv
+MINIMAX_CN_API_KEY=<your-key>
+PA_DSH_PROVIDER=minimax-cn
+PA_DSH_MODEL=MiniMax-M3
+```
+
+然后直接执行：
 
 ```bash
-export MINIMAX_CN_API_KEY='<your-key>'
-export PA_DSH_PROVIDER=minimax-cn
-export PA_DSH_MODEL=MiniMax-M3
 pnpm cli submit "分析当前仓库并运行测试"
 ```
 
-国际区将变量改为 `MINIMAX_API_KEY`、provider 改为 `minimax`。未显式设置 `PA_DSH_PROVIDER` 时，runtime 也会根据这两个 Key 自动选择对应 MiniMax provider。
+国际区将变量改为 `MINIMAX_API_KEY`、provider 改为 `minimax`。CLI / Gateway 会主动加载根目录 `.env`；未显式设置 `PA_DSH_PROVIDER` 时，runtime 也会根据这两个 Key 自动选择对应 MiniMax provider。
 
 ### DeepSeek
 
-```bash
-export PA_EXECUTOR=dsh
-export PA_DSH_PROVIDER=deepseek-official
-export PA_DSH_MODEL=deepseek-v4-flash
-export PA_DSH_MAX_TOKENS=8192
+```dotenv
+PA_EXECUTOR=dsh
+PA_DSH_PROVIDER=deepseek-official
+PA_DSH_MODEL=deepseek-v4-flash
+PA_DSH_MAX_TOKENS=8192
+DEEPSEEK_API_KEY=<your-key>
+```
 
+```bash
 pnpm cli submit "分析当前仓库并运行测试"
 ```
 
@@ -329,12 +337,12 @@ pnpm test:dsh:bundle
 
 ### 其他兼容 API
 
-DSH 支持通过 `llm-pi-ai` 配置 OpenAI Chat Completions、OpenAI Responses 或 Anthropic Messages 兼容端点。将 provider patch 放在仓库外或 `profiles/providers/` 下，然后设置：
+DSH 支持通过 `llm-pi-ai` 配置 OpenAI Chat Completions、OpenAI Responses 或 Anthropic Messages 兼容端点。将 provider patch 放在仓库外或 `profiles/providers/` 下，然后在 `.env` 设置：
 
-```bash
-export PA_DSH_PROVIDER=my-provider
-export PA_DSH_MODEL=my-model
-export PA_DSH_PROVIDER_PATCH=profiles/providers/my-provider.patch.yml
+```dotenv
+PA_DSH_PROVIDER=my-provider
+PA_DSH_MODEL=my-model
+PA_DSH_PROVIDER_PATCH=profiles/providers/my-provider.patch.yml
 ```
 
 因此使用 npm 包不会限制模型 API 切换；provider 配置属于 profile 层，与 DSH 源码和 Assistant Core 都是分离的。
@@ -347,7 +355,7 @@ export PA_DSH_PROVIDER_PATCH=profiles/providers/my-provider.patch.yml
 pnpm dsh:web:minimax-cn
 ```
 
-打开命令输出的带 `token` 本地 URL，在模型设置中选择 `minimax-cn / MiniMax-M3` 后即可连续对话。这条链路用于直接验证 DSH，会使用 DSH 自己的会话存储，不经过 lumi Task Ledger 或 Action Broker，因此不能用于携带生产权限的真实动作。
+该脚本通过 Node `--env-file-if-exists=.env` 自动加载根目录 `.env`，不需要预先 `export MINIMAX_CN_API_KEY`。打开命令输出的带 `token` 本地 URL，在模型设置中选择 `minimax-cn / MiniMax-M3` 后即可连续对话。这条链路用于直接验证 DSH，会使用 DSH 自己的会话存储，不经过 lumi Task Ledger 或 Action Broker，因此不能用于携带生产权限的真实动作。
 
 当前 lumi Gateway 是单任务接口：每次 `POST /v1/tasks` 都是独立任务，尚未提供多轮会话 API。
 

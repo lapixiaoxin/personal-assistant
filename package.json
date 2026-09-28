@@ -27,7 +27,7 @@
     "cli": "tsx apps/local-runner/src/main.ts",
     "dev": "tsx watch apps/gateway/src/main.ts",
     "dev:web": "pnpm --filter @lumi/workbench dev",
-    "dsh:web:minimax-cn": "DSH_HOME=./data/dsh-web dsh web --patch ./profiles/providers/minimax-cn.patch.yml --no-open --host 127.0.0.1 --port 3081",
+    "dsh:web:minimax-cn": "DSH_HOME=./data/dsh-web node --env-file-if-exists=.env ./node_modules/@deepseek-ai/dsh/lib/bin.js web --patch ./profiles/providers/minimax-cn.patch.yml --no-open --host 127.0.0.1 --port 3081",
     "lint": "eslint .",
     "start": "node dist/gateway/main.js",
     "test": "vitest run",
