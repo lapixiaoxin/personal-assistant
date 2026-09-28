@@ -4,7 +4,7 @@
 
 2026-09-25 补充：DSH 的主要 Harness 职责、Cordis 接线与多端路线已由 [v0.3 图解方案](10-dsh-centered-architecture.md) 和 [ADR-003](../adr/0003-dsh-centered-harness.md) 细化。v0.1 已实现其中的单机 Host、DSH adapter/受控 bridge、动作门禁、持久记忆、重启恢复与一次性本地提醒；多设备、通用 Connector、分布式调度和自主发布仍是提案。
 
-2026-09-26 补充：[原生定制方案](11-dsh-native-customization.md) 与 [ADR-005](../adr/0005-dsh-native-customization.md) 提议在 DSH Host 内通过插件装配 lumi 领域服务，并复用原生 Web。数据所有权独立于会话，并不要求服务必须位于 DSH 进程外。候选结构尚未实施，下文保留既有分层与当前边界。
+2026-09-28 补充：[SPEC-0015](../../specs/0015-portable-personalization/spec.md) 与 [ADR-006](../adr/0006-portable-personalization-and-surfaces.md) 已实现首个 Harness-neutral `personal-context/v1`、当前 Task adapter 和可安装的 DSH 外部 bundle。它证明个性化接线可同时服务现行 Task 路径与 DSH Web profile，但没有切换现行服务，也没有实现语音或多设备。
 
 ## 架构决策
 
@@ -39,16 +39,16 @@ flowchart TB
 | `packages/task-ledger` | Task、Action、Recovery、事件与审计事务 | TaskLedger、ActionLedger、RecoveryLedger | 向模型自行推断业务事实 | v0.1 已有 SQLite v3 migration |
 | `packages/policy` | 任务风险与动作决策 | evaluate、authorize | 依赖模型决定最终允许 | v0.1 已有基础规则 |
 | `packages/capability-registry` | 能力元数据与路由 | discover、resolve | 安装即启用、隐式提权 | v0.1 已有规则注册 |
-| `packages/personal-memory` | 记忆版本、来源、撤回与删除 | create、confirm、retrieve、correct、erase | 直接从外部材料写确认事实 | v0.1 已有 SQLite 显式记忆 |
+| `packages/personal-memory` | 记忆版本、来源、撤回、删除与确定性检索 | create、confirm、retrieve、correct、erase | 依赖 Task、Ledger 或 DSH | v0.1 已有 SQLite 显式记忆；SPEC-0015 已抽离 Harness 接线 |
+| `packages/personal-context` | 面向 Harness 的有预算、有来源个性化快照 | snapshot、parse、render | 持有数据库、Task 或 DSH 类型 | SPEC-0015 P0 已实现 v1 |
 | `packages/identity` | principal 与本地认证绑定 | authenticate、resolveOwner | 信任请求体中的身份 | v0.1 已有 local process/bearer |
 | `packages/action-runtime` | 动作准备、门禁、执行、对账及 provider 端口 | prepare、execute、reconcile、ArtifactProvider | 依赖具体 adapter 或未经策略调用外部能力 | v0.1 已有 `artifact.write` |
 | `packages/task-recovery` | 重启后的 Task/Action 分类与恢复编排 | initialize、retry、acknowledge | 把进程退出当作动作撤销 | v0.1 已有单机恢复 |
 | `packages/reminders` | 一次性触发与本地通知原子投递 | schedule、cancel、acknowledge | 调用 DSH 或外部推送 | v0.1 已有本地能力 |
 | `packages/verification`（拟设） | 通用结果检查和证据判定 | verify | 仅采纳执行者自报成功 | 当前分散在 action/workflow |
-| `packages/context` | 有预算且有来源的上下文视图 | buildContext | 全量复制个人数据给专家 | M2 |
 | `packages/goals` | Goal / Commitment / Decision | GoalService | 直接修改 Task 表 | M2 |
 | `packages/scheduler`、`packages/notifications`（条件拆分） | 周期触发、外部投递、安静时间等扩展 | schedule、deliver、ack | 为目录整齐拆散当前原子边界 | 出现独立部署/策略需求后评估 |
-| `plugins/dsh-lumi`（拟设） | 将 Host 端口桥接为 DSH 服务与工具；装配复用 Cordis | register tools/services、生命周期释放 | 重复实现通用 plugin-host、持有生产写凭据 | M1 接线，M3 扩展 |
+| `plugins/dsh-lumi` | 将个性化上下文适配到 DSH Preset；后续桥接 Host 领域端口 | dynamic context、只读状态工具、生命周期释放 | 拥有个人数据、读取生产数据库、持有生产写凭据 | SPEC-0015 P0 已验证外部安装；生产服务接线待建 |
 | `evolution/` | 变更提案、证据与发布流程编排 | proposeChange、evaluate | 直接写线上进程或数据 | M5；规范现在建立 |
 | `adapters/*` | 外部协议、SDK、引擎映射 | 实现本仓端口 | 泄漏上游类型到领域层 | DSH 已有，持续扩展 |
 | `channels/*`、`apps/*` | 身份化输入、展示、装配 | HTTP、CLI、后续多端协议 | 复制策略、直接读取数据库 | 已有 CLI/HTTP |
@@ -59,7 +59,7 @@ flowchart TB
 
 目标规则：应用装配依赖模块端口；领域模块依赖 contracts 或显式端口；adapter 实现端口；provider 之间不互相引用实现。跨模块写入只能走拥有者的服务，不直接访问对方表。
 
-当前 `TaskExecutor` 在 `assistant-core` 中、Core 依赖 registry / policy / ledger 包的接口，这是已有事实。`apps/runtime` 是 composition root；Gateway、CLI 和 Workbench 不直接访问 SQLite。未来在实际变更时提取端口，避免为“纯净架构”一次性搬迁。`TaskRecord.dshSessionId` 已经泄漏执行器命名，迁移为中性 `ExecutionRef` 时保留旧 API 映射，不突删字段。
+当前 `TaskExecutor` 在 `assistant-core` 中、Core 依赖 registry / policy / ledger 包的接口，这是已有事实。`apps/runtime` 是现行 composition root；Gateway、CLI 和 Workbench 不直接访问 SQLite。`adapters/task-personal-context` 将领域快照接到 TaskExecutor，`personal-memory` 不再引用 Core 或 Ledger。未来在实际变更时继续提取端口，避免为“纯净架构”一次性搬迁。`TaskRecord.dshSessionId` 已经泄漏执行器命名，迁移为中性 `ExecutionRef` 时保留旧 API 映射，不突删字段。
 
 当前 `pnpm check` / CI 已执行 lint、typecheck、workspace 架构边界、DSH 版本对齐、Vitest 与 build。架构门禁检查生产依赖环、packages→adapter 反向依赖、未声明内部依赖、跨 package 相对 import 和 `src` 测试回流；文档链接检查仍单独执行。外部 SDK 泄漏和入口绕过控制层继续由专项契约检查逐步扩展。
 
@@ -69,7 +69,7 @@ DSH / Cordis 的参考价值在于：服务定义与提供者分离、声明依�
 
 所有可变行为都应有替换端口，包括路由、记忆检索和验证器；复杂任务的规划、模型选择及 Agent Loop provider 由 DSH/Cordis 承接。可信控制实现也可以版本化升级，但只能通过受保护发布流程；普通插件无权卸载授权检查、替换验收数据或关闭审计。
 
-不再构建通用 Agent Loop 或重复的通用插件装配器。用 DSH 执行，个人资产由独立领域服务持有；这些服务当前位于外部 lumi runtime，ADR-005 提议将其装配到 DSH Host 内。需要动作门禁的 DSH 插件负责接线，Registry 管理元数据与启用范围。只有上游接口被证明无法满足必要语义时，才通过 ADR 决定 fork 或替换引擎。
+不再构建通用 Agent Loop 或重复的通用插件装配器。用 DSH 执行，个人资产由独立领域服务持有；服务可以由外部 lumi runtime 或 DSH Host 内受信插件装配，进程位置不改变所有权。SPEC-0015 已用只读快照 adapter 验证后一条接线路径，生产数据库与写能力尚未迁入。需要动作门禁的 DSH 插件负责接线，Registry 管理元数据与启用范围。只有上游接口被证明无法满足必要语义时，才通过 ADR 决定 fork 或替换引擎。
 
 ## 插件分类
 
@@ -107,6 +107,10 @@ Skill 是可版本化的程序知识，Tool 是具体动作，Connector 是身�
 ## 执行位置与多设备
 
 任务根据数据敏感度、能力、延迟、在线状态和成本选择本机、受控远端或垂类 Agent。个人模型保持同一个 owner；设备只是身份化入口或执行节点。
+
+DSH Web、现有 Workbench、CLI、未来语音 UI、IM 和设备客户端都属于 Surface adapter。Surface 可以采用不同传输：文本控制可走 HTTP / WebSocket，实时音频可走 WebRTC 或其他流式协议，设备能力可走专用协议。它们必须映射到相同的 owner、Conversation、Task、Action、取消与证据语义；音频帧、Web 会话 ID 或设备 ID 都不能自行成为授权事实。
+
+语音 Surface 负责采集、转写、播放和打断体验；语音内容进入模型前仍经过身份、上下文和权限边界。低延迟打断可以终止一次生成或音频播放，但不能把“停止播放”误写为 Task 已取消、Action 已撤销或外部副作用未发生。实时语音 transport、TTS、唤醒词和保留策略尚未实现。
 
 M1–M3 只有一个权威控制节点。M4 引入设备注册、短期令牌和在线租约；离线设备只接受已有范围内的本地草稿任务，不能离线作出新的高风险授权。重连以稳定请求 ID 去重，冲突记忆进入候选。
 

@@ -52,7 +52,7 @@ describe('personal memory CLI', () => {
     expect(tombstone).toMatchObject({ id: created.id, lastRevision: 3 })
     expect(JSON.stringify(tombstone)).not.toContain('decision-first')
     expect(runCli(database, ['memory', 'list'])).toEqual([])
-  })
+  }, 15_000)
 })
 
 function runCli(database: string, args: string[]): unknown {

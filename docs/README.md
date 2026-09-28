@@ -6,8 +6,8 @@
 | --- | --- |
 | 十分钟掌握长期方向 | [总纲](design/00-overview.md) |
 | 查看 DSH 核心架构与多端流程 | [v0.3 六图方案](design/10-dsh-centered-architecture.md)、[ADR-003](adr/0003-dsh-centered-harness.md)、[SPEC-0003](../specs/0003-dsh-centered-design/spec.md) |
-| 评估直接基于 DSH 定制 lumi | [原生定制方案](design/11-dsh-native-customization.md)、[ADR-005](adr/0005-dsh-native-customization.md)、[SPEC-0014](../specs/0014-dsh-native-design/spec.md)：外部 bundle、原生 Web 复用与迁移门槛，尚未实施 |
-| 理解 DSH 当前源码与能力 | [rc.2 源码分析](research/2026-09-25-dsh-source-analysis.md)：插件理念、执行链路、能力开关、与 lumi 固定 rc.1 的差异 |
+| 基于 DSH 定制并保持个性化可迁移 | [原生定制方案](design/11-dsh-native-customization.md)、[ADR-006](adr/0006-portable-personalization-and-surfaces.md)、[SPEC-0015](../specs/0015-portable-personalization/spec.md)、[bundle SOP](runbooks/dsh-native-bundle.md)：rc.2 外部 bundle P0 已验证，现行服务未切换 |
+| 理解 DSH 当前源码与能力 | [rc.2 源码分析](research/2026-09-25-dsh-source-analysis.md)：插件理念、执行链路与能力开关；当前运行组合已升级到同一 rc.2 release |
 | 检查当前真实能力 | [工程事实基线](current-state.md) |
 | 使用电脑端任务与动作工作台 | [Workbench SOP](runbooks/web-workbench.md)、[SPEC-0004](../specs/0004-web-workbench/spec.md)、[SPEC-0006](../specs/0006-action-inbox/spec.md) |
 | 验证 DSH 受控动作与旁路阻断 | [Action Bridge SOP](runbooks/dsh-action-bridge.md)、[SPEC-0005](../specs/0005-dsh-action-bridge/spec.md) |
@@ -29,8 +29,8 @@
 | 运行和验证 | [SOP](runbooks/README.md)、[评测](design/09-evaluation.md)、[本次证据](evidence/2026-09-24-design-baseline.md) |
 | 升级 DSH | [现有上游策略](upstream-strategy.md) |
 
-长期设计 v0.2 与 DSH 专题 v0.3 仍为 Proposed；v0.1 已实现 `artifact.write`、显式持久记忆、单机恢复和一次性本地提醒，边界由 ADR-004 记录。2026-09-26 的原生定制方案与 ADR-005 进一步提出复用 DSH Web、在 Host 内装配 lumi 服务的候选路线；尚未接受或实施，不替代当前运行边界。产品、多端方向和验收原则继续沿用，数量阈值不能当作已测成绩或既有授权。
+长期设计 v0.2 与 DSH 专题 v0.3 仍有 Proposed 内容；v0.1 已实现 `artifact.write`、显式持久记忆、单机恢复和一次性本地提醒，边界由 ADR-004 记录。2026-09-28 的 SPEC-0015 已实现可迁移 `personal-context/v1`、现行 Task adapter 和可安装的 DSH rc.2 bundle，但未切换现行服务或迁移真实个人数据。产品、多端方向和验收原则继续沿用，数量阈值不能当作已测成绩或既有授权。
 
-DSH 的适用范围已明确为“复杂任务的主要 Harness”；实时对话、感知和物理控制可使用独立运行时。源码报告补充 rc.2 调度器变化，不代表 lumi 已升级或新能力已启用。
+DSH 的适用范围是“复杂任务的主要 Harness”，DSH Web 是优先文本 Surface，不是唯一 UI。未来实时语音、感知和设备入口通过独立 Surface adapter 复用同一 owner、个性化上下文和动作边界；这些能力尚未实现。
 
 规范和设计源文件保存在仓库，飞书承载审阅版。收到审阅意见后先更新 spec/ADR，再更新对应飞书文档；发生冲突时记录差异，不让两份设计静默分叉。验证记录追加，不覆盖失败历史。

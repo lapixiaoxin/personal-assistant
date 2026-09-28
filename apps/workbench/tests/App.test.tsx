@@ -555,7 +555,7 @@ describe('Workbench', () => {
     fireEvent.change(screen.getByLabelText('提醒内容'), {
       target: { value: 'Review the release checklist' },
     })
-    const localTime = '2026-09-26T10:00:00'
+    const localTime = futureLocalDateTime()
     fireEvent.change(screen.getByLabelText('提醒时间'), {
       target: { value: localTime },
     })
@@ -779,3 +779,9 @@ describe('Workbench', () => {
     })
   })
 })
+
+function futureLocalDateTime(): string {
+  const future = new Date(Date.now() + 60 * 60 * 1_000)
+  const local = new Date(future.getTime() - future.getTimezoneOffset() * 60_000)
+  return local.toISOString().slice(0, 19)
+}

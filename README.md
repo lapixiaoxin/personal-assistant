@@ -17,29 +17,29 @@
 - 结构化研究简报接收 1-8 个用户声明的公开 HTTPS 来源；`research-agent` 只能抓取本次 Task 绑定的 URL，保存不可变来源快照，并在全部来源已抓取且 source ID 引用覆盖通过后完成。
 - 结构化会议准备接收主题、目标、参与者、议程和背景；`meeting-agent` 不获得 Host 工具，只有固定六段简报通过确定性结构校验后才完成。
 - 个人记忆支持 SQLite 持久化、候选确认、纠正、撤回和彻底遗忘；任务只注入 owner、用途、scope 和分级均匹配的已确认 public/personal 记录。
+- `personal-context/v1` 将模型可见的个性化快照与 Task Harness、DSH Session 解耦；当前 Task adapter 和外部 `dsh-lumi` bundle 消费同一语义。
+- 外部 `dsh-lumi` bundle 可打包安装到隔离 DSH Web profile，提供 lumi Preset、动态个性化上下文和不返回正文的状态工具；该路径已验证但尚未替换当前服务。
 - 本地 Web 工作台提供任务、动作、记忆和提醒四个视图；用户可管理个人记忆与本地通知，或审阅参数摘要、授权/取消动作并读取回执和独立验证。
 - Gateway 使用本地 Bearer token 派生 owner/principal；请求体中的 `actorId` 不能用于切换身份。
 - 任务事件、工具调用摘要、审批动作和执行结果可查询，服务重启后仍保留。
 - runtime 启动会续调度尚未开始的普通 queued Task；遗留 running Task 转为 interrupted，只有确定性规则判定无副作用风险时才允许用户显式创建新的重试 Task。
 - executing / outcome_unknown Action 在重启后进入 reconciling，只能读回对账；本机 PID 所有权会阻止另一个仍存活的 runtime 被误判为崩溃。
 - 一次性提醒持久保存绝对触发时间、IANA timezone、幂等键和 `latest / skip` 误点策略；在线到点或启动补发只生成一条本地通知，可在 Workbench/CLI 确认。
-- DSH 通过独立 adapter 接入，固定为 `0.1.7-rc.1`；核心层不导入 DSH。
+- DSH 通过独立 adapter / bundle 接入，兼容组合精确固定为 `0.1.7-rc.2`；领域层不导入 DSH。
 - 默认通过 DSH SDK 执行；`PA_EXECUTOR=mock` 仅用于离线开发和故障隔离。
 
 ## 架构
 
 ```text
-CLI / HTTP / Workbench
-          |
-     apps/runtime
-  (composition root)
-    |-- Identity
-    |-- Assistant Core + workflows
+CLI / HTTP / Workbench                 DSH Web                 future Voice / devices
+          |                               |                              |
+     apps/runtime                  plugins/dsh-lumi              surface adapters
+  (current composition root)             |                              |
+    |-- Identity                   personal-context/v1 <-----------------'
+    |-- Assistant Core + workflows        ^
     |     `-- TaskExecutor port -> adapters/dsh -> DSH subprocess
-    |-- ActionService
-    |     `-- ArtifactProvider port -> adapters/local-artifact
-    |-- Task Ledger + Recovery
-    |-- Personal Memory
+    |-- ActionService                      |
+    |-- Task Ledger + Recovery       Personal Memory
     `-- Reminders + local Notification inbox
 ```
 
@@ -55,12 +55,15 @@ packages/task-ledger/          SQLite persistence
 packages/task-recovery/        Restart classification and explicit recovery
 packages/policy/               Risk classification and approval policy
 packages/capability-registry/  Capability discovery and routing
-packages/personal-memory/      Persistent memory lifecycle and bounded context
+packages/personal-memory/      Persistent memory lifecycle and retrieval
+packages/personal-context/     Harness-neutral context snapshot and rendering
 packages/reminders/            One-time scheduling and local notification inbox
 packages/meeting-workflow/     Meeting input normalization and structure verification
 packages/research-workflow/    Research submission, source records, citation verification
 adapters/dsh/                  DSH-only types and event mapping
+adapters/task-personal-context/ Current TaskExecutor context wiring
 adapters/research-sources/     Public HTTPS fetch and immutable source snapshots
+plugins/dsh-lumi/              Installable DSH Preset and context adapter bundle
 profiles/dsh-lumi/             lumi DSH SDK profile overlay
 profiles/dsh-meeting/          Protected meeting preparation profile
 profiles/dsh-research/         Protected public-source research profile
@@ -87,6 +90,7 @@ pnpm check
 ```
 
 `pnpm check` 包含架构边界、lint、typecheck、DSH 版本对齐、Vitest 和生产构建。
+`pnpm check:dsh:latest` 是显式联网的新鲜度检查，`pnpm test:dsh:bundle` 使用临时目录验证外部 bundle 的打包、Web profile 安装和启动；二者的适用边界见 [DSH bundle SOP](docs/runbooks/dsh-native-bundle.md)。
 
 若内部 npm 镜像缺少 DSH 的预发布传递依赖，可显式使用公开源：
 
@@ -313,6 +317,16 @@ pnpm cli submit "执行我已批准的动作" --context "lumi-action:<action-id>
 
 上游依赖和升级规则见 [`docs/upstream-strategy.md`](docs/upstream-strategy.md)。
 
+### 外部 lumi bundle P0
+
+[`plugins/dsh-lumi`](plugins/dsh-lumi) 是独立于当前 SDK Task 路径的 DSH bundle。它只读取显式配置的 `lumi.personal-context/v1` 快照，不访问个人数据库，也不获得动作权限。自动验收会创建临时 DSH home、安装打包产物、组合 `lumi` Preset、启动随机 loopback 端口并在结束时清理：
+
+```bash
+pnpm test:dsh:bundle
+```
+
+该命令证明 rc.2 标准 launcher 可装配 bundle，不表示真实个人数据、动作服务、语音 UI 或生产 profile 已迁移。
+
 ### 其他兼容 API
 
 DSH 支持通过 `llm-pi-ai` 配置 OpenAI Chat Completions、OpenAI Responses 或 Anthropic Messages 兼容端点。将 provider patch 放在仓库外或 `profiles/providers/` 下，然后设置：
@@ -337,10 +351,12 @@ pnpm dsh:web:minimax-cn
 
 当前 lumi Gateway 是单任务接口：每次 `POST /v1/tasks` 都是独立任务，尚未提供多轮会话 API。
 
+DSH Web 是当前优先复用的文本对话 Surface，不是 lumi 的唯一界面或个人资产所有者。未来语音 UI、IM 和设备入口应通过各自 adapter 共享 owner、Conversation / Task / Action 和个性化上下文语义；实时音频传输、打断、TTS 与设备身份仍需独立实现。
+
 ## 安全边界
 
 - Gateway 默认只监听 loopback，并使用单 owner 的本地 Bearer token；这不是公网所需的多用户认证、TLS、限流或来源控制。
-- `personal-assistant` 的固定 rc.1 profile 已将 `artifact.write` 接到参数级 Broker，并用显式 allowlist guard 阻断直接文件写、Shell、网络、MCP、workflow/`run_code` 和未知工具。
+- `personal-assistant` 的固定 rc.2 profile 已将 `artifact.write` 接到参数级 Broker，并用显式 allowlist guard 阻断直接文件写、Shell、网络、MCP、workflow/`run_code` 和未知工具。
 - `research-agent` 不开放 DSH 通用网络；只读用户声明的公开 HTTPS 来源，拒绝 URL 凭据、非 443 端口、IP literal、私网/保留 DNS 结果、超限响应和非 UTF-8 文本。网页内容仍是不可信数据，引用覆盖不等于事实真实性验证。
 - `coding-agent` 仍是本机开发态宽权限 profile；它不属于生产动作边界，不能持有真实 Connector 凭据。进程内 guard 也不是对恶意插件或同机进程的 OS 沙箱。
 - 受控 profile 仍能读取 workspace 内允许的资料；敏感读取、模型出境和通用 secret store 尚未完成。
@@ -352,7 +368,7 @@ pnpm dsh:web:minimax-cn
 - WebSocket/A2A 流式协议
 - lumi 多轮会话协议
 - 自动重试与跨进程运行中任务恢复
-- Desktop、Mobile、Watch、Voice 客户端
+- Desktop、Mobile、Watch、实时语音客户端及语音打断/TTS
 - 自动长期记忆写入
 - 语义/向量记忆检索、冲突合并和跨设备同步
 - 搜索引擎、登录态网页、JavaScript 渲染和跨站爬取

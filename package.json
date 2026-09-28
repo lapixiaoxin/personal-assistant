@@ -23,6 +23,7 @@
     "check": "pnpm lint && pnpm typecheck && pnpm check:architecture && pnpm check:dsh && pnpm test && pnpm build",
     "check:architecture": "node scripts/check-architecture.mjs",
     "check:dsh": "node scripts/check-dsh-compat.mjs",
+    "check:dsh:latest": "node scripts/check-dsh-latest.mjs",
     "cli": "tsx apps/local-runner/src/main.ts",
     "dev": "tsx watch apps/gateway/src/main.ts",
     "dev:web": "pnpm --filter @lumi/workbench dev",
@@ -31,20 +32,21 @@
     "start": "node dist/gateway/main.js",
     "test": "vitest run",
     "test:dsh": "vitest run tests/contract/dsh-runtime.test.ts",
+    "test:dsh:bundle": "node scripts/verify-dsh-lumi-bundle.mjs",
     "test:e2e": "pnpm build && playwright test",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@deepseek-ai/dsh": "0.1.7-rc.1",
-    "@deepseek-ai/dsh-sdk-client": "0.1.7-rc.1",
+    "@deepseek-ai/dsh": "0.1.7-rc.2",
+    "@deepseek-ai/dsh-sdk-client": "0.1.7-rc.2",
     "commander": "14.0.1",
     "fastify": "5.6.1",
     "zod": "4.1.11"
   },
   "devDependencies": {
     "@testing-library/react": "16.3.0",
-    "@deepseek-ai/dsh-llm-mock-server": "0.1.7-rc.1",
+    "@deepseek-ai/dsh-llm-mock-server": "0.1.7-rc.2",
     "@eslint/js": "9.36.0",
     "@playwright/test": "1.63.0",
     "@types/node": "22.18.6",

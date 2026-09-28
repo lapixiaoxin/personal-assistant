@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
-  "verifiedAt": "2026-09-24",
+  "verifiedAt": "2026-09-28",
   "deepseekHarness": {
-    "version": "0.1.7-rc.1",
+    "version": "0.1.7-rc.2",
     "packages": {
-      "@deepseek-ai/dsh": "0.1.7-rc.1",
-      "@deepseek-ai/dsh-llm-mock-server": "0.1.7-rc.1",
-      "@deepseek-ai/dsh-sdk-client": "0.1.7-rc.1",
-      "@deepseek-ai/dsh-tools": "0.1.7-rc.1"
+      "@deepseek-ai/dsh": "0.1.7-rc.2",
+      "@deepseek-ai/dsh-llm-mock-server": "0.1.7-rc.2",
+      "@deepseek-ai/dsh-sdk-client": "0.1.7-rc.2",
+      "@deepseek-ai/dsh-tools": "0.1.7-rc.2"
     },
-    "integration": "TypeScript SDK subprocess using the sdk profile plus profiles/dsh-lumi/cordis.patch.yml"
+    "integration": "TypeScript SDK subprocess plus external dsh-lumi bundle P0"
   },
   "desktop": null
 }

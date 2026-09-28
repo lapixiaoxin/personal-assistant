@@ -12,12 +12,14 @@
     "@lumi/identity": "workspace:*",
     "@lumi/local-artifact": "workspace:*",
     "@lumi/meeting-workflow": "workspace:*",
+    "@lumi/personal-context": "workspace:*",
     "@lumi/personal-memory": "workspace:*",
     "@lumi/policy": "workspace:*",
     "@lumi/research-sources": "workspace:*",
     "@lumi/research-workflow": "workspace:*",
     "@lumi/reminders": "workspace:*",
     "@lumi/task-recovery": "workspace:*",
+    "@lumi/task-personal-context": "workspace:*",
     "@lumi/task-ledger": "workspace:*"
   },
   "devDependencies": {

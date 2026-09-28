@@ -3,3 +3,82 @@ packages:
   - packages/*
   - adapters/*
   - plugins/*
+
+# DSH publishes its composition as many exact-version peer packages. Pin the
+# full peer surface to one release so pnpm cannot retain an older peer graph
+# when the root DSH package is upgraded.
+overrides:
+  '@deepseek-ai/dsh-anonymous-user-id': &dshRelease 0.1.7-rc.2
+  '@deepseek-ai/dsh-attachment': *dshRelease
+  '@deepseek-ai/dsh-bash-local': *dshRelease
+  '@deepseek-ai/dsh-brand': *dshRelease
+  '@deepseek-ai/dsh-client-store': *dshRelease
+  '@deepseek-ai/dsh-client-ui-primitives': *dshRelease
+  '@deepseek-ai/dsh-client-ui-slots': *dshRelease
+  '@deepseek-ai/dsh-compaction': *dshRelease
+  '@deepseek-ai/dsh-compaction-image-offload': *dshRelease
+  '@deepseek-ai/dsh-deepseek-account': *dshRelease
+  '@deepseek-ai/dsh-fs': *dshRelease
+  '@deepseek-ai/dsh-hook-protocol': *dshRelease
+  '@deepseek-ai/dsh-jobs': *dshRelease
+  '@deepseek-ai/dsh-llm': *dshRelease
+  '@deepseek-ai/dsh-llm-deepseek': *dshRelease
+  '@deepseek-ai/dsh-output-retention': *dshRelease
+  '@deepseek-ai/dsh-ptc-runtime': *dshRelease
+  '@deepseek-ai/dsh-sandbox': *dshRelease
+  '@deepseek-ai/dsh-sdk-protocol': *dshRelease
+  '@deepseek-ai/dsh-session-format': *dshRelease
+  '@deepseek-ai/dsh-session-format-catalog': *dshRelease
+  '@deepseek-ai/dsh-session-format-v0-to-v1': *dshRelease
+  '@deepseek-ai/dsh-session-format-v1-to-v2': *dshRelease
+  '@deepseek-ai/dsh-session-format-v2-to-v3': *dshRelease
+  '@deepseek-ai/dsh-session-format-v3-to-v4': *dshRelease
+  '@deepseek-ai/dsh-session-persistence': *dshRelease
+  '@deepseek-ai/dsh-session-query': *dshRelease
+  '@deepseek-ai/dsh-session-telemetry': *dshRelease
+  '@deepseek-ai/dsh-session-title-llm': *dshRelease
+  '@deepseek-ai/dsh-shell': *dshRelease
+  '@deepseek-ai/dsh-spill': *dshRelease
+  '@deepseek-ai/dsh-subagent-in-process-driver': *dshRelease
+  '@deepseek-ai/dsh-timeout': *dshRelease
+  '@deepseek-ai/dsh-typert-protocol': *dshRelease
+  '@deepseek-ai/dsh-util-crypto': *dshRelease
+  '@deepseek-ai/dsh-util-time': *dshRelease
+  '@deepseek-ai/dsh-util-values': *dshRelease
+  '@deepseek-ai/dsh-util-workspace-path': *dshRelease
+  '@deepseek-ai/dsh-workflow': *dshRelease
+
+# The published umbrella package relies on these exact peers but npm dist-tags
+# for several interface packages still point at rc.1. Materialize the matching
+# release under the umbrella package instead of accepting a mixed runtime.
+packageExtensions:
+  '@deepseek-ai/dsh@0.1.7-rc.2':
+    dependencies:
+      '@deepseek-ai/dsh-anonymous-user-id': *dshRelease
+      '@deepseek-ai/dsh-attachment': *dshRelease
+      '@deepseek-ai/dsh-bash-local': *dshRelease
+      '@deepseek-ai/dsh-brand': *dshRelease
+      '@deepseek-ai/dsh-client-store': *dshRelease
+      '@deepseek-ai/dsh-client-ui-primitives': *dshRelease
+      '@deepseek-ai/dsh-client-ui-slots': *dshRelease
+      '@deepseek-ai/dsh-compaction': *dshRelease
+      '@deepseek-ai/dsh-deepseek-account': *dshRelease
+      '@deepseek-ai/dsh-fs': *dshRelease
+      '@deepseek-ai/dsh-hook-protocol': *dshRelease
+      '@deepseek-ai/dsh-jobs': *dshRelease
+      '@deepseek-ai/dsh-llm': *dshRelease
+      '@deepseek-ai/dsh-llm-deepseek': *dshRelease
+      '@deepseek-ai/dsh-output-retention': *dshRelease
+      '@deepseek-ai/dsh-ptc-runtime': *dshRelease
+      '@deepseek-ai/dsh-sandbox': *dshRelease
+      '@deepseek-ai/dsh-sdk-protocol': *dshRelease
+      '@deepseek-ai/dsh-session-persistence': *dshRelease
+      '@deepseek-ai/dsh-session-query': *dshRelease
+      '@deepseek-ai/dsh-session-telemetry': *dshRelease
+      '@deepseek-ai/dsh-session-title-llm': *dshRelease
+      '@deepseek-ai/dsh-shell': *dshRelease
+      '@deepseek-ai/dsh-spill': *dshRelease
+      '@deepseek-ai/dsh-subagent-in-process-driver': *dshRelease
+      '@deepseek-ai/dsh-util-time': *dshRelease
+      '@deepseek-ai/dsh-util-workspace-path': *dshRelease
+      '@deepseek-ai/dsh-workflow': *dshRelease

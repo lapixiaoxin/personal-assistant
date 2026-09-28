@@ -1,8 +1,8 @@
 # lumi：基于 DSH 的原生定制方案
 
-状态：Proposed · 2026-09-26。仅完成设计评估；本文全部迁移实验 `not_run`，现行 v0.1 未切换。关联：[SPEC-0014](../../specs/0014-dsh-native-design/spec.md)、[ADR-005](../adr/0005-dsh-native-customization.md)。
+状态：P0 部分 Verified，其余仍为 Proposed · 2026-09-28。SPEC-0015 已验证可迁移个性化契约、DSH rc.2 外部 bundle 安装与 Web 启动；现行 v0.1 服务未切换，多轮恢复、Web UI slot、真实动作和长期数据迁移仍未执行。关联：[SPEC-0014](../../specs/0014-dsh-native-design/spec.md)、[SPEC-0015](../../specs/0015-portable-personalization/spec.md)、[ADR-005](../adr/0005-dsh-native-customization.md)、[ADR-006](../adr/0006-portable-personalization-and-surfaces.md)。
 
-**建议把 lumi 建设成“DSH + lumi 定制 bundle”：复用 DSH 的 Web、会话和执行机制，用插件装配个人记忆、可信动作与业务能力。** 优先在本仓开发外部插件，只有必要扩展点缺失时才维护小范围源码补丁。
+**lumi 采用“可迁移个人内核 + DSH 定制 bundle + 多个可替换 Surface”：复用 DSH 的会话和执行机制，把 DSH Web 作为优先文本入口，但不让 Harness 或某个 UI 拥有个人资产。** 优先在本仓开发外部插件和 adapter，只有必要扩展点缺失时才维护小范围源码补丁。
 
 这比继续扩建当前外壳更符合近期需求。此前把 DSH 主要接在 `TaskExecutor` 后面，保留了确定性业务服务，但也重复建设了入口，并让原生多轮会话、流式交互和会话控制更难利用。需要收缩的是重复的产品与执行包装，已有个人资产和动作核验仍有价值。
 
@@ -14,47 +14,54 @@
 | 薄 fork / 定向上游补丁 | 必要能力没有开放接缝，例如某个 UI 扩展点或受保护配置机制不足 | 每次升级要重放补丁和验证语义 | 以 P0/P1 失败证据决定，不预先改 Agent Loop |
 | 继续独立 Workbench + Gateway + SDK | 产品交互与 DSH 明显不同，或必须隔离引擎进程 | 同时维护两套会话/UI 状态映射和内部桥接 | 暂作现行与回退路径，不继续补普通聊天功能 |
 
-“基于 DSH 二次开发”首先意味着使用其插件架构开发产品；无需先把整个上游复制进本仓。lumi 仍是产品名称和个人领域模型，DSH 是运行基座。具体发布为预构建插件包还是带插件的安装包，等兼容性实验后决定，本次不发布。
+“基于 DSH 二次开发”首先意味着使用其插件架构开发产品；无需先把整个上游复制进本仓。lumi 仍是产品名称和个人领域模型，DSH 是主要运行基座之一。P0 已选择并验证预构建 tarball 作为外部 bundle 交付形态，但尚未发布到 registry 或生产 profile。
 
 ## 2. 目标结构及通信方式
 
 ```mermaid
 flowchart TB
-    U["用户"] --> W["DSH Web + lumi 界面扩展"]
+    U["用户"] --> W["DSH Web：文本 Surface"]
+    U --> V["未来个性化语音 Surface"]
+    U --> O["Workbench / CLI / IM / 设备 Surface"]
+    V --> C["lumi 控制与个人上下文端口"]
+    O --> C
     W <-->|"HTTP / WebSocket"| H
     subgraph H["一个 DSH Host 进程"]
         S["DSH Session / Agent / Tools / Skills"]
         P["lumi Cordis 接线插件"]
-        D["lumi 领域服务：Memory / Action / Task / Verification"]
         S <-->|"进程内服务与工具调用"| P
-        P --> D
     end
+    P <--> C
+    C --> A["其他 Agent Harness adapter"]
+    C --> D["lumi 领域服务：Memory / Action / Task / Verification"]
     D --> DB[("lumi SQLite / 产物 / 证据")]
     S --> LOG[("DSH Session 日志")]
     D --> X["受控 provider / 外部连接器"]
 ```
 
-这是目标图，外部连接器仍未实现。**插件可在 DSH Host 内提供长期服务，同时让数据归 lumi 所有。** 是否同进程、是否用插件装配、是否把身份绑定某次会话，是三个独立选择。长期 owner ID、业务 ID、Schema 和数据目录由 lumi 管理；DSH Session 保存交互与执行历史，两者通过引用关联。
+这是目标图，语音、设备、其他 Harness 与外部连接器仍未实现。**插件可在 DSH Host 内提供长期服务，同时让数据归 lumi 所有。** 是否同进程、是否用插件装配、是否把身份绑定某次会话，是三个独立选择。长期 owner ID、业务 ID、Schema 和数据目录由 lumi 管理；DSH Session 保存交互与执行历史，两者通过引用关联。
 
 | 链路 | 现在 | 候选方案 |
 | --- | --- | --- |
 | 浏览器到运行时 | lumi Workbench → Gateway HTTP | DSH Web → DSH Host HTTP / WebSocket，沿用其连接与认证 |
 | lumi 到 DSH | SDK 启动子进程，stdio JSON-RPC | DSH 已是主进程，插件通过 Cordis 调用服务 |
 | DSH 到 lumi 动作服务 | 每 Run 临时 loopback HTTP bridge | 同进程调用领域端口，保留授权与核验 |
+| 个性化上下文 | TaskExecutor 内直接检索并拼接 | `personal-context/v1` 由 lumi 生成，DSH bundle 或其他 Harness adapter 消费 |
+| 未来语音 UI | 尚未接入 | 独立 Surface 处理实时音频、打断和 TTS，经共享控制端口连接 DSH 或其他 Harness |
 | 以后远程专家或设备 | 尚未接入 | 由对应 adapter 使用 MCP、A2A、HTTP 或设备协议 |
 
 现有每 Task 新建并关闭 SDK 客户端，是 lumi 的实现选择；SDK 支持多次 `run` 和具名 Session，不能把现有单轮工作台归因于 DSH 不支持多轮。新路线也无需为普通对话再包一层 SDK。将来需要隔离 worker 时才恢复跨进程边界及其认证、取消、幂等处理。
 
 ## 3. 可复用面与必须适配的部分
 
-下面依据固定源码快照 `477b4f420553e8a52c2fbccc464d7561b239c443`，根版本 `0.1.7-rc.2`。本仓运行依赖仍是 `0.1.7-rc.1`；已确认 rc.1 包含客户端导出、slots 与 session controller 相关元数据，但没有运行外部插件实验。选型前仍要对候选发行版逐项验证。
+下面依据固定源码快照 `477b4f420553e8a52c2fbccc464d7561b239c443`，根版本 `0.1.7-rc.2`。本仓运行依赖和外部 bundle peer 已统一升级并精确锁定到 `0.1.7-rc.2`；标准 launcher 的外部插件实验已通过。Web client slot 与 Remote 接线仍未运行验证。
 
 | 需求 | DSH 已有机制 | lumi 的定制工作 |
 | --- | --- | --- |
 | 多轮对话、流式显示、历史、取消 | Web、Session、session controller、内部 Agent 控制 | 使用现有会话，验证刷新/重启/取消；不再实现聊天列表和生成循环 |
 | 名字、人格、做事方式、工具集 | persona、Skills、Agent Preset | 定义 lumi Preset 和有版本的技能，按会话作用域装配 |
 | 领域能力 | `ctx.tools.register` / `defineTool`、服务依赖注入 | 将明确的业务动作暴露为工具，复用已有领域端口 |
-| 用户操作和管理 | `ctx.commands.register`、UI slots、配置表单 | 添加记忆管理、动作状态等必要 UI；不会自动出现现有 Workbench 页面 |
+| 用户操作和管理 | `ctx.commands.register`、UI slots、配置表单 | DSH Web 只补文本场景需要的记忆/动作 UI；语音与设备使用独立 Surface，不把全部体验塞进 Web |
 | 认证与凭据 | DSH Web 的单 operator 访问认证、credentials 域 | 将可信访问上下文映射为稳定 lumi owner；生产 Connector 仍按能力限权 |
 | 长期记忆 | Session 历史、上下文机制、可选记忆能力 | 接入现有带来源、状态、纠正与撤回的 Memory 服务，管理检索和旧上下文失效 |
 | 审批与外部结果 | 工具前置策略、交互式 approval | 保留参数摘要、持久授权、撤销、幂等、回执和独立读回 |
@@ -117,18 +124,22 @@ rc.2 Schedule 已有 Host 持久任务与冷会话恢复，应该先评估复用
 
 ## 5. 最小工程落点与已有代码去留
 
-首个实验只增加一个外部 bundle 包，以下是建议结构，尚未创建。按职责拆文件，有独立复用或部署需求时再拆包。
+首个实验已增加最小外部 bundle 和独立上下文契约；客户端 UI 及领域服务桥接仍是后续结构。按职责拆文件，有独立复用或部署需求时再拆包。
 
 ```text
 plugins/dsh-lumi/
-  package.json          # bundle、client、公开入口与兼容依赖
+  package.json          # bundle、公开入口与兼容依赖
   cordis.patch.yml      # Host 服务及 lumi Preset 的装配
   src/
-    index.ts            # Cordis 入口和生命周期
-    services/           # 领域服务装配、可信 owner 与会话映射
-    tools/              # 记忆、动作等 typed tool 接线
-    client/             # DSH slots、动作卡片、记忆操作
+    index.js            # 已有：动态 context、只读状态工具和生命周期
+    services/           # 后续：领域服务装配、可信 owner 与会话映射
+    tools/              # 后续：记忆、动作等 typed tool 接线
+    client/             # 后续：DSH slots、动作卡片、记忆操作
   tests/                # 模块内接线与生命周期验证
+packages/personal-context/
+  src/                  # 已有：版本化 snapshot、digest、解析和渲染
+adapters/task-personal-context/
+  src/                  # 已有：现行 TaskExecutor 接线
 tests/contract/          # 外部安装、Web、Preset 和版本兼容验证
 packages/               # 保留 lumi 领域模块，继续不依赖 DSH
 ```
@@ -139,7 +150,7 @@ packages/               # 保留 lumi 领域模块，继续不依赖 DSH
 | `apps/gateway` / `apps/local-runner` | 当前继续可用；以后按实际用户需求保留兼容 API / CLI | 使用同一权威领域服务，不能另启动一套可写 runtime |
 | `apps/runtime` | 将必要装配迁到 DSH Host 插件 | 单 owner、启动恢复屏障、资源关闭验证通过 |
 | `adapters/dsh` 与每 Run HTTP bridge | 从主交互路径退出；按隔离 worker 或兼容入口需求决定保留 | 原有工具门禁、取消、上下文和核验有对应新证据 |
-| `packages/personal-memory` | 复用存储、检索、纠正与遗忘接口，替换执行前包装 | 新会话上下文注入和旧内容失效有明确行为 |
+| `packages/personal-memory` | 已移除 Task/Core/Ledger 接线，只保留存储、检索、纠正与遗忘 | 新会话上下文注入已走独立包；旧 Session 内容失效仍待设计 |
 | `packages/action-runtime` / `task-ledger` | 先原样复用服务与事务；再按实际需求解耦 | `ActionService` 当前仍依赖 `ActionLedger & TaskLedger`，prepare 会建立 Task，不能先删 Ledger |
 | `packages/assistant-core` / `capability-registry` | 不再作为普通聊天必经入口；收缩为有明确需求的业务任务控制 | 保持真实任务状态、验证和兼容端口，不复制 DSH planner |
 | 研究/会议 workflow | 复用输入契约、来源抓取和 verifier，适配触发与执行上下文 | 现有 `TaskExecutor` 包装不能直接当原生插件用，需逐项映射 |
@@ -152,17 +163,18 @@ packages/               # 保留 lumi 领域模块，继续不依赖 DSH
 
 ### P0：证明原生定制路线能从外部安装运行
 
-使用隔离 DSH home、独立数据目录和端口。先明确候选发行版及 Node / 包管理器要求，锁定兼容依赖；不会因为读了 rc.2 源码就自动升级当前 rc.1。
+使用隔离 DSH home、独立数据目录和随机端口。SPEC-0015 已完成其中的“可迁移个性化 + 外部 bundle”切片；原 SPEC-0014 定义的完整 P0 还包括多轮恢复和 Web UI slot，不能因当前切片通过而整体标记完成。
 
-| 场景 | 通过条件 |
-| --- | --- |
-| 安装与启动 | 预构建 lumi tarball 加入从 Web 模板初始化的 profile，标准 launcher 可启动；不依赖上游源码目录 |
-| 多轮与恢复 | 同一会话完成至少两轮，后一轮引用前文；浏览器刷新和 Host 重启后可继续，取消不会误终结其他会话 |
-| 定制生效 | lumi Preset 有 persona 和一个只读工具；只影响选中该 Preset 的会话 |
-| UI 与服务 | 一个 UI slot 能调用认证后的 Host 只读方法并呈现响应；未认证调用被拒绝，客户端无重复 React / 缺失模块错误 |
-| 启停与版本 | 普通演示插件停用不留重复监听器；缺依赖或不兼容组合明确失败；记录实际 DSH / bundle / Preset 版本 |
+| 场景 | 通过条件 | 2026-09-28 状态 |
+| --- | --- | --- |
+| 安装与启动 | 预构建 lumi tarball 加入从 Web 模板初始化的 profile，标准 launcher 可启动；不依赖上游源码目录 | `verified_once`：tarball 无 `workspace:*`，隔离 profile 安装、config dump、认证交换与随机端口启动通过 |
+| 多轮与恢复 | 同一会话完成至少两轮，后一轮引用前文；浏览器刷新和 Host 重启后可继续，取消不会误终结其他会话 | `not_run` |
+| 定制生效 | lumi Preset 有 persona 和一个只读工具；只影响选中该 Preset 的会话 | `verified_once`：Preset、动态上下文及 `lumi_context_status` 通过 mock/单元契约 |
+| UI 与服务 | 一个 UI slot 能调用认证后的 Host 只读方法并呈现响应；未认证调用被拒绝，客户端无重复 React / 缺失模块错误 | `not_run`；本切片没有 client bundle |
+| 启停与版本 | 普通演示插件停用不留重复监听器；缺依赖或不兼容组合明确失败；记录实际 DSH / bundle / Preset 版本 | `partial`：effect disposer 与 rc.2 精确版本通过；重复启停及不兼容组合矩阵未跑 |
+| 个性化边界 | snapshot 每次组装重读；缺失、篡改、owner/purpose 不匹配失败关闭；状态工具不返回正文 | `verified_once` |
 
-这一步仅证明装配、会话与 UI 接线，不处理真实个人数据、业务写入或提醒迁移。若外部 client / Remote 构建受阻，先给出最小复现；只有具体接缝无法通过外部适配解决，才提出定向上游补丁或薄 fork。P0 失败时保持现行路径。
+本次通过项只证明 bundle 装配和个性化上下文接线，不处理真实个人数据、业务写入或提醒迁移。剩余 P0 若在外部 client / Remote 构建处受阻，先给出最小复现；只有具体接缝无法通过外部适配解决，才提出定向上游补丁或薄 fork。P0 未全部通过前保持现行路径。
 
 ### P1：接入现有记忆和一个可信动作
 
@@ -178,7 +190,7 @@ packages/               # 保留 lumi 领域模块，继续不依赖 DSH
 
 ### P2：迁移入口及长期数据，随后精简
 
-P0/P1 通过后，为实际切换补完整 SDD 和可执行 SOP：清点必要旧入口功能、锁定版本、记录数据格式、备份并验证恢复、处理在途任务与待批动作、停止旧写入者，再启动新 Host。保留稳定 owner / action / memory ID、摘要、回执与产物路径；先做兼容扩展，不先删除旧表或旧 API。
+剩余 P0 与 P1 通过后，为实际切换补完整 SDD 和可执行 SOP：清点必要旧入口功能、锁定版本、记录数据格式、备份并验证恢复、处理在途任务与待批动作、停止旧写入者，再启动新 Host。保留稳定 owner / action / memory ID、摘要、回执与产物路径；先做兼容扩展，不先删除旧表或旧 API。
 
 运行回退前同样先停止新写入者并对账未知动作。若新数据仍兼容旧版，可由旧 runtime 接管；若不兼容，则使用已验证的数据转换或进入只读恢复。不能简单恢复旧数据库后重试所有任务，那会遗失已发生副作用的回执。
 
@@ -186,7 +198,7 @@ P0/P1 通过后，为实际切换补完整 SDD 和可执行 SOP：清点必要�
 
 ## 7. 源码依据与验证状态
 
-以下链接固定到同一 SHA；它们证明存在相应机制或限制，不代表外部 lumi 插件已经运行成功。更完整的基础分析见 [DSH 源码报告](../research/2026-09-25-dsh-source-analysis.md)。
+以下源码链接固定到同一 SHA，用于说明机制与限制。外部 lumi bundle 的实际运行证据另见 [SPEC-0015 evidence](../../specs/0015-portable-personalization/evidence.md) 和 [DSH bundle SOP](../runbooks/dsh-native-bundle.md)。
 
 | 判断 | 固定源码入口 |
 | --- | --- |
@@ -200,4 +212,4 @@ P0/P1 通过后，为实际切换补完整 SDD 和可执行 SOP：清点必要�
 | 模型请求必须可由 Session 重建 | [请求重建不变量](https://github.com/deepseek-ai/deepseek-harness/blob/477b4f420553e8a52c2fbccc464d7561b239c443/packages/core/agent-loop/src/invariant.ts) |
 | Schedule 冷恢复和非原子投递窗口 | [schedule runtime](https://github.com/deepseek-ai/deepseek-harness/blob/477b4f420553e8a52c2fbccc464d7561b239c443/packages/schedule/schedule/src/runtime.ts)、[Web 默认配置](https://github.com/deepseek-ai/deepseek-harness/blob/477b4f420553e8a52c2fbccc464d7561b239c443/packages/bundle/web-app/cordis.patch.yml) |
 
-本次完成静态接口核验、设计与文档校验；没有安装新 bundle、运行 rc.2、升级依赖或切换工作台。检查记录见 [SPEC-0014](../../specs/0014-dsh-native-design/spec.md)。下一步建议仅实施 P0，用运行证据决定后续迁移与是否需要源码补丁。
+SPEC-0014 完成静态接口核验；SPEC-0015 随后升级到 rc.2，实现 Harness-neutral 个性化快照与 Task adapter，并验证外部 tarball 在标准 DSH Web profile 中安装、组合和启动。没有迁移真实个人数据、启用生产 profile、实现 client slot 或切换 Workbench。下一步先完成剩余多轮/UI P0，再以运行证据决定 P1、入口迁移与是否需要源码补丁。

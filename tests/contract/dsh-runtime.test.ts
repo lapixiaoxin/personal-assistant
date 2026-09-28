@@ -8,6 +8,7 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
+  writeFileSync,
 } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -18,6 +19,7 @@ import { DshAdapter } from '../../adapters/dsh/src/index.ts'
 import { buildGateway } from '../../apps/gateway/src/server.ts'
 import { createAssistantRuntime, type AssistantRuntime } from '../../apps/runtime/src/index.ts'
 import { createTaskRequest } from '../../packages/contracts/src/index.ts'
+import { computePersonalContextRevision } from '../../packages/personal-context/src/index.ts'
 import {
   MEETING_BRIEF_END_MARKER,
   MEETING_BRIEF_SECTIONS,
@@ -123,6 +125,64 @@ describe('DSH runtime contract', () => {
     })
     try {
       await expect(harness.start()).resolves.toBeUndefined()
+    } finally {
+      await harness.close()
+    }
+  }, 30_000)
+
+  it('loads a portable personal-context snapshot through the DSH plugin', async () => {
+    const modelServer = await startMockLlmServer({
+      apiKey: 'contract-key',
+      sequence: ['success'],
+      successText: 'Portable personal context loaded',
+    })
+    servers.push(modelServer)
+    vi.stubEnv('DEEPSEEK_API_KEY', 'contract-key')
+    vi.stubEnv('DEEPSEEK_BASE_URL', `${modelServer.baseURL}/v1`)
+
+    const directory = temporaryDirectory('dsh-personal-context-')
+    directories.push(directory)
+    const snapshotPath = join(directory, 'personal-context.json')
+    const snapshotBase = {
+      entries: [{
+        content: 'Prefer the synthetic contract token LUMI_PORTABLE_CONTEXT',
+        id: 'memory-contract',
+        kind: 'preference' as const,
+        revision: 1,
+        scope: 'global' as const,
+        source: 'contract_fixture',
+      }],
+      generatedAt: '2026-09-28T08:00:00.000Z',
+      ownerId: 'owner-contract',
+      purpose: 'general_assistance' as const,
+      schemaVersion: 'lumi.personal-context/v1' as const,
+    }
+    writeFileSync(snapshotPath, JSON.stringify({
+      ...snapshotBase,
+      revision: computePersonalContextRevision(snapshotBase),
+    }))
+    vi.stubEnv('LUMI_PERSONAL_CONTEXT_PATH', snapshotPath)
+
+    const harness = new DeepSeekHarness({
+      cwd: projectRoot,
+      dshHome: join(directory, 'dsh-home'),
+      maxTokens: 1_024,
+      model: 'deepseek-v4-flash',
+      patches: [resolve(projectRoot, 'tests/fixtures/dsh-personal-context.patch.yml')],
+      profile: 'sdk',
+      provider: 'deepseek-official',
+    })
+    try {
+      await harness.start()
+      const result = await harness.run('Use the supplied personal context.', {
+        sessionId: 'portable-context-contract',
+      })
+      expect(result.finalResponse).toBe('Portable personal context loaded')
+      expect(modelServer.requests).toHaveLength(1)
+      const request = JSON.stringify(modelServer.requests[0]?.body)
+      expect(request).toContain('LUMI_PORTABLE_CONTEXT')
+      expect(request).toContain('lumi.personal-context/v1')
+      expect(request).not.toContain('contract_fixture')
     } finally {
       await harness.close()
     }

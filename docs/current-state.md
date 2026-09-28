@@ -17,8 +17,9 @@
 | 路由 | 正则规则选 personal-assistant 或 coding-agent | `packages/capability-registry` |
 | 策略 | 任务文字与 capability 风险等级判定，external/critical 需审批 | `packages/policy` |
 | 执行 | DSH SDK 每任务独立子进程，支持 AbortSignal 取消 | `adapters/dsh` |
-| 上游 | SDK/runtime/mock server 精确固定 0.1.7-rc.1 | `upstream.lock.json`、`pnpm-lock.yaml` |
-| 记忆 | SQLite 持久化、candidate/confirmed/retracted、纠正、遗忘 tombstone 与受控任务注入 | `packages/personal-memory`、`apps/runtime` |
+| 上游 | DSH/SDK/mock/tools 与插件 peer 精确固定 0.1.7-rc.2；提供显式 registry 新鲜度检查 | `upstream.lock.json`、`pnpm-lock.yaml`、`scripts/check-dsh-*.mjs` |
+| 记忆 | SQLite 持久化、candidate/confirmed/retracted、纠正、遗忘 tombstone；领域包不依赖 Task 或 DSH | `packages/personal-memory` |
+| 个性化上下文 | `personal-context/v1` 快照、digest、解析与渲染；当前 Task adapter 和外部 DSH bundle 消费 | `packages/personal-context`、`adapters/task-personal-context`、`plugins/dsh-lumi` |
 | 恢复 | 单机 runtime 所有权、queued 续调度、running 中断判定、显式新 Task 重试与 Action 对账 | `packages/task-recovery`、`packages/task-ledger` |
 | 提醒 | SQLite 一次性 trigger、latest/skip 误点处理、单 timer 与本地通知确认 | `packages/reminders`、`apps/runtime` |
 | 工程检查 | lint、typecheck、架构边界、版本对齐、测试、构建 | `pnpm check`、`.github/workflows/ci.yml` |
@@ -32,10 +33,10 @@
 - v1 Core 收到执行器非空结果后仍可标记 completed；v2 `artifact.write` 已要求独立读回核验，其他任务尚无通用验收器。
 - `TaskRecord.dshSessionId` 带有上游命名；需要兼容迁移到中性执行引用。
 - 幂等比较含 `createdAt`；CLI 只重用 `--id` 会重新产生时间，不能据 README 推断任意重传成功。
-- 记忆已接入 runtime / Gateway / CLI / Workbench，但只支持显式写入和确定性 purpose/scope 检索；没有自动抽取、语义索引、字段级加密或跨设备同步。
+- 记忆已接入 runtime / Gateway / CLI / Workbench，并已从 Task Harness 抽出版本化 context snapshot；仍只支持显式写入和确定性 purpose/scope 检索，没有自动抽取、语义索引、字段级加密或跨设备同步。
 - 当前 coding-agent 是路由到另一份 DSH profile，不是已接入 A2A 的独立外部专家。
-- 无产品级多轮会话；DSH Web UI 使用 DSH 会话，绕开助手 Task Ledger。
-- 尚无 MCP/A2A adapter、周期/cron scheduler、外部通知推送、设备协议、自动学习或自主发布。
+- 无产品级多轮会话；DSH Web UI 使用 DSH 会话，外部 lumi bundle P0 已验证装配但尚未切换现行服务。
+- 尚无实时语音/TTS/打断、设备注册与同步、MCP/A2A adapter、周期/cron scheduler、外部通知推送、自动学习或自主发布。
 - Task Ledger 已按 `user_version` 执行 v1→v2→v3 expand 迁移并记录 `migration_history`；自动 contract migration 和数据库回滚仍未实现。
 - 数据内容、错误、任务结果和 DSH 会话仍可能含敏感信息；只减少工具审计正文不等于全链路脱敏。
 
@@ -192,6 +193,18 @@ Node 22.19.0 下完整 `pnpm check` 通过 25 个测试文件、196 项测试及
 本次只核验固定源码与发行产物并编写设计。lumi 仍固定 `0.1.7-rc.1`，分析快照仍为 `477b4f420553e8a52c2fbccc464d7561b239c443`（根版本 rc.2）；没有升级、外部插件安装、服务切换或数据库迁移。现有 SDK 支持多次 run 与具名 Session，当前每 Task 单独创建进程及 Workbench 无产品级多轮对话，是本仓的集成选择。
 
 P0/P1/P2 均为 `not_run`。Web 客户端外部构建、Remote 接线、Preset 版本恢复、记忆纠正后的旧上下文处理、单写入者及动作门禁都需要新证据，不能从既有 MVP 验收推断迁移成功。个人数据可由 Host 内插件服务持有，领域所有权仍独立于 DSH Session；ADR-004 继续描述现行实现。
+
+## 2026-09-28 · 可迁移个性化与 DSH 原生 bundle P0
+
+[SPEC-0015](../specs/0015-portable-personalization/spec.md) 和 [ADR-006](adr/0006-portable-personalization-and-surfaces.md) 将个性化资产与 Harness / Surface 明确解耦。`packages/personal-memory` 不再依赖 Assistant Core 或 Task Ledger；新 `packages/personal-context` 定义 `lumi.personal-context/v1` snapshot、canonical digest、严格解析和模型数据块渲染。现行 runtime 通过 `adapters/task-personal-context` 保持 Task 原文、上下文筛选和无正文事件语义。
+
+新 `plugins/dsh-lumi` 是可独立打包的外部 bundle。它提供 `lumi` Preset、逐次重读并校验 snapshot 的动态 context，以及只返回 schema、purpose、revision、时间和条目数的 `lumi_context_status`。隔离验收已从 DSH Web 默认模板建 profile、安装 tarball、dump 组合配置并在随机 loopback 端口完成 Web 认证交换；bundle 不含 `workspace:*`，没有读取默认个人数据库。
+
+DSH、SDK、mock server、tools 和插件 peer 已统一锁定 `0.1.7-rc.2`。`pnpm check:dsh` 检查声明、安装结果及 275 个 lockfile DSH package；显式联网的 `pnpm check:dsh:latest` 于 2026-09-28 观察到 `latest=0.1.7-rc.2` 且 4 个兼容包均存在该 release。
+
+Node 22.19.0 / pnpm 10.20.0 下完整 `pnpm check` 通过：23 个 package、45 个生产源码文件、63 条生产依赖、11 项规则自测，28 个测试文件 / 203 个用例（其中 DSH runtime contract 11 项）及 server / Workbench build 全部通过。`pnpm test:dsh:bundle` 和文档检查另行通过；文档检查覆盖 110 个 Markdown、244 个本地链接。隔离 bundle 临时目录已清理。
+
+当前没有迁移真实个人数据、切换 Gateway / Workbench / SDK 服务、实现 Web client slot、实时语音、TTS、设备注册或跨设备同步。P0 snapshot 文件是 adapter 测试载体，不是生产同步协议；模型可见内容会进入 DSH Session 历史，纠正与遗忘尚不自动清除既有会话。
 
 ## 状态标注规则
 

@@ -1,6 +1,6 @@
 # 领域协议与兼容
 
-状态：Proposed v0.2 · 2026-09-24。这里的类型是目标契约；当前可调用协议见 `packages/contracts/src/index.ts` 和 README。示例不是已上线 API。
+状态：Proposed v0.2 · 2026-09-28。这里的类型主要是目标契约；当前可调用协议见 `packages/contracts/src/index.ts` 和 README。`lumi.personal-context/v1` 已由 SPEC-0015 实现，其余示例不是已上线 API。
 
 ## 核心对象
 
@@ -17,6 +17,7 @@
 | Evidence | 可核验事实的引用 | id、source、observedAt、digest、claim、accessPolicy、expiresAt? |
 | Verification | 对验收条件的判定 | criteriaId、verifierVersion、status、evidenceRefs、reason |
 | Memory | 可修正的个人知识 | ownerId、kind、scope、provenance、version、status、validTime |
+| PersonalContextSnapshot | 给一次 Harness 请求使用的不可变个性化视图 | schemaVersion、ownerId、purpose、revision、generatedAt、entries |
 | ChangeProposal | 能力或工程变更 | specRef、baseDigest、candidateDigest、risk、evalRefs、releasePolicyRef |
 
 “目标达成”“任务完成”“执行结束”“动作成功”“模型输出完毕”是五个不同事件。没有外部证据的任务可以完成为“已交付研究报告”等明确结果，但不能宣称已经发送、购买或改变远端状态。
@@ -28,6 +29,21 @@
 请求 ID 与业务幂等键分开：前者用于跟踪单次传输，后者用于识别相同业务意图。幂等范围为 `(ownerId, operation, idempotencyKey)`，冲突摘要拒绝，不静默复用。领域时间统一 UTC RFC3339，日程另带 IANA timezone；不把本地时区字符串用于排序。
 
 业务请求摘要仅包含规范化的用户输入和语义参数，不包含服务端生成的时间和 traceId。同一次请求重传不应因服务端时间不同而冲突。当前 MVP 的 `sameRequest` 比较 `createdAt`，而 CLI 重传会生成新时间；该差距在 M1 迁移中修正。
+
+## Surface 与个性化上下文
+
+DSH Web、Workbench、CLI、未来语音 UI、IM 和设备客户端是可替换 Surface，不是个人资产所有者。各入口先把自身认证结果、会话标识、媒体事件和用户命令映射为共享领域对象，再请求 Harness 或控制层；浏览器 session、音频连接和设备 ID 不直接充当 owner 或授权。
+
+`lumi.personal-context/v1` 是当前已实现的 Harness-neutral 快照。它包含稳定 owner、purpose、生成时间、内容摘要和有 ID/revision/source 的条目；消费者必须校验 schema、owner、purpose、重复 ID、长度与摘要。快照正文是低优先级用户数据，不是 system instruction、凭据或动作许可。P0 文件载体只用于隔离验证；未来可替换为认证服务或进程内端口而不改变快照语义。
+
+Surface 不要求共享同一传输。文本和控制消息可用 HTTP / WebSocket；实时语音可用 WebRTC 或其他流协议；设备可用平台协议。它们至少统一以下语义：
+
+- `ownerId / principalId / conversationId / requestId` 的来源与关联；
+- 用户打断、Turn 取消、Task 取消和 Action 撤销的不同结果；
+- transcript、音频、模型输出、Task 结果和 Evidence 的保留与访问策略；
+- Action 仍须绑定参数、授权、幂等和核验，语音确认不能降低既有门禁。
+
+实时语音 frame、partial transcript 和 TTS chunk 是短期媒体事件，不直接写成 Task、Memory 或 Evidence。是否持久化最终 transcript、如何跨设备续接 Conversation、设备注册与单写入者租约均须在后续版本化协议中定义；当前尚未实现。
 
 ## Task、Run 与 Action 状态
 

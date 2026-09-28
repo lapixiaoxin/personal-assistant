@@ -2,7 +2,7 @@
 
 状态：长期路线 Proposed v0.3 · 2026-09-25；v0.1 已实现子集见 [MVP 验收](../evidence/2026-09-25-mvp-acceptance.md)。
 
-2026-09-26 补充：[原生定制方案](11-dsh-native-customization.md) 与 [ADR-005](../adr/0005-dsh-native-customization.md) 提出复用 DSH Web、在 DSH Host 内装配 lumi 服务的候选路线。本文保留 v0.3 的历史设计与长期多端说明；独立 Workbench、每 Run SDK/HTTP bridge 不再是唯一建议。新路线尚未运行验证或切换。
+2026-09-28 补充：[原生定制方案](11-dsh-native-customization.md) 与 [ADR-006](../adr/0006-portable-personalization-and-surfaces.md) 已明确可迁移个人内核、DSH bundle 与多 Surface 边界。外部 rc.2 bundle 的安装和上下文接线 P0 已运行验证；独立 Workbench、每 Run SDK/HTTP bridge 仍是现行路径，尚未生产切换。本文保留 v0.3 的历史设计与长期多端说明。
 
 本方案细化 v0.2 的执行与插件边界：**DSH 是复杂任务的主要 Agent 执行与编排环境；lumi Host 持有长期个人状态，并提供确定性的服务。** 实时对话、持续感知和物理控制可按延迟与设备约束使用独立运行时，但必须共享 Host 的身份、任务、动作和证据语义。本文及 ADR-003 记录 v0.3 提案；已实现的数据所有权以 [ADR-004](../adr/0004-host-ownership-and-module-boundaries.md) 为准。
 

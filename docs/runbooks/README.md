@@ -4,7 +4,8 @@
 | --- | --- | --- |
 | [本机检查与 mock CLI](local-validation.md) | verified_once | 本机 Node22/pnpm10、现有检查；独立进程间任务/审批持久化 |
 | [本地动作门禁、对账与回滚](action-boundary.md) | verified_once | 单 owner 认证、`artifact.write` 参数授权、读回核验、故障对账与 v1→v2 迁移 |
-| [DSH 受控动作桥验证](dsh-action-bridge.md) | verified_once | rc.1 personal profile、每 Run bridge、跨 Run Action 引用和 Shell/文件旁路阻断 |
+| [DSH 受控动作桥验证](dsh-action-bridge.md) | verified_once | rc.2 personal profile、每 Run bridge、跨 Run Action 引用和 Shell/文件旁路阻断 |
+| [DSH 原生 lumi bundle 验证](dsh-native-bundle.md) | verified_once | rc.2 tarball、隔离 Web profile 安装启动、动态个性化 snapshot 与失败关闭 |
 | [工作区、依赖与测试布局](workspace-layout.md) | verified_once | lumi 包链接刷新、测试分离与全量检查；编辑器配置已静态核验 |
 | [本地 Web 工作台](web-workbench.md) | verified_once | 生产静态托管、桌面/移动任务审批与 Action 授权/执行/验证流程 |
 | [受控公开来源研究简报](research-brief.md) | verified_once | 显式 HTTPS 来源、Host 快照、DSH 引用覆盖及一次 MiniMax 真实只读样本 |

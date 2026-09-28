@@ -29,11 +29,11 @@ import {
   LocalArtifactProvider,
 } from '@lumi/local-artifact'
 import {
-  MemoryContextExecutor,
   PersonalMemoryService,
   SqlitePersonalMemoryStore,
   type PersonalMemoryStore,
 } from '@lumi/personal-memory'
+import { PersonalContextService } from '@lumi/personal-context'
 import {
   DefaultActionPolicyEngine,
   DefaultPolicyEngine,
@@ -67,6 +67,7 @@ import {
   type RecoveryLedger,
   type TaskLedger,
 } from '@lumi/task-ledger'
+import { TaskPersonalContextAdapter } from '@lumi/task-personal-context'
 
 export interface AssistantRuntime {
   actions: ActionService
@@ -164,9 +165,9 @@ export function createAssistantRuntime(options: RuntimeOptions = {}): AssistantR
         createDshActionBroker(actions, ledger, identity),
         createDshResearchBroker(researchSources, identity),
       )
-  const memoryExecutor = new MemoryContextExecutor(
+  const memoryExecutor = new TaskPersonalContextAdapter(
     configured.executor,
-    memories,
+    new PersonalContextService(memories),
     ledger,
     identity.localPrincipal().ownerId,
   )
