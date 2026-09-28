@@ -1,6 +1,6 @@
 # SPEC-0015 验证证据
 
-状态：implementation_verified · 2026-09-28。待记录 commit / push 后关闭交付项。
+状态：passed / locally verified · 2026-09-28。
 
 环境：macOS，Node `22.19.0`，pnpm `10.20.0`，DSH 同 release `0.1.7-rc.2`。全部个人上下文样本均为虚构内容；没有使用模型凭据、默认个人数据库或固定服务端口。
 
@@ -11,7 +11,7 @@
 | E-03 | `pnpm check:dsh` 检查 275 个 DSH lock package；runtime contract 11 项通过，含真实 SDK 子进程和 mock 模型上下文注入 | passed |
 | E-04 | `pnpm test:dsh:bundle` 打包无 `workspace:*` tarball，从 Web 模板创建 profile、安装、dump config，并在随机 loopback 端口完成启动/认证观察 | passed |
 | E-05 | plugin 3 项通过：动态重读、缺失/owner mismatch/digest tamper 失败关闭、状态工具不返回正文 | passed |
-| E-06 | `pnpm check`、联网新鲜度、文档、清理、commit / push | in_progress |
+| E-06 | `pnpm check`、联网新鲜度、文档与清理通过；实现提交 `ce5e82b` 已快进合并并推送 `origin/main` | passed |
 
 ## 命令与观察
 

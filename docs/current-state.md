@@ -202,7 +202,7 @@ P0/P1/P2 均为 `not_run`。Web 客户端外部构建、Remote 接线、Preset �
 
 DSH、SDK、mock server、tools 和插件 peer 已统一锁定 `0.1.7-rc.2`。`pnpm check:dsh` 检查声明、安装结果及 275 个 lockfile DSH package；显式联网的 `pnpm check:dsh:latest` 于 2026-09-28 观察到 `latest=0.1.7-rc.2` 且 4 个兼容包均存在该 release。
 
-Node 22.19.0 / pnpm 10.20.0 下完整 `pnpm check` 通过：23 个 package、45 个生产源码文件、63 条生产依赖、11 项规则自测，28 个测试文件 / 203 个用例（其中 DSH runtime contract 11 项）及 server / Workbench build 全部通过。`pnpm test:dsh:bundle` 和文档检查另行通过；文档检查覆盖 110 个 Markdown、244 个本地链接。隔离 bundle 临时目录已清理。
+Node 22.19.0 / pnpm 10.20.0 下完整 `pnpm check` 通过：23 个 package、45 个生产源码文件、63 条生产依赖、11 项规则自测，28 个测试文件 / 203 个用例（其中 DSH runtime contract 11 项）及 server / Workbench build 全部通过。`pnpm test:dsh:bundle` 和文档检查另行通过；文档检查覆盖 110 个 Markdown、244 个本地链接。隔离 bundle 临时目录已清理。实现提交 `ce5e82b` 已推送 `origin/main`。
 
 当前没有迁移真实个人数据、切换 Gateway / Workbench / SDK 服务、实现 Web client slot、实时语音、TTS、设备注册或跨设备同步。P0 snapshot 文件是 adapter 测试载体，不是生产同步协议；模型可见内容会进入 DSH Session 历史，纠正与遗忘尚不自动清除既有会话。
 

@@ -7,6 +7,6 @@
 | T-03 | 升级 DSH rc.2 并增加 online 新鲜度门禁 | T-01 | done | Builder | FR-009、010 / AC-007、008 | `check:dsh`、`check:dsh:latest` 通过 |
 | T-04 | 实现并打包外部 dsh-lumi bundle | T-02、T-03 | done | Builder | FR-005–008 / AC-004–006 | plugin 测试与 bundle verifier 通过 |
 | T-05 | 完成单元、契约、隔离 Web profile 和完整门禁 | T-02–T-04 | done | Verifier | NFR-001–004 / AC-001–009 | `pnpm check`、docs check 通过 |
-| T-06 | 同步事实、SOP、evidence，集成 main 并推送 | T-05 | in_progress | Maintainer | FR-011 / AC-009 | 文档已同步；待 commit / push |
+| T-06 | 同步事实、SOP、evidence，集成 main 并推送 | T-05 | done | Maintainer | FR-011 / AC-009 | `ce5e82b` 已推送 `origin/main` |
 
 状态：todo / in_progress / blocked / done。

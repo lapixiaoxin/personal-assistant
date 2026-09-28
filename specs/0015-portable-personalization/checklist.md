@@ -19,7 +19,7 @@
 - [x] `lumi_context_status` 不泄漏正文。
 - [x] 完整 `pnpm check` 和文档检查通过。
 - [x] 隔离运行产物已精确清理，主工作区用户 SVG 未改变。
-- [ ] 事实、ADR、SOP、evidence、commit 和 push 已记录。
+- [x] 事实、ADR、SOP、evidence、commit 和 push 已记录。
 
 ## 后续而非本切片
 
