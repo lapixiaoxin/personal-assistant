@@ -6,6 +6,7 @@
 | --- | --- |
 | 十分钟掌握长期方向 | [总纲](design/00-overview.md) |
 | 对照近期 Personal Agent，规划跨平台助手团队 | [市场观察与 lumi 超级管家调整建议](research/2026-10-13-personal-agent-landscape-and-lumi-direction.md)：2026-10-13 研究提案，外部接入尚未实施 |
+| 评估 DSH 接管核心、SDK 与外围插件路线 | [DSH 能力与扩展性核验](research/2026-10-13-dsh-sdk-plugin-feasibility.md)：已核对线上 `0.2.0-rc.2` 与 alpha；本地仍为 `0.1.7-rc.2`，尚未升级或迁移 |
 | 查看 DSH 核心架构与多端流程 | [v0.3 六图方案](design/10-dsh-centered-architecture.md)、[ADR-003](adr/0003-dsh-centered-harness.md)、[SPEC-0003](../specs/0003-dsh-centered-design/spec.md) |
 | 基于 DSH 定制并保持个性化可迁移 | [原生定制方案](design/11-dsh-native-customization.md)、[ADR-006](adr/0006-portable-personalization-and-surfaces.md)、[SPEC-0015](../specs/0015-portable-personalization/spec.md)、[bundle SOP](runbooks/dsh-native-bundle.md)：rc.2 外部 bundle P0 已验证，现行服务未切换 |
 | 理解 DSH 当前源码与能力 | [rc.2 源码分析](research/2026-09-25-dsh-source-analysis.md)：插件理念、执行链路与能力开关；当前运行组合已升级到同一 rc.2 release |
