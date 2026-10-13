@@ -75,6 +75,7 @@ for (const [name, value] of Object.entries(versions)) {
 }
 
 await assertCoreHasNoDshImports()
+await assertWorkspaceDeclarations(expected)
 const lockedPackageCount = assertLockHasSingleDshRelease(lockfile, expected)
 process.stdout.write(
   `DSH compatibility pins are aligned at ${expected}; ${lockedPackageCount} lockfile packages checked\n`,
@@ -82,6 +83,26 @@ process.stdout.write(
 
 async function readJson(path) {
   return JSON.parse(await readFile(path, 'utf8'))
+}
+
+async function assertWorkspaceDeclarations(expected) {
+  for (const category of ['apps', 'packages', 'adapters', 'plugins', 'channels']) {
+    for (const entry of await readdir(resolve(root, category), { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue
+      let manifest
+      try { manifest = await readJson(resolve(root, category, entry.name, 'package.json')) } catch (error) {
+        if (error.code === 'ENOENT') continue
+        throw error
+      }
+      for (const group of ['dependencies', 'devDependencies', 'peerDependencies']) {
+        for (const [name, version] of Object.entries(manifest[group] ?? {})) {
+          if (name.startsWith('@deepseek-ai/dsh') && version !== expected) {
+            throw new Error(`DSH compatibility check: ${manifest.name} ${group} ${name}=${version}`)
+          }
+        }
+      }
+    }
+  }
 }
 
 async function assertCoreHasNoDshImports() {

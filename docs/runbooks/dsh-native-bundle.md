@@ -2,6 +2,8 @@
 
 状态：`verified_once` · 2026-09-28。适用于 DSH `0.1.7-rc.2`、Node >=22.19.0、pnpm 10.20.0 和 `@lumi/dsh-lumi-plugin` `0.1.0`。
 
+2026-10-13：同一规程在 DSH `0.2.0-rc.2` 重新通过打包、安装、组合与临时 Web 启动，仍为 `verified_once`。此 bundle 验证不涵盖新飞书生产连接。
+
 ## 已证明范围
 
 - `personal-context/v1` 可被当前 Task adapter 和 DSH 插件按同一语义消费。

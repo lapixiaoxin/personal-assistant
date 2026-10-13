@@ -2,6 +2,8 @@
 
 状态：verified_once · 2026-09-25。适用版本：SPEC-0004 v0.1、SPEC-0006 v0.1、SPEC-0007 v0.1、SPEC-0008 v0.1、SPEC-0009 v0.1、SPEC-0010 v0.1、SPEC-0011 v0.1，本机 Node 22.19.0、pnpm 10.20.0。浏览器任务 executor 使用 mock；Action、Personal Memory、Recovery 与 Reminder 经过真实本地运行时和 SQLite。研究、会议和记忆真实模型的独立验收分别见对应 SOP。
 
+2026-10-13：命令同步为 legacy 入口，原浏览器验收日期保留；本 SOP 不代表新飞书通道能力。
+
 ## 前置
 
 - 在仓库根目录执行，Node >=22.19.0、pnpm 10.20.0。
@@ -13,7 +15,7 @@
 在两个终端分别运行：
 
 ```bash
-PA_EXECUTOR=mock pnpm dev
+PA_EXECUTOR=mock pnpm dev:legacy
 pnpm dev:web
 ```
 
@@ -37,7 +39,7 @@ pnpm dev:web
 
 ```bash
 pnpm build
-PA_EXECUTOR=mock pnpm start
+PA_EXECUTOR=mock pnpm start:legacy
 ```
 
 打开 `http://127.0.0.1:4310`。完整构建先生成 Node 入口，再生成 `dist/workbench`；不要单独执行 `pnpm build:server` 后期待旧的 Workbench 产物仍存在，因为 tsup 会清理 `dist`。

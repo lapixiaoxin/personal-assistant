@@ -3,12 +3,13 @@ packages:
   - packages/*
   - adapters/*
   - plugins/*
+  - channels/*
 
 # DSH publishes its composition as many exact-version peer packages. Pin the
 # full peer surface to one release so pnpm cannot retain an older peer graph
 # when the root DSH package is upgraded.
 overrides:
-  '@deepseek-ai/dsh-anonymous-user-id': &dshRelease 0.1.7-rc.2
+  '@deepseek-ai/dsh-anonymous-user-id': &dshRelease 0.2.0-rc.2
   '@deepseek-ai/dsh-attachment': *dshRelease
   '@deepseek-ai/dsh-bash-local': *dshRelease
   '@deepseek-ai/dsh-brand': *dshRelease
@@ -48,11 +49,10 @@ overrides:
   '@deepseek-ai/dsh-util-workspace-path': *dshRelease
   '@deepseek-ai/dsh-workflow': *dshRelease
 
-# The published umbrella package relies on these exact peers but npm dist-tags
-# for several interface packages still point at rc.1. Materialize the matching
-# release under the umbrella package instead of accepting a mixed runtime.
+# The umbrella relies on exact peers; individual npm dist-tags can lag behind.
+# Materialize the matching release rather than accepting a mixed runtime.
 packageExtensions:
-  '@deepseek-ai/dsh@0.1.7-rc.2':
+  '@deepseek-ai/dsh@0.2.0-rc.2':
     dependencies:
       '@deepseek-ai/dsh-anonymous-user-id': *dshRelease
       '@deepseek-ai/dsh-attachment': *dshRelease

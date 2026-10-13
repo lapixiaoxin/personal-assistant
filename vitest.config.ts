@@ -13,8 +13,8 @@ export default defineConfig({
     },
     environment: 'node',
     include: [
-      '{adapters,apps,packages,plugins}/*/tests/**/*.test.{ts,tsx}',
-      'tests/**/*.test.ts',
+      '{adapters,apps,packages,plugins,channels}/*/tests/**/*.test.{js,ts,tsx}',
+      'tests/**/*.test.{js,ts}',
     ],
   },
 })

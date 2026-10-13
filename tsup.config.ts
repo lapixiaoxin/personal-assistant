@@ -7,6 +7,7 @@ export default defineConfig({
   entry: {
     'cli/main': 'apps/local-runner/src/main.ts',
     'gateway/main': 'apps/gateway/src/main.ts',
+    'server/main': 'apps/server/src/main.js',
   },
   esbuildOptions(options) {
     options.supported = {
@@ -14,7 +15,7 @@ export default defineConfig({
       'node-colon-prefix-import': true,
     }
   },
-  external: ['@deepseek-ai/dsh-sdk-client', 'node:sqlite'],
+  external: ['@deepseek-ai/dsh-sdk-client', '@lumi/dsh-channels-plugin/config', 'node:sqlite'],
   format: ['esm'],
   minify: false,
   outDir: 'dist',

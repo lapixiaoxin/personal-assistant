@@ -1,4 +1,36 @@
-# lumi 工程事实基线
+# lumi 工程事实
+
+当前更新：**2026-10-13 / SPEC-0016**。以下“当前”表覆盖旧状态描述；后半部分按日期保留历史，不能据历史版本判断现行默认入口。
+
+## 当前主线
+
+| 项目 | 已实现与验证范围 |
+| --- | --- |
+| 产品与核心 | 单服务器超级管家；DSH 独占推理、规划、Session、工具与子 Agent 核心。当前不接具体外部个人 Agent |
+| 默认入口 | `apps/server` 通过官方 SDK 启动常驻 DSH；`pnpm start/dev` 指向新 server，原 Gateway 为 `start:legacy/dev:legacy` |
+| 通道 | `channels/feishu` 使用官方 SDK 1.75.0 长连接；校验 app、单 owner open_id、私聊、文本与长度 |
+| 会话 | `plugins/dsh-channels` 调用原生 create/resume/followup/cancel；多轮、重启续接、`/new`、`/cancel` 已通过真实 DSH + mock 模型契约 |
+| 收发持久化 | `packages/channel-store` 保存平台输入去重、Session 映射、回复意图与回执；单机进程所有权；中断/未知结果不自动重复 |
+| 权限 | 新 server 默认拒绝业务工具与委派；只配置个人快照时开放只读状态工具。飞书身份不授予外部动作权限 |
+| 个性化 | 复用 `personal-context/v1` 与 `dsh-lumi`；新入口只加载显式快照，不自动导入旧库、同步或写入记忆 |
+| 上游 | DSH 全组合统一 0.2.0-rc.2；2026-10-13 registry 检查为 latest；外部 bundle 打包/安装/Web 启动验证通过 |
+| 检查 | Node22.19.0/pnpm10.20.0；完整 `pnpm check` 通过 32 文件 / 223 项测试与构建；旧保护性测试未改 |
+| 部署 | 配置样例、飞书 SOP 与 systemd candidate 已准备；未配置专用 Bot，未部署服务器或切换既有运行服务 |
+
+证据与限制：[SPEC-0016](../specs/0016-dsh-server-feishu/evidence.md)。目录和路线见 [架构](design/02-architecture.md)、[路线](design/07-roadmap.md)、[ADR-007](adr/0007-dsh-server-and-channel-boundary.md)。
+
+## 当前未验证与未启用
+
+- 飞书真实收发、长连接重连及租户权限配置为 `not_run`；未使用本机已有模型凭据做云模型验证。官方事件分发和发送协议的离线测试不能替代平台验收。
+- Linux systemd、长期 soak、多实例/多主机、跨主机恢复、磁盘加密、数据保留自动清理、远程健康检查未验证或未实现。
+- 现有代码提供 Skills/MCP/Agent 等上游扩展位置，但本 profile 没有启用外部 Agent、ACP/A2A、设备、文件/Shell/网络工具、App、周期调度、主动推送或自动记忆。
+- 收发状态与 DSH 历史不是原子事务；`interrupted/unknown` 需要人工对账和新输入。已启动后的终止性连接错误只记录状态，需人工检查/重启；状态快照不是心跳。
+- 新数据默认 `data/server`，旧 Task/Action/Memory/Reminder 数据未迁移或删除。旧 CLI/Gateway/Workbench 仍独立运行；legacy 的功能与限制不自动成为飞书能力。
+- 凭据/正文不进入普通日志，但私有配置、收件箱、DSH 会话与备份仍包含敏感内容。进程内 guard 只适用于受信插件；个人快照纠正不清除历史会话。
+
+## 历史基线与逐次验证
+
+以下为截至 2026-09-28 的历史记录，保留当时版本、数字和限制。旧模块的后续处置见 [兼容与退役](runbooks/legacy-retirement.md)。
 
 采集日期：2026-09-24。范围：首次设计时的工作区源码与本机验证。当时分支为 `feat/initial-mvp`、尚无 commit，原工程文件均未跟踪。随后用户授权 Agent 托管版本管理，现已在 `main` 建立初始基线 `1cd54cc`；提交保留原业务源码，不把用户既有实现归为本次新增功能。后续按 `AGENTS.md` 主动提交已授权且验证完成的工作。
 

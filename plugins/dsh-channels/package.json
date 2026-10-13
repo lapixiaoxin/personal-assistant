@@ -1,0 +1,15 @@
+{
+  "name": "@lumi/dsh-channels-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.js",
+    "./config": "./src/config.js"
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh-llm": "0.2.0-rc.2",
+    "@lumi/channel-store": "workspace:*",
+    "@lumi/feishu-channel": "workspace:*"
+  }
+}

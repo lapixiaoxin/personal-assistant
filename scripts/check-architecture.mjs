@@ -3,7 +3,7 @@ import { dirname, relative, resolve } from 'node:path'
 import process from 'node:process'
 
 const root = resolve(import.meta.dirname, '..')
-const workspaceRoots = ['apps', 'packages', 'adapters', 'plugins']
+const workspaceRoots = ['apps', 'packages', 'adapters', 'plugins', 'channels']
 const sourceExtensions = /\.(?:d\.ts|js|mjs|ts|tsx)$/
 const testFilePattern = /\.(?:spec|test)\.(?:js|mjs|ts|tsx)$/
 const rootDraftPattern = /^draft_[A-Za-z0-9_-]+_folder$/
@@ -172,8 +172,11 @@ function invalidLayerDependency(sourceCategory, targetCategory) {
   if (sourceCategory === 'adapters' && targetCategory !== 'packages') {
     return `adapters may depend only on packages, not ${targetCategory}`
   }
-  if (sourceCategory === 'plugins' && targetCategory !== 'packages') {
-    return `plugins may depend only on packages, not ${targetCategory}`
+  if (sourceCategory === 'channels' && targetCategory !== 'packages') {
+    return `channels may depend only on packages, not ${targetCategory}`
+  }
+  if (sourceCategory === 'plugins' && !['packages', 'plugins', 'channels'].includes(targetCategory)) {
+    return `plugins may compose packages, plugins and channels, not ${targetCategory}`
   }
   return undefined
 }
@@ -196,7 +199,9 @@ function missingProductionDependency(packageName, dependencies, importedPackage)
 }
 
 function forbiddenExternalImport(category, specifier) {
-  return category === 'packages' && specifier.startsWith('@deepseek-ai/')
+  return (category === 'packages' && (
+    specifier.startsWith('@deepseek-ai/') || specifier.startsWith('@larksuiteoapi/')
+  )) || (category === 'channels' && specifier.startsWith('@deepseek-ai/'))
 }
 
 function isOutside(directory, target) {
@@ -272,7 +277,10 @@ function runSelfTests() {
   )
   assert(testFilePattern.test('src/example.test.ts'), 'src test detection')
   assert(rootDraftPattern.test('draft_abc_folder'), 'root draft detection')
-  return 11
+  assert(invalidLayerDependency('channels', 'plugins') !== undefined, 'channel to plugin rejection')
+  assert(invalidLayerDependency('plugins', 'channels') === undefined, 'plugin channel composition')
+  assert(forbiddenExternalImport('channels', '@deepseek-ai/dsh'), 'DSH-free channel')
+  return 14
 }
 
 function assert(condition, name) {

@@ -21,7 +21,7 @@
 
 ```bash
 pnpm build
-PA_HTTP_TOKEN='<local-token>' pnpm start
+PA_HTTP_TOKEN='<local-token>' pnpm start:legacy
 ```
 
 打开 `http://127.0.0.1:4310/#token=<local-token>`，在 composer 选择“研究简报”，输入研究问题，并在“公开来源”中每行填写一个 URL。提交后：

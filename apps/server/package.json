@@ -1,0 +1,11 @@
+{
+  "name": "@lumi/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.js",
+  "dependencies": {
+    "@deepseek-ai/dsh-sdk-client": "0.2.0-rc.2",
+    "@lumi/dsh-channels-plugin": "workspace:*"
+  }
+}

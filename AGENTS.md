@@ -6,13 +6,15 @@
 
 1. 阅读 [README](README.md)、[工程事实](docs/current-state.md)、[文档索引](docs/README.md)。
 2. 查看 `git status --short`、当前分支、相关源码和测试；不要覆盖用户改动。
-3. 阅读对应 `specs/<id>/`；首次建设从 [0001](specs/0001-action-boundary/spec.md) 开始。
+3. 阅读对应 `specs/<id>/`；当前主线为 [0016](specs/0016-dsh-server-feishu/spec.md)，动作边界沿用 [0001](specs/0001-action-boundary/spec.md)。
 4. 涉及边界变化时读 [架构](docs/design/02-architecture.md)、[协议](docs/design/03-protocols.md)、[安全](docs/design/05-safety.md) 和 [ADR](docs/adr/README.md)。
 5. 使用 [SDD 流程](docs/design/08-sdd.md)、[模板](docs/templates/README.md) 和 [SOP](docs/runbooks/README.md) 完成交付及交接。
 
 ## 当前状态与授权
 
-2026-09-28：MVP 已有 CLI/HTTP/Workbench、SQLite 任务账本、DSH adapter、动作门禁、可控个人记忆、单机重启恢复和一次性本地提醒。个性化上下文已从 Task Harness 抽成 `personal-context/v1` 契约，并有可安装到 DSH Web profile 的外部 bundle P0；现行服务尚未切换。DSH 兼容组合固定为 `0.1.7-rc.2`。实时语音、多设备同步、分布式 lease/fencing、周期调度/外部推送、自动记忆和自主发布尚未实现。
+2026-10-13：主线改为 DSH 常驻 SDK server + 外围插件。DSH 独占通用推理、规划、Session、工具和 Agent 调度；本仓维护个人资产、通道、插件和部署。新飞书单 owner 私聊文本入口、持久收件箱与原生 Session 接线已实现并本地验证；专用应用未配置，真实 Bot 收发、Linux 部署及现有服务切换尚未执行。DSH 组合固定 `0.2.0-rc.2`，提供每日/手动新鲜度检查。
+
+默认 `start/dev` 为新 server，旧 Gateway 改用 `start:legacy/dev:legacy`。旧 CLI/Workbench、任务/动作/记忆/恢复/提醒数据和保护性验收保留，按 [退役计划](docs/runbooks/legacy-retirement.md) 逐项迁移。新 profile 当前只开放对话与可选个人上下文状态，不接具体外部 Agent、设备或业务动作。Dots、Muse 只是用户举例，不能据此扩展实施范围。实时语音、多设备同步、分布式 lease/fencing、周期推送、自动记忆和自主发布尚未实现。
 
 设计轮已完成方案、文档、现状验证及飞书发布。2026-09-24 用户明确版本管理交给 Agent 托管，可以直接将修改提交到当前仓库的 main 分支；2026-09-25 进一步授权完成验证后直接推送到当前跟踪的远端分支。具体开发仍以用户任务为准；已有明确范围内持续推进，常规可逆步骤无需反复确认。
 
@@ -43,7 +45,7 @@
 
 ## 开发与验证
 
-Node >=22.19.0，pnpm 10.20.0。优先查版本，再执行相关验证；完整门禁为 `pnpm check`。默认 executor 为 DSH，离线验证必须显式 `PA_EXECUTOR=mock` 并使用独立数据库。
+Node >=22.19.0，pnpm 10.20.0。优先查版本，再执行相关验证；完整门禁为 `pnpm check`。旧 Task 路径离线验证必须显式 `PA_EXECUTOR=mock` 并使用独立数据库；新 server 使用真实 DSH + 官方 mock 模型的隔离契约，不读取默认个人库。飞书配置与启用见 [部署 SOP](docs/runbooks/server-feishu.md)。
 
 内部包统一使用 `@lumi/*`；模块目录按职责命名。生产代码放 `<module>/src/`，模块测试放同级 `<module>/tests/`，跨模块测试放根 `tests/<category>/`；不在 `src/` 中新建测试。参见 [测试约定](tests/README.md)。保留 pnpm 的模块依赖链接，使用 `lumi.code-workspace` 隐藏生成目录。
 

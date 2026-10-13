@@ -2,6 +2,8 @@
 
 状态：Proposed · 2026-09-26。关联：[SPEC-0014](../../specs/0014-dsh-native-design/spec.md)、[定制方案](../design/11-dsh-native-customization.md)。本记录提出候选运行结构，尚未实施或取代 [ADR-004](0004-host-ownership-and-module-boundaries.md) 的 v0.1 事实。
 
+2026-10-13：Web 优先与候选运行结构部分 Superseded by [ADR-007](0007-dsh-server-and-channel-boundary.md)。采用 SDK server + 飞书入口，外部插件与可迁移个人资产原则保留。
+
 ## 背景
 
 lumi 当前通过 SDK 子进程调用 DSH，在外层提供独立 Gateway 和 Workbench。用户体验暴露出重复建设入口的问题：工作台以单个 Task 为中心，没有直接利用 DSH 原生多轮 Session、Web 流式交互和会话控制。

@@ -62,7 +62,7 @@ pnpm cli memory forget <memory-id>
 启动 Gateway 和页面后打开顶部“记忆”：
 
 ```bash
-PA_EXECUTOR=mock pnpm dev
+PA_EXECUTOR=mock pnpm dev:legacy
 pnpm dev:web
 ```
 

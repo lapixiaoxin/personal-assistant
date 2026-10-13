@@ -35,7 +35,7 @@ pnpm cli --db ./data/action-check/assistant.db action get <action-id>
 
 ```bash
 export PA_HTTP_TOKEN="$(openssl rand -hex 32)"
-PA_EXECUTOR=mock pnpm start
+PA_EXECUTOR=mock pnpm start:legacy
 ```
 
 除 `/health` 和静态资源外，请求带：

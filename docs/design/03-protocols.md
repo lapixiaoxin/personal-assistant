@@ -2,6 +2,19 @@
 
 状态：Proposed v0.2 · 2026-09-28。这里的类型主要是目标契约；当前可调用协议见 `packages/contracts/src/index.ts` 和 README。`lumi.personal-context/v1` 已由 SPEC-0015 实现，其余示例不是已上线 API。
 
+## 2026-10-13 新服务器的已实现契约
+
+SPEC-0016 新入口直接接 DSH 原生 Agent 服务，不要求把每次对话转换为旧 Task。以下为当前实现，其后 Goal/Run/Manifest 等仍是长期目标，不能要求为其预建通用编排层。
+
+- 私有配置：`lumi.server/v1`，严格字段、固定 owner、文件权限、provider/model 和专用飞书身份。
+- 内部通道信封：`id / chat / sender / messageId / text`；只有可信平台 adapter 生成，不是公网自报身份接口。稳定 app+message ID 去重，相同 ID 的摘要冲突拒绝。
+- 通道端口：`start(receive)`、`send(envelope, text)`、`status()`、`close()`；receive 先落盘再返回，send 返回已确认的平台 message ID。
+- 收发状态：`queued → running → ready → sending → sent`。重启 running→interrupted、sending→unknown；不自动重放。
+- Conversation 映射指向 DSH Session；transcript 与原生执行归 DSH。`/new` 新建映射，`/cancel` 原生取消并清排队输入；均不销毁旧历史或撤销已发生副作用。
+- `personal-context/v1` 继续独立；仅显式快照进入新服务器，非生产同步协议。
+
+该内部端口当前由一个插件消费，不是稳定跨进程 ABI；新增 App、A2A 或设备时按具体需求定义认证、兼容与取消协议。
+
 ## 核心对象
 
 | 对象 | 含义 | 关键关系和最小字段 |

@@ -1,5 +1,7 @@
 # lumi：基于 DSH 的原生定制方案
 
+2026-10-13：本文保留候选方案与 P0 历史；当前采用 SDK server + 飞书入口，DSH 负责通用核心。当前实施以 [架构](02-architecture.md) 和 [ADR-007](../adr/0007-dsh-server-and-channel-boundary.md) 为准，Web 不再是近期默认入口。
+
 状态：P0 部分 Verified，其余仍为 Proposed · 2026-09-28。SPEC-0015 已验证可迁移个性化契约、DSH rc.2 外部 bundle 安装与 Web 启动；现行 v0.1 服务未切换，多轮恢复、Web UI slot、真实动作和长期数据迁移仍未执行。关联：[SPEC-0014](../../specs/0014-dsh-native-design/spec.md)、[SPEC-0015](../../specs/0015-portable-personalization/spec.md)、[ADR-005](../adr/0005-dsh-native-customization.md)、[ADR-006](../adr/0006-portable-personalization-and-surfaces.md)。
 
 **lumi 采用“可迁移个人内核 + DSH 定制 bundle + 多个可替换 Surface”：复用 DSH 的会话和执行机制，把 DSH Web 作为优先文本入口，但不让 Harness 或某个 UI 拥有个人资产。** 优先在本仓开发外部插件和 adapter，只有必要扩展点缺失时才维护小范围源码补丁。

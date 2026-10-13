@@ -2,6 +2,8 @@
 
 状态：Proposed · 2026-09-24。关联：设计 02/03、M0–M3。
 
+2026-10-13：独立通用协调与 SDK adapter 的未来实施建议部分 Superseded by [ADR-007](0007-dsh-server-and-channel-boundary.md)。个人资产独立、模块化与控制原则仍有效；本文保留历史取舍。
+
 2026-09-25：[ADR-003](0003-dsh-centered-harness.md) 细化选项 4：DSH 为唯一认知与工具编排 Harness，lumi Host 提供确定性服务，Cordis 插件桥接其端口。个人资产独立与模块化单体原则保持不变。
 
 ## 背景

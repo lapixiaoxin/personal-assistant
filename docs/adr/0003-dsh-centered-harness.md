@@ -2,6 +2,8 @@
 
 状态：Proposed · 2026-09-25。关联：[DSH 中心架构](../design/10-dsh-centered-architecture.md)、[SPEC-0003](../../specs/0003-dsh-centered-design/spec.md)、M1–M5。细化 ADR-001 的接入方式；不替代其个人资产所有权、模块化单体和隔离原则。
 
+2026-10-13：运行结构部分 Superseded by [ADR-007](0007-dsh-server-and-channel-boundary.md)，新 server 通过 SDK 引导原生 DSH 核心；个人资产与确定性控制原则保留。本文是历史提案。
+
 ## 背景与事实
 
 用户希望深度复用 DSH 的“一切皆插件”，支撑多入口、多物理设备、多外部能力。当前本仓为 TypeScript/SQLite + DSH SDK adapter，版本 `0.1.7-rc.1`，每任务独立子进程。DSH 已有 Cordis、模型与工具服务、Skills、Subagents、MCP，重复建设通用 Loop 和插件生命周期没有必要。

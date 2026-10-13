@@ -2,12 +2,14 @@
 
 本地 Web 工作台，包含任务、动作、个人记忆和提醒通知四类视图。它只调用 lumi Gateway，不直接连接 DSH、数据库或外部工具。
 
+2026-10-13 起为 legacy 兼容入口；新默认 server 使用飞书通道。退役条件见 [计划](../../docs/runbooks/legacy-retirement.md)。
+
 ## 开发
 
 先在一个终端启动 Gateway：
 
 ```bash
-PA_EXECUTOR=mock pnpm dev
+PA_EXECUTOR=mock pnpm dev:legacy
 ```
 
 再在另一个终端启动 Vite：
@@ -22,7 +24,7 @@ pnpm dev:web
 
 ```bash
 pnpm build
-pnpm start
+pnpm start:legacy
 ```
 
 完整构建把页面输出到 `dist/workbench`，Gateway 在目录存在时通过 `http://127.0.0.1:4310/` 同源提供页面和哈希资源。

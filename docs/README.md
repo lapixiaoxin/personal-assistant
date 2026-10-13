@@ -1,38 +1,22 @@
-# lumi 文档与开发导航
+# lumi 文档导航
 
-本目录区分已观察事实、待审设计和已验证操作。面向用户的发布索引见 [飞书方案](publication.md)。
+当前主线：DSH 接管通用核心，lumi 维护个人资产、插件和通道。飞书入口代码已验证，专用 Bot 真实启用待完成；当前不接具体外部 Agent。
 
 | 任务 | 入口 |
 | --- | --- |
-| 十分钟掌握长期方向 | [总纲](design/00-overview.md) |
-| 对照近期 Personal Agent，规划跨平台助手团队 | [市场观察与 lumi 超级管家调整建议](research/2026-10-13-personal-agent-landscape-and-lumi-direction.md)：2026-10-13 研究提案，外部接入尚未实施 |
-| 评估 DSH 接管核心、SDK 与外围插件路线 | [DSH 能力与扩展性核验](research/2026-10-13-dsh-sdk-plugin-feasibility.md)：已核对线上 `0.2.0-rc.2` 与 alpha；本地仍为 `0.1.7-rc.2`，尚未升级或迁移 |
-| 查看 DSH 核心架构与多端流程 | [v0.3 六图方案](design/10-dsh-centered-architecture.md)、[ADR-003](adr/0003-dsh-centered-harness.md)、[SPEC-0003](../specs/0003-dsh-centered-design/spec.md) |
-| 基于 DSH 定制并保持个性化可迁移 | [原生定制方案](design/11-dsh-native-customization.md)、[ADR-006](adr/0006-portable-personalization-and-surfaces.md)、[SPEC-0015](../specs/0015-portable-personalization/spec.md)、[bundle SOP](runbooks/dsh-native-bundle.md)：rc.2 外部 bundle P0 已验证，现行服务未切换 |
-| 理解 DSH 当前源码与能力 | [rc.2 源码分析](research/2026-09-25-dsh-source-analysis.md)：插件理念、执行链路与能力开关；当前运行组合已升级到同一 rc.2 release |
-| 检查当前真实能力 | [工程事实基线](current-state.md) |
-| 使用电脑端任务与动作工作台 | [Workbench SOP](runbooks/web-workbench.md)、[SPEC-0004](../specs/0004-web-workbench/spec.md)、[SPEC-0006](../specs/0006-action-inbox/spec.md) |
-| 验证 DSH 受控动作与旁路阻断 | [Action Bridge SOP](runbooks/dsh-action-bridge.md)、[SPEC-0005](../specs/0005-dsh-action-bridge/spec.md) |
-| 使用受控公开来源生成研究简报 | [研究简报 SOP](runbooks/research-brief.md)、[SPEC-0007](../specs/0007-research-brief/spec.md) |
-| 使用结构化上下文生成会议准备简报 | [会议准备 SOP](runbooks/meeting-brief.md)、[SPEC-0008](../specs/0008-meeting-brief/spec.md) |
-| 管理和验证个人记忆 | [个人记忆 SOP](runbooks/personal-memory.md)、[SPEC-0009](../specs/0009-personal-memory/spec.md) |
-| 处理重启中断与 Action 对账 | [任务恢复 SOP](runbooks/task-recovery.md)、[SPEC-0010](../specs/0010-task-recovery/spec.md) |
-| 创建一次性提醒并处理本地通知 | [提醒 SOP](runbooks/reminders.md)、[SPEC-0011](../specs/0011-reminders/spec.md) |
-| 理解产品与个人模型 | [产品宪章](design/01-product.md)、[记忆与主动性](design/04-personal-model.md) |
-| 实现或接入新能力 | [架构](design/02-architecture.md)、[协议](design/03-protocols.md)、[安全](design/05-safety.md) |
-| 建设自我升级 | [进化工厂](design/06-evolution.md)、[里程碑](design/07-roadmap.md) |
-| Agent 开始工作 | [AGENTS](../AGENTS.md)、[SDD](design/08-sdd.md)、[模板](templates/README.md) |
-| 工程命名与测试布局 | [SPEC-0002](../specs/0002-lumi-workspace/spec.md)、[测试约定](../tests/README.md) |
-| 查看 v0.1 架构与模块边界收敛 | [SPEC-0012](../specs/0012-architecture-consolidation/spec.md)、[ADR-004](adr/0004-host-ownership-and-module-boundaries.md) |
-| 维护依赖边界与本机数据卫生 | [SPEC-0013](../specs/0013-repository-architecture-hygiene/spec.md)、[本机数据说明](../data/README.md) |
-| 查看可信动作闭环 | [SPEC-0001](../specs/0001-action-boundary/spec.md)、[动作门禁 SOP](runbooks/action-boundary.md) |
-| 查看本地 MVP 总体验收 | [v0.1 验收记录](evidence/2026-09-25-mvp-acceptance.md) |
-| 理解关键取舍 | [ADR](adr/README.md) |
-| 运行和验证 | [SOP](runbooks/README.md)、[评测](design/09-evaluation.md)、[本次证据](evidence/2026-09-24-design-baseline.md) |
-| 升级 DSH | [现有上游策略](upstream-strategy.md) |
+| 接手当前工程 | [工程事实](current-state.md)、[AGENTS](../AGENTS.md) |
+| 理解当前职责与依赖 | [系统架构](design/02-architecture.md)、[ADR-007](adr/0007-dsh-server-and-channel-boundary.md) |
+| 启动服务器与配置飞书 | [部署 SOP](runbooks/server-feishu.md)、[SPEC-0016](../specs/0016-dsh-server-feishu/spec.md)、[验证证据](../specs/0016-dsh-server-feishu/evidence.md) |
+| 决定下一步 | [发展路线](design/07-roadmap.md) |
+| 升级 DSH | [上游策略](upstream-strategy.md)、[bundle SOP](runbooks/dsh-native-bundle.md) |
+| 理解个人资产边界 | [ADR-006](adr/0006-portable-personalization-and-surfaces.md)、[SPEC-0015](../specs/0015-portable-personalization/spec.md)、[个人模型](design/04-personal-model.md) |
+| 维护或退役旧 MVP | [兼容与退役](runbooks/legacy-retirement.md)、[Workbench SOP](runbooks/web-workbench.md)、[旧 MVP 验收](evidence/2026-09-25-mvp-acceptance.md) |
+| 新增能力或改变权限 | [协议](design/03-protocols.md)、[安全](design/05-safety.md)、[SDD](design/08-sdd.md)、[模板](templates/README.md) |
+| 查看操作与验证 | [SOP 索引](runbooks/README.md)、[测试约定](../tests/README.md)、[本机数据](../data/README.md) |
+| 理解历史取舍 | [ADR 索引](adr/README.md)、[长期总纲](design/00-overview.md)、[进化与发布原则](design/06-evolution.md)、[评测](design/09-evaluation.md) |
+| 查看调研依据 | [Personal Agent 市场观察](research/2026-10-13-personal-agent-landscape-and-lumi-direction.md)、[DSH SDK/扩展核验](research/2026-10-13-dsh-sdk-plugin-feasibility.md) |
+| 查看历史架构图与发布 | [v0.3 六图](design/10-dsh-centered-architecture.md)、[原生定制候选](design/11-dsh-native-customization.md)、[飞书发布索引](publication.md) |
 
-长期设计 v0.2 与 DSH 专题 v0.3 仍有 Proposed 内容；v0.1 已实现 `artifact.write`、显式持久记忆、单机恢复和一次性本地提醒，边界由 ADR-004 记录。2026-09-28 的 SPEC-0015 已实现可迁移 `personal-context/v1`、现行 Task adapter 和可安装的 DSH rc.2 bundle，但未切换现行服务或迁移真实个人数据。产品、多端方向和验收原则继续沿用，数量阈值不能当作已测成绩或既有授权。
+历史调研、方案和证据按原日期保留；其版本描述不覆盖当前工程事实。DSH Web、自己的 App 和未来设备都是可替换入口，个人资产不依附于入口；目前只建设飞书文本入口和基础接线。
 
-DSH 的适用范围是“复杂任务的主要 Harness”，DSH Web 是优先文本 Surface，不是唯一 UI。未来实时语音、感知和设备入口通过独立 Surface adapter 复用同一 owner、个性化上下文和动作边界；这些能力尚未实现。
-
-规范和设计源文件保存在仓库，飞书承载审阅版。收到审阅意见后先更新 spec/ADR，再更新对应飞书文档；发生冲突时记录差异，不让两份设计静默分叉。验证记录追加，不覆盖失败历史。
+设计源在 Git，飞书为审阅投影。本次代码与文档变化尚未重新发布到飞书；发布与部署须按具体授权处理。验证记录追加，不覆盖旧失败或把 `Implemented` 当作 `Enabled`。

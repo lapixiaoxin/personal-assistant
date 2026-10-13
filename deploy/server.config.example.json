@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "lumi.server/v1",
+  "ownerId": "local-owner",
+  "dataDir": ".",
+  "workspace": "./workspace",
+  "model": {
+    "provider": "minimax-cn",
+    "model": "MiniMax-M3",
+    "maxTokens": 8192
+  },
+  "turnTimeoutMs": 120000,
+  "feishu": {
+    "appId": "cli_REPLACE",
+    "appSecret": "REPLACE_WITH_APP_SECRET",
+    "ownerOpenId": "ou_REPLACE"
+  }
+}
