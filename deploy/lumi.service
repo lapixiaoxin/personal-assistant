@@ -9,7 +9,7 @@ User=lumi
 Group=lumi
 WorkingDirectory=/opt/lumi
 Environment=LUMI_SERVER_CONFIG=/opt/lumi/data/server/config.json
-ExecStart=/usr/bin/node --env-file-if-exists=/opt/lumi/.env /opt/lumi/dist/server/main.js
+ExecStart=/opt/lumi/scripts/with-project-node.sh node --env-file-if-exists=/opt/lumi/.env /opt/lumi/dist/server/main.js
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=25

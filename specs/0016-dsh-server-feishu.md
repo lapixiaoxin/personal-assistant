@@ -27,7 +27,7 @@
 - 真实 DSH + 官方 mock 模型通过多轮、重启恢复、`/new`、`/cancel`、工具拒绝和真实进程中断测试。
 - 飞书官方事件分发和发送协议通过离线测试。
 - 2026-10-14 真实 Bot 观察到 4 条 `sent` 回执、1 个 Session、0 个未决结果；状态为 `verified_once`，不是长期稳定性保证。
-- MiniMax `MiniMax-M3.1-Flash-Preview` 使用私有 OpenAI-compatible provider patch；官方模型列表查询确认当前 Key 可见该模型。
+- MiniMax `MiniMax-M3.1-Flash-Preview` 使用 tracked OpenAI-compatible provider profile；官方模型列表查询确认当前 Key 可见该模型。
 
 ## 回滚
 

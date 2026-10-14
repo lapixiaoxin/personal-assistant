@@ -17,6 +17,8 @@
   "files": [
     "README.md",
     "cordis.patch.yml",
+    "src/domain/context-core.d.ts",
+    "src/domain/context-core.js",
     "src/domain/context.ts",
     "src/domain/memory.ts",
     "src/plugin.d.ts",

@@ -14,6 +14,8 @@
 
 配置文件必须禁止 group/other 读取。平台凭据不放环境变量；模型 Key 由白名单环境变量传入 DSH 子进程。
 
+若 `profiles/providers/<provider>.patch.yml` 存在，Host 自动把它作为该 provider 的版本化定义加载；否则由 DSH 内置 catalog 解析。可选 `providerPatch` 仅用于实例级显式覆盖，优先于 tracked profile，不作为新增常用 provider 的默认位置。
+
 ## 组合端口
 
 `host/` 是唯一组合根。可信 Channel 在进程内提供启动、发送、状态和关闭能力，并在完成平台认证后生成通道信封；这不是可由公网提交的协议。Host 不读取平台 SDK 事件，Channel 不读取 DSH Session。
@@ -67,6 +69,8 @@ chat 映射到 DSH Session。恢复使用原生 `agents.resume()`；恢复前清
 `lumi.personal-context/v1` 包含 owner、purpose、生成时间、canonical SHA-256 revision 和最多 32 个有 ID/revision/source 的条目。
 
 快照是低优先级用户数据，不是 system instruction、凭据或动作授权。消费者校验 schema、owner、purpose、重复 ID、长度和摘要。文件只是当前载体，未来可替换为认证服务而不改变语义。
+
+个人上下文文件必须是普通私有文件。领域服务与 DSH adapter 共享同一解析、canonical revision 和 prompt 渲染实现，避免同一 schema 在不同入口产生不同接受结果。
 
 ## 未来协议
 

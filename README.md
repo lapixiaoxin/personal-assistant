@@ -10,7 +10,7 @@ DSH 负责推理、规划、Session、工具与子 Agent 调度；lumi 只维护
 host/                       DSH 进程、通道宿主、持久收件箱和本地状态
 channels/feishu/            飞书认证、输入规范化和消息回复
 plugins/personal-context/   个人记忆、上下文投影和 DSH 插件
-profiles/                   Host 与模型 provider 组合
+profiles/                   可版本化的 Host 与模型 provider 组合
 deploy/                     配置样例和 systemd 模板
 tests/                      跨层 DSH 契约
 docs/                       当前事实、设计和运行规程
@@ -24,6 +24,7 @@ specs/                      当前增量规范
 ## 启动
 
 要求 Node `>=22.19.0`、pnpm `10.20.0`。DSH 固定为 `0.2.0-rc.2`。
+仓库包含 `.node-version`；pnpm 脚本也会优先使用本机未跟踪的 `data/tooling/node-v22.19.0`，否则检查 PATH 中的 Node。
 
 ```bash
 pnpm install --frozen-lockfile
@@ -64,7 +65,9 @@ pnpm server:status
 - `channels.db`：平台输入、回复意图和回执。
 - `dsh/`：原生 Session。
 - `workspace/`：DSH 工作目录。
-- `config.json` 与 provider patch：私有运行配置。
+- `config.json`：私有实例选择与飞书凭据。
+
+不含凭据的 provider 定义位于 `profiles/providers/` 并随代码版本管理；模型 Key 放在 `.env` 或部署 secret store。`providerPatch` 只保留给实例级自定义覆盖。
 
 重复平台消息只处理一次。重启只继续尚未执行的 `queued` 和尚未发送的 `ready`；`running` 变为 `interrupted`，`sending` 变为 `unknown`，两者均不自动重复。
 

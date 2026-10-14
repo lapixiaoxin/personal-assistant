@@ -26,3 +26,5 @@ LUMI_OWNER_ID=stable-owner-id
 ```
 
 The server profile may load this plugin only when `personalContextPath` is explicitly configured. Use a purpose-scoped snapshot, keep it private, and remember that injected content becomes part of DSH Session history.
+
+The Harness-neutral parser, canonical revision and prompt renderer live in `src/domain/context-core.js` and are shared by the TypeScript domain service and DSH adapter. Changes to `lumi.personal-context/v1` must preserve that single runtime contract.

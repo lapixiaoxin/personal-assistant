@@ -6,10 +6,16 @@ import {
   apply,
   computePersonalContextRevision,
   loadPersonalContextSnapshot,
+  renderPersonalContext as renderPluginContext,
   resolveConfig,
   type LumiPersonalContextRuntime,
   type PersonalContextSnapshot,
 } from '../src/plugin.js'
+import {
+  computePersonalContextRevision as computeDomainRevision,
+  parsePersonalContextSnapshot as parseDomainSnapshot,
+  renderPersonalContext as renderDomainContext,
+} from '../src/domain/context.ts'
 
 const temporaryDirectories: string[] = []
 
@@ -107,17 +113,47 @@ describe('personal context DSH plugin', () => {
       snapshotPath: '/tmp/context.json',
     })).toThrow('unknown field')
   })
+
+  it('shares parsing, revision and rendering semantics with the domain layer', () => {
+    const value = snapshot('Shared private preference')
+    expect(parseDomainSnapshot(value)).toEqual(loadSnapshotThroughPlugin(value))
+    expect(computeDomainRevision(value)).toBe(computePersonalContextRevision(value))
+    expect(renderDomainContext(value)).toBe(
+      renderPluginContext(value),
+    )
+    expect(() => parseDomainSnapshot({
+      ...value,
+      generatedAt: 'September 28, 2026',
+    })).toThrow('RFC3339')
+    expect(() => loadSnapshotThroughPlugin({
+      ...value,
+      generatedAt: 'September 28, 2026',
+    })).toThrow('RFC3339')
+  })
 })
 
+function loadSnapshotThroughPlugin(value: unknown): PersonalContextSnapshot {
+  const path = temporarySnapshotFile(value)
+  return loadPersonalContextSnapshot({
+    ownerId: 'owner-one',
+    purpose: 'general_assistance',
+    snapshotPath: path,
+  })
+}
+
 function temporarySnapshot(content: string): string {
+  return temporarySnapshotFile(snapshot(content))
+}
+
+function temporarySnapshotFile(value: unknown): string {
   const directory = mkdtempSync(join(tmpdir(), 'lumi-dsh-plugin-'))
   temporaryDirectories.push(directory)
   const path = join(directory, 'context.json')
-  writeSnapshot(path, snapshot(content))
+  writeSnapshot(path, value)
   return path
 }
 
-function snapshot(content: string): PersonalContextSnapshot {
+function snapshot(content: string) {
   const base = {
     entries: [{
       content,

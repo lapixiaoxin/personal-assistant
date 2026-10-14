@@ -2,11 +2,17 @@ import { readFileSync, statSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { validateFeishuConfig } from '@lumi/feishu-channel'
 
+export function assertPrivateFile(path, label) {
+  assertRegularFile(path, label, 0o077, 'must not be accessible by group or other')
+}
+
+export function assertTrustedRuntimeFile(path, label) {
+  assertRegularFile(path, label, 0o022, 'must not be writable by group or other')
+}
+
 export function readServerConfig(path) {
   const absolute = resolve(path)
-  if ((statSync(absolute).mode & 0o077) !== 0) {
-    throw new Error('Server configuration contains credentials; set its permissions to 600')
-  }
+  assertPrivateFile(absolute, 'Server configuration')
   let config
   try { config = JSON.parse(readFileSync(absolute, 'utf8')) } catch {
     throw new Error('Server configuration must be valid JSON')
@@ -18,7 +24,8 @@ export function readServerConfig(path) {
     || typeof config.ownerId !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(config.ownerId)
     || typeof config.dataDir !== 'string' || !config.dataDir
     || typeof config.workspace !== 'string' || !config.workspace
-    || typeof config.model?.provider !== 'string' || !config.model.provider
+    || typeof config.model?.provider !== 'string'
+    || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(config.model.provider)
     || typeof config.model?.model !== 'string' || !config.model.model
     || !Number.isSafeInteger(config.model.maxTokens)
     || config.model.maxTokens < 1 || config.model.maxTokens > 32768
@@ -34,5 +41,24 @@ export function readServerConfig(path) {
     if (typeof config[key] !== 'string' || !config[key]) throw new Error(`Invalid ${key}`)
     config[key] = resolve(base, config[key])
   }
+  if (config.providerPatch) {
+    assertTrustedRuntimeFile(config.providerPatch, 'Provider patch')
+  }
+  if (config.personalContextPath) {
+    assertPrivateFile(config.personalContextPath, 'Personal context snapshot')
+  }
   return config
+}
+
+function assertRegularFile(path, label, forbiddenMode, requirement) {
+  let stat
+  try {
+    stat = statSync(path)
+  } catch {
+    throw new Error(`${label} must be an existing regular file`)
+  }
+  if (!stat.isFile()) throw new Error(`${label} must be a regular file`)
+  if ((stat.mode & forbiddenMode) !== 0) {
+    throw new Error(`${label} permissions ${requirement}`)
+  }
 }

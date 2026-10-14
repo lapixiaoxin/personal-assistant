@@ -1,7 +1,7 @@
-import { mkdirSync } from 'node:fs'
+import { existsSync, mkdirSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { DeepSeekHarness } from '@deepseek-ai/dsh-sdk-client'
-import { readServerConfig } from '@lumi/host/config'
+import { assertTrustedRuntimeFile, readServerConfig } from '@lumi/host/config'
 
 const CHILD_ENV_KEYS = [
   'PATH', 'HOME', 'TMPDIR', 'LANG', 'LC_ALL', 'TZ',
@@ -21,18 +21,27 @@ export function childEnvironment(parent, configPath, config) {
   return env
 }
 
+export function resolveProviderPatches(config, repositoryRoot) {
+  if (config.providerPatch) return [config.providerPatch]
+  const profile = resolve(
+    repositoryRoot,
+    'profiles/providers',
+    `${config.model.provider}.patch.yml`,
+  )
+  if (!existsSync(profile)) return []
+  assertTrustedRuntimeFile(profile, 'Provider profile')
+  return [profile]
+}
+
 /** Starts the persistent DSH process; the Host plugin owns channel delivery. */
 export async function startHost(configPath, repositoryRoot = process.cwd()) {
   const config = readServerConfig(configPath)
   mkdirSync(config.dataDir, { recursive: true, mode: 0o700 })
   mkdirSync(config.workspace, { recursive: true, mode: 0o700 })
-  const patches = []
-  if (config.providerPatch) {
-    patches.push(config.providerPatch)
-  } else if (['minimax', 'minimax-cn'].includes(config.model.provider)) {
-    patches.push(resolve(repositoryRoot, `profiles/providers/${config.model.provider}.patch.yml`))
-  }
-  patches.push(resolve(repositoryRoot, 'profiles/server/cordis.patch.yml'))
+  const patches = resolveProviderPatches(config, repositoryRoot)
+  const serverProfile = resolve(repositoryRoot, 'profiles/server/cordis.patch.yml')
+  assertTrustedRuntimeFile(serverProfile, 'Server profile')
+  patches.push(serverProfile)
   const harness = new DeepSeekHarness({
     cwd: config.workspace,
     processCwd: repositoryRoot,

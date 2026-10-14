@@ -6,10 +6,10 @@
 | --- | --- | --- |
 | `server/` | 当前权威数据 | 运行时禁止删除；备份整个目录并保留权限 |
 | `legacy-mvp-*/` | 旧版只读归档 | 当前服务不加载；恢复旧代码后才能读写 |
-| `tooling/node-v22.19.0/bin/node` | 本机 Node 22 runtime | 可再生；当前默认 Node 18 不满足版本要求，因此暂时保留 |
+| `tooling/node-v22.19.0/bin/node` | 本机 Node 22 runtime | 可再生；pnpm 脚本会优先使用，目标机可改用 PATH 中的兼容 Node |
 | 其他 smoke/cache/evidence | 可再生 | 验证完成且事实已入 Git 后精确删除 |
 
-`server/` 可能包含飞书 Secret、模型配置、消息、回执、DSH Session 和个人上下文，均按私人数据处理。不要提交、打印或上传。
+`server/` 可能包含飞书 Secret、模型选择、自定义运行覆盖、消息、回执、DSH Session 和个人上下文，均按私人数据处理。不要提交、打印或上传。常用且不含凭据的 provider 定义属于 `profiles/providers/`，不应放入这里。
 
 删除或迁移前：
 

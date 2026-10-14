@@ -14,7 +14,7 @@
 | 恢复 | queued/ready 继续；running→interrupted，sending→unknown，不自动重放 |
 | 权限 | 默认无文件、Shell、网络、外部 Agent 或业务动作工具 |
 | 个性化 | 可选 `personal-context/v1` 快照；个人记忆/上下文独立于 DSH |
-| 模型 | 当前私有部署为 MiniMax M3.1 Flash Preview；仓库样例保持稳定 catalog 模型 |
+| 模型 | 当前私有部署为 MiniMax M3.1 Flash Preview；临时 provider bridge 已作为 tracked profile 管理 |
 | 部署 | macOS 前台运行已验证；systemd 仅为 Linux candidate |
 
 ## 证据
@@ -22,7 +22,7 @@
 - 完整离线门禁在精简前通过 32 个文件 / 223 项测试。
 - DSH 原生通道契约覆盖多轮、重启、取消、新会话、工具拒绝和真实 `SIGKILL`。
 - 飞书边界测试使用官方 EventDispatcher，覆盖身份、消息类型、重复和发送回执。
-- 当前三层结构为 3 个生产 workspace、12 个生产源码文件和 1 条内部生产依赖边；7 个测试文件 / 33 项通过。
+- 当前三层结构为 3 个生产 workspace、14 个生产源码文件和 1 条内部生产依赖边；7 个测试文件 / 36 项通过。
 - 2026-10-14 三层结构切换后真实服务为 `ready / connected`，保留 7 条 `sent`、0 个 `interrupted/unknown`；状态为 `verified_once`。
 - MiniMax 中国区模型列表以当前 Key 返回并包含 `MiniMax-M3.1-Flash-Preview`。
 
@@ -39,7 +39,7 @@
 
 ## 数据
 
-`data/server` 是当前权威运行目录，不入 Git。旧 MVP 数据归档后只用于读回或回滚，不由当前服务加载。完整私人配置、消息和 Session 仍是敏感数据；“普通日志不打印凭据”不等于全盘加密。
+`data/server` 是当前权威实例配置与运行状态目录，不入 Git；不含凭据的 provider 定义位于 `profiles/providers/`。旧 MVP 数据归档后只用于读回或回滚，不由当前服务加载。完整私人配置、消息和 Session 仍是敏感数据；“普通日志不打印凭据”不等于全盘加密。
 
 ## 状态词
 

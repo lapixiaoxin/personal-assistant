@@ -28,7 +28,7 @@ DSH 是唯一通用 Harness。lumi 不实现规划器、模型循环、专家路
 | `channels/feishu` | 官方 SDK 长连接、身份与消息格式 | DSH 依赖、业务授权 |
 | `plugins/personal-context` | 个人记忆、Harness-neutral 快照和 DSH 注入 | 自动读取私人数据、授予动作 |
 | `plugins/*/src/domain` | 插件的可移植领域规则和数据 | DSH 或平台 SDK |
-| `profiles` | DSH Host 与 provider 组合 | 凭据 |
+| `profiles` | 可版本化的 DSH Host 与 provider 组合 | 凭据、实例选择、可变状态 |
 | `deploy` | 配置样例和服务模板 | 私人运行数据 |
 
 依赖方向由 `pnpm check:architecture` 检查：Host 可组合 Channel 与 Plugin；Channel 和 Plugin 不相互依赖；Channel 不导入 DSH，Host 不导入平台 SDK，Plugin 的领域层不导入 DSH 或平台 SDK；生产图无环。
@@ -52,5 +52,7 @@ DSH 是唯一通用 Harness。lumi 不实现规划器、模型循环、专家路
 ## 部署假设
 
 当前只支持一台主机、一个进程、一个 owner。SQLite 绑定 owner/app/open_id/hostname；跨主机复制需要显式迁移。私有配置、收件箱和 Session 均可能含敏感信息。
+
+部署单元是匹配 commit 的完整仓库 checkout、依赖和 launcher，不是单独的 `dist/`。`dist/server/main.js` 只启动 Host；DSH profile 与本地插件继续从同一只读 checkout 加载。非敏感 provider 定义进入 `profiles/providers/`，私有实例只在 `data/server/config.json` 选择 provider/model，模型 Key 由部署 secret 提供。
 
 旧 MVP 已从当前工作树退役。需要历史代码时通过 Git 恢复匹配 commit，不在 Host 内重新接回旧 Core。

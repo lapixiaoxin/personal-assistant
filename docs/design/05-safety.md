@@ -14,8 +14,11 @@ Channel 负责平台认证后才能生成进程内信封；Host 只接收已配�
 
 - 飞书 Secret 只在权限 `0600` 的私有 JSON。
 - 模型 Key 只在未提交的 `.env` 或部署 secret store。
+- 个人上下文快照必须禁止 group/other 访问；显式 provider patch 必须是普通文件且禁止 group/other 写入。
 - DSH 子进程使用显式环境白名单，不继承 `PA_*`、平台变量、Node 注入参数或无关 Key。
 - 普通日志只写固定事件标签，不转储 SDK 参数、消息正文或错误请求。
+
+Provider patch 属于受信运行定义，可能包含 DSH 支持的 `!!js` 表达式。常用且不含凭据的 patch 必须进入 Git 审查；`data/server` 内的自定义 patch 只是实例级覆盖，不能因为被忽略就视为安全。
 
 进程内 guard 只约束受信插件，不是恶意代码沙箱。引入第三方插件前必须评估 OS/container 隔离。
 

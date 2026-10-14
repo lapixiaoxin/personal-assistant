@@ -28,6 +28,8 @@ cp deploy/server.config.example.json data/server/config.json
 chmod 600 data/server/config.json
 ```
 
+仓库以 `.node-version` 声明 Node 版本。所有 pnpm 脚本通过 `scripts/with-project-node.sh` 选择 runtime：本机存在 `data/tooling/node-v22.19.0` 时优先使用，否则要求 PATH 中的 Node 满足版本下限。
+
 编辑 `data/server/config.json`，替换全部 `REPLACE` 占位值。`ownerId` 是 lumi 稳定个人身份；`feishu.ownerOpenId` 是这个应用里的通道身份。数据库绑定 owner、App ID 和 open_id，不能改配置后复用别人的数据。
 
 | 配置 | 含义 |
@@ -37,13 +39,15 @@ chmod 600 data/server/config.json
 | `workspace` | DSH 工作目录；建议独立于源码和旧数据 |
 | `model` | `provider`、`model`、`maxTokens`；token 上限 1–32768 |
 | `turnTimeoutMs` | 单次生成时限；默认 120000，允许 1000–600000 |
-| `providerPatch` | 可选的 DSH provider patch；相对配置文件解析 |
+| `providerPatch` | 可选的实例级 DSH provider 覆盖；相对配置文件解析 |
 | `personalContextPath` | 可选的 `personal-context/v1` 快照；默认不加载 |
 | `feishu` | 专用 appId、appSecret、ownerOpenId |
 
 所有相对文件路径都相对于配置文件，进程工作目录则须为仓库根目录。未知配置键被拒绝，JSON 权限必须禁止 group/other 访问。凭据和真实配置不入 Git。
 
-根 `.env` 只需模型凭据，例如 `MINIMAX_CN_API_KEY`；模型选择在 server JSON 中，旧 `PA_DSH_*` 不控制新入口。DeepSeek 使用 `deepseek-official / deepseek-v4-flash` 与 `DEEPSEEK_API_KEY`。MiniMax 两条内置路由自动应用对应 patch；自定义 provider 使用 `providerPatch`，密钥可引用白名单变量 `LUMI_MODEL_API_KEY`。不要打印 Key，`.env` 权限也设为 `600`。
+根 `.env` 只需模型凭据，例如 `MINIMAX_CN_API_KEY`；模型选择在 server JSON 中，旧 `PA_DSH_*` 不控制新入口。DeepSeek 使用 `deepseek-official / deepseek-v4-flash` 与 `DEEPSEEK_API_KEY`。若 `profiles/providers/<provider>.patch.yml` 存在，Host 自动加载该版本化定义；MiniMax M3.1 Flash bridge 因此随 Git commit 管理。只有真正的实例级实验才设置 `providerPatch`，密钥可引用白名单变量 `LUMI_MODEL_API_KEY`。不要打印 Key，`.env` 权限也设为 `600`。
+
+`config.json` 和个人上下文快照必须禁止 group/other 访问。显式 provider patch 可以被其他用户读取，但必须是普通文件且不可被 group/other 写入；patch 可能包含 DSH `!!js` 表达式，应视为受信代码配置。
 
 ```bash
 pnpm build
@@ -87,13 +91,13 @@ pnpm server:status
 
 ## Linux 常驻部署
 
-[deploy/lumi.service](../../deploy/lumi.service) 是待目标机验证的 systemd 模板：仓库在 `/opt/lumi`，专用用户/组 `lumi`，Node 在 `/usr/bin/node`。先在该机安装匹配版本、依赖与构建产物；确保运行用户可读源码与私有配置、可写 `/opt/lumi/data`，核对真实 Node 路径再安装 unit。
+[deploy/lumi.service](../../deploy/lumi.service) 是待目标机验证的 systemd 模板：仓库在 `/opt/lumi`，专用用户/组 `lumi`。启动先经过 Node 版本 wrapper；目标机通常使用 PATH 中的 `/usr/bin/node`。部署单元是匹配 commit 的完整只读仓库 checkout、`node_modules` 和 `dist/server/main.js` launcher，不是单独复制 `dist/`。先在该机安装匹配版本、依赖与构建产物；确保运行用户可读源码、profiles 与私有配置，可写 `/opt/lumi/data`，再安装 unit。
 
 模板使用 `Restart=on-failure`、进程组停止、`UMask=0077` 和受限写目录。它不等于完整容器沙箱；不会打开任意工具权限。目录若在其他位置必须同步 `WorkingDirectory`、环境、ExecStart 与 ReadWritePaths。前台真实验收通过后再由管理员安装并执行 `systemctl enable --now lumi`。本次未操作任何目标服务器。
 
 ## 停止、备份和升级
 
-前台 Ctrl-C 或向父进程发送 SIGTERM；systemd 使用 `systemctl stop lumi`。等待父子进程退出，确认没有运行实例，再复制整个 `data/server/` 与私有配置/快照，备份权限保持私有。保存 Git commit、`upstream.lock.json`、`pnpm-lock.yaml` 和模型/profile 选择。不要只复制运行中的 SQLite 主文件而漏掉 WAL。
+前台 Ctrl-C 或向父进程发送 SIGTERM；systemd 使用 `systemctl stop lumi`。等待父子进程退出，确认没有运行实例，再复制整个 `data/server/` 与私有配置/快照，备份权限保持私有。保存 Git commit、`upstream.lock.json` 和 `pnpm-lock.yaml`；tracked provider profile 由 commit 一并确定。不要只复制运行中的 SQLite 主文件而漏掉 WAL。
 
 新数据与旧 `data/assistant.db` 不混用。仅支持同机同 hostname 的恢复；数据库的主机绑定目前没有跨主机转移工具。更换机器需单独迁移规范，不能直接编辑 owner 表绕过。
 

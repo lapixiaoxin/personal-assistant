@@ -1,8 +1,8 @@
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { childEnvironment } from '../src/server.js'
+import { childEnvironment, resolveProviderPatches } from '../src/server.js'
 import { readServerConfig } from '../src/config.js'
 
 const dirs = []
@@ -40,5 +40,48 @@ describe('host configuration boundary', () => {
     chmodSync(path, 0o600)
     writeFileSync(path, JSON.stringify({ ...config, autoApprove: true }))
     expect(() => readServerConfig(path)).toThrow('Invalid')
+  })
+
+  it('checks custom runtime files according to their trust boundary', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'lumi-config-files-'))
+    dirs.push(dir)
+    const path = join(dir, 'config.json')
+    const providerPatch = join(dir, 'provider.patch.yml')
+    const personalContextPath = join(dir, 'context.json')
+    const config = {
+      schemaVersion: 'lumi.server/v1', ownerId: 'owner', dataDir: '.', workspace: './workspace',
+      model: { provider: 'custom-provider', model: 'custom-model', maxTokens: 1024 },
+      providerPatch: './provider.patch.yml',
+      personalContextPath: './context.json',
+      feishu: { appId: 'cli_test', appSecret: 'synthetic-secret', ownerOpenId: 'ou_owner' },
+    }
+    writeFileSync(path, JSON.stringify(config), { mode: 0o600 })
+    writeFileSync(providerPatch, '[]\n', { mode: 0o666 })
+    chmodSync(providerPatch, 0o666)
+    writeFileSync(personalContextPath, '{}\n', { mode: 0o600 })
+    expect(() => readServerConfig(path)).toThrow('Provider patch permissions')
+    chmodSync(providerPatch, 0o644)
+    chmodSync(personalContextPath, 0o644)
+    expect(() => readServerConfig(path)).toThrow('Personal context snapshot permissions')
+    chmodSync(personalContextPath, 0o600)
+    expect(readServerConfig(path)).toMatchObject({ providerPatch, personalContextPath })
+  })
+
+  it('discovers a tracked provider profile and rejects writable definitions', () => {
+    const root = mkdtempSync(join(tmpdir(), 'lumi-provider-profiles-'))
+    dirs.push(root)
+    const profiles = join(root, 'profiles/providers')
+    mkdirSync(profiles, { recursive: true })
+    const profile = join(profiles, 'example-provider.patch.yml')
+    writeFileSync(profile, '[]\n', { mode: 0o644 })
+    const config = {
+      model: { provider: 'example-provider' },
+    }
+    expect(resolveProviderPatches(config, root)).toEqual([profile])
+    chmodSync(profile, 0o666)
+    expect(() => resolveProviderPatches(config, root)).toThrow('permissions')
+    expect(resolveProviderPatches({
+      model: { provider: 'catalog-provider' },
+    }, root)).toEqual([])
   })
 })
