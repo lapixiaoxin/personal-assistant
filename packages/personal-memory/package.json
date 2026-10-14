@@ -5,7 +5,6 @@
   "type": "module",
   "exports": "./src/index.ts",
   "dependencies": {
-    "@lumi/contracts": "workspace:*",
     "zod": "4.1.11"
   }
 }

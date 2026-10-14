@@ -1,60 +1,60 @@
-# lumi · Agent 工作入口
+# lumi · Agent 入口
 
-本仓建设 lumi：一个最懂用户、能交付结果、可持续进化的超级个人智能体。名字取意于与“光”有关的词根。先读事实，再读方案；方案存在不等于能力已启用。
+lumi 是单 owner、可自己部署的超级管家。先读事实，再读方案；文档存在不等于能力已启用。
 
-## 接手顺序
+## 接手
 
-1. 阅读 [README](README.md)、[工程事实](docs/current-state.md)、[文档索引](docs/README.md)。
-2. 查看 `git status --short`、当前分支、相关源码和测试；不要覆盖用户改动。
-3. 阅读对应 `specs/<id>/`；当前主线为 [0016](specs/0016-dsh-server-feishu/spec.md)，动作边界沿用 [0001](specs/0001-action-boundary/spec.md)。
-4. 涉及边界变化时读 [架构](docs/design/02-architecture.md)、[协议](docs/design/03-protocols.md)、[安全](docs/design/05-safety.md) 和 [ADR](docs/adr/README.md)。
-5. 使用 [SDD 流程](docs/design/08-sdd.md)、[模板](docs/templates/README.md) 和 [SOP](docs/runbooks/README.md) 完成交付及交接。
+1. 阅读 [README](README.md)、[工程事实](docs/current-state.md)和[文档索引](docs/README.md)。
+2. 检查 `git status --short --branch`、当前服务和相关源码；保护用户改动及 `data/server`。
+3. 阅读当前 [SPEC-0016](specs/0016-dsh-server-feishu.md) 与任务对应 spec。
+4. 边界变化先更新[架构](docs/design/02-architecture.md)、[协议](docs/design/03-protocols.md)和[安全](docs/design/05-safety.md)。
 
-## 当前状态与授权
+规范默认使用一个 `specs/<id>-<topic>.md`，写清范围、验收、证据与回滚。只有复杂并行工作才拆 plan/tasks/checklist/evidence，避免制造过程文件。
 
-2026-10-13：主线改为 DSH 常驻 SDK server + 外围插件。DSH 独占通用推理、规划、Session、工具和 Agent 调度；本仓维护个人资产、通道、插件和部署。新飞书单 owner 私聊文本入口、持久收件箱与原生 Session 接线已实现并本地验证；专用应用未配置，真实 Bot 收发、Linux 部署及现有服务切换尚未执行。DSH 组合固定 `0.2.0-rc.2`，提供每日/手动新鲜度检查。
+## 当前事实
 
-默认 `build/start/dev` 为新 server，旧 Gateway/CLI/Workbench 使用 `build:legacy/start:legacy/dev:legacy` 等显式命令。旧任务/动作/记忆/恢复/提醒数据和保护性验收保留，按 [退役计划](docs/runbooks/legacy-retirement.md) 逐项迁移。新 profile 当前只开放对话与可选个人上下文状态，不接具体外部 Agent、设备或业务动作。具体个人 Agent 产品只是用户举例，不能据此扩展实施范围。实时语音、多设备同步、分布式 lease/fencing、周期推送、自动记忆和自主发布尚未实现。
+2026-10-14：主线只有 DSH 常驻 SDK server、飞书通道、持久收件箱和可选个人上下文。真实 Bot 已观察到 4 条成功回复、无未决回执，状态为 `verified_once`。DSH 固定 `0.2.0-rc.2`。
 
-设计轮已完成方案、文档、现状验证及飞书发布。2026-09-24 用户明确版本管理交给 Agent 托管，可以直接将修改提交到当前仓库的 main 分支；2026-09-25 进一步授权完成验证后直接推送到当前跟踪的远端分支。具体开发仍以用户任务为准；已有明确范围内持续推进，常规可逆步骤无需反复确认。
-
-主分支为 `main`，初始 MVP 与设计基线提交为 `1cd54cc`。历史文档中的“无初始 commit”描述首次采集时状态。
-
-## 版本管理标准（已按用户指令生效）
-
-- Agent 完成已授权工作及必要验证后，主动提交到本地 `main` 并推送到其跟踪的 `origin/main`，不再逐次请求 commit/push 许可。
-- 常规变更直接在 main 形成小而完整的提交；复杂或并行工作可用临时分支/worktree 隔离，验证后由 Agent 集成回 main。
-- 提交前检查差异、必要验证和暂存范围；只提交该任务相关内容，保护用户其他未提交改动。
-- 提交信息说明具体目的，关联 spec 时包含编号；交付报告提供 commit、验证结果和未完成项。
-- 私人数据、密钥、运行数据库、缓存、构建产物及发布草稿不入库。提交失败先诊断，不绕过检查或改写历史。
-- 推送前确认 upstream、远端没有未整合提交且暂存范围正确；禁止 force push 或改写共享历史。远端 push 与部署/正式发布分别记录；部署与正式发布仍按具体目标和授权执行。
-
-重复操作见 [版本管理 SOP](docs/runbooks/version-control.md)。
+旧 Gateway、CLI、Workbench、Task/Action/Reminder/Research/Meeting MVP 已从当前工作树退役；历史在 Git，旧数据只归档不迁入新服务。当前不接具体外部 Agent、设备、App、自动记忆、周期推送或业务动作。
 
 ## 不变量
 
-- 个人身份、目标、记忆、授权、证据不归属于某个模型或 DSH 会话。
-- DSH Web、Workbench、未来语音 UI、IM 和设备入口都是可替换 Surface；入口不拥有个人资产，也不复制业务授权。
-- CLI、HTTP、后续 IM/A2A 都进入同一控制层；入口不复制业务审批。
-- 外部 SDK 留在 adapter；业务能力使用独立模块或插件，避免 Core 累积场景分支。
-- “一切可替换”不表示插件可以绕过授权、审计、验收和发布控制。
-- 完成须满足验收；执行者自报、HTTP 200、模型结束生成不能替代实际结果证据。
-- 未知副作用先对账；重试不得扩大授权、预算或重复发送。
-- 敏感数据、凭据、完整私人上下文不进入日志、fixture、SOP 或提交。
-- 未验证功能标明状态；不能通过删测试、降低标准或改报告使任务“完成”。
+- DSH 拥有通用推理、规划、Session、工具和 Agent 调度；lumi 不再实现第二套 Harness。
+- 个人身份、记忆、目标、授权和证据不属于模型、DSH Session 或某个入口。
+- Surface 只负责认证输入和展示，不复制业务授权。
+- 外部 SDK 留在所属 channel/plugin；`packages/*` 不依赖 DSH 或飞书 SDK。
+- 插件可替换但不能绕过授权、审计、验收和发布控制。
+- 模型输出、HTTP 200 或执行者自报不能替代结果证据。
+- 未知副作用先对账；重试不得扩大授权或重复发送。
+- 凭据、私人正文、数据库、缓存和构建产物不进入 Git。
+- 未验证功能明确标记；不能删测试或改报告制造完成。
 
-## 开发与验证
+## 工程约定
 
-Node >=22.19.0，pnpm 10.20.0。优先查版本，再执行相关验证；完整门禁为 `pnpm check`。旧 Task 路径离线验证必须显式 `PA_EXECUTOR=mock` 并使用独立数据库；新 server 使用真实 DSH + 官方 mock 模型的隔离契约，不读取默认个人库。飞书配置与启用见 [部署 SOP](docs/runbooks/server-feishu.md)。
+Node `>=22.19.0`，pnpm `10.20.0`。完整门禁：
 
-内部包统一使用 `@lumi/*`；模块目录按职责命名。生产代码放 `<module>/src/`，模块测试放同级 `<module>/tests/`，跨模块测试放根 `tests/<category>/`；不在 `src/` 中新建测试。参见 [测试约定](tests/README.md)。保留 pnpm 的模块依赖链接，使用 `lumi.code-workspace` 隐藏生成目录。
+```bash
+pnpm check
+pnpm test:dsh:bundle
+python3 scripts/check-docs.py
+```
 
-[本机基线 SOP](docs/runbooks/local-validation.md) 包含已成功执行的环境修正和 CLI 流程。真实服务验证使用 [live 规程](docs/runbooks/live-acceptance.md)，不将 mock 结果标为 live。
+生产代码在 `<module>/src/`，模块测试在同级 `tests/`，跨模块契约在根 `tests/`。内部包使用 `@lumi/*`。保留 pnpm workspace 链接，不提交 `dist`、`node_modules` 或 `data/*`。
 
-新能力、协议、权限或持久化变更使用完整 spec/plan/tasks/checklist/evidence。小型文档修正可简化，避免为流程而堆空文件。规格变更先更新影响分析；编写代码后同步事实文档。
+运行数据规则见 [data/README](data/README.md)。真实服务操作见[飞书 SOP](docs/runbooks/server-feishu.md)，mock/离线结果不得写成 live。
 
-## 完成与交接
+## Git 授权
 
-交付必须说明改了什么、证据、未验证部分、迁移/回滚和下一步。成功操作形成带版本、适用条件和证据的 SOP；一次成功只标 `verified_once`，不要推广为跨环境可靠性保证。
+用户已授权 Agent 在验证后直接提交当前仓库 `main` 并普通推送 `origin/main`：
 
-发布权与开发权分开。Agent 可准备完整可审阅产物；发布遵循具体授权和政策。后续自主进化机制不得自行修改本文件中的控制原则、受保护验收或授权根。
+- 只暂存本任务文件，保护用户未提交改动。
+- 提交前检查差异、凭据、数据库和生成物。
+- 推送前 fetch 并确认无未整合远端提交。
+- 禁止 force push、改写共享历史、删除远端引用。
+- Git push 不等于部署或正式发布。
+
+复杂任务可用临时分支/worktree；合并后仅在 clean、已被 main 包含且无必要运行数据时清理。详见[版本管理 SOP](docs/runbooks/version-control.md)。
+
+## 交付
+
+报告改动、证据、未验证项、迁移/回滚和 commit。一次成功只标 `verified_once`。后续进化机制不得自行修改本文件中的控制原则、受保护验收或授权根。

@@ -1,8 +1,0 @@
-- insert:
-    - id: lumi-personal-context-contract
-      name: ../../plugins/dsh-lumi/src/index.js
-      inject: [systemPrompt, tools]
-      config:
-        snapshotPath: !!js process.env.LUMI_PERSONAL_CONTEXT_PATH
-        ownerId: owner-contract
-        purpose: general_assistance

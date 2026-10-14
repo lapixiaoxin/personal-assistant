@@ -3,7 +3,7 @@ import { dirname, relative, resolve } from 'node:path'
 import process from 'node:process'
 
 const root = resolve(import.meta.dirname, '..')
-const workspaceRoots = ['apps', 'packages', 'adapters', 'plugins', 'channels']
+const workspaceRoots = ['apps', 'packages', 'plugins', 'channels']
 const sourceExtensions = /\.(?:d\.ts|js|mjs|ts|tsx)$/
 const testFilePattern = /\.(?:spec|test)\.(?:js|mjs|ts|tsx)$/
 const rootDraftPattern = /^draft_[A-Za-z0-9_-]+_folder$/
@@ -66,7 +66,7 @@ async function inspectRepository(repositoryRoot) {
       for (const specifier of importSpecifiers(source)) {
         if (forbiddenExternalImport(workspacePackage.category, specifier)) {
           violations.push(
-            `${displayPath(sourceFile)} imports adapter SDK ${specifier} from a domain package`,
+            `${displayPath(sourceFile)} imports an external SDK across its ownership boundary: ${specifier}`,
           )
         }
         if (specifier.startsWith('@lumi/')) {
@@ -169,9 +169,6 @@ function invalidLayerDependency(sourceCategory, targetCategory) {
   if (sourceCategory === 'packages' && targetCategory !== 'packages') {
     return `packages may depend only on packages, not ${targetCategory}`
   }
-  if (sourceCategory === 'adapters' && targetCategory !== 'packages') {
-    return `adapters may depend only on packages, not ${targetCategory}`
-  }
   if (sourceCategory === 'channels' && targetCategory !== 'packages') {
     return `channels may depend only on packages, not ${targetCategory}`
   }
@@ -247,14 +244,6 @@ function runSelfTests() {
     'package to adapter rejection',
   )
   assert(
-    invalidLayerDependency('adapters', 'packages') === undefined,
-    'adapter to package allowance',
-  )
-  assert(
-    invalidLayerDependency('adapters', 'apps') !== undefined,
-    'adapter to app rejection',
-  )
-  assert(
     packageNameFromSpecifier('@lumi/example/internal') === '@lumi/example',
     'package specifier normalization',
   )
@@ -280,7 +269,7 @@ function runSelfTests() {
   assert(invalidLayerDependency('channels', 'plugins') !== undefined, 'channel to plugin rejection')
   assert(invalidLayerDependency('plugins', 'channels') === undefined, 'plugin channel composition')
   assert(forbiddenExternalImport('channels', '@deepseek-ai/dsh'), 'DSH-free channel')
-  return 14
+  return 12
 }
 
 function assert(condition, name) {

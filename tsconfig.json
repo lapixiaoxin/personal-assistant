@@ -2,8 +2,7 @@
   "compilerOptions": {
     "allowImportingTsExtensions": true,
     "exactOptionalPropertyTypes": true,
-    "jsx": "react-jsx",
-    "lib": ["DOM", "DOM.Iterable", "ES2023", "ESNext.Disposable"],
+    "lib": ["ES2023", "ESNext.Disposable"],
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "noEmit": true,
@@ -11,24 +10,8 @@
     "noImplicitOverride": true,
     "noUncheckedIndexedAccess": true,
     "paths": {
-      "@lumi/action-runtime": ["./packages/action-runtime/src/index.ts"],
-      "@lumi/assistant-core": ["./packages/assistant-core/src/index.ts"],
-      "@lumi/capability-registry": ["./packages/capability-registry/src/index.ts"],
-      "@lumi/contracts": ["./packages/contracts/src/index.ts"],
-      "@lumi/dsh-adapter": ["./adapters/dsh/src/index.ts"],
-      "@lumi/identity": ["./packages/identity/src/index.ts"],
-      "@lumi/local-artifact": ["./adapters/local-artifact/src/index.ts"],
-      "@lumi/meeting-workflow": ["./packages/meeting-workflow/src/index.ts"],
       "@lumi/personal-context": ["./packages/personal-context/src/index.ts"],
-      "@lumi/personal-memory": ["./packages/personal-memory/src/index.ts"],
-      "@lumi/policy": ["./packages/policy/src/index.ts"],
-      "@lumi/research-sources": ["./adapters/research-sources/src/index.ts"],
-      "@lumi/research-workflow": ["./packages/research-workflow/src/index.ts"],
-      "@lumi/reminders": ["./packages/reminders/src/index.ts"],
-      "@lumi/runtime": ["./apps/runtime/src/index.ts"],
-      "@lumi/task-personal-context": ["./adapters/task-personal-context/src/index.ts"],
-      "@lumi/task-recovery": ["./packages/task-recovery/src/index.ts"],
-      "@lumi/task-ledger": ["./packages/task-ledger/src/index.ts"]
+      "@lumi/personal-memory": ["./packages/personal-memory/src/index.ts"]
     },
     "resolveJsonModule": true,
     "skipLibCheck": true,
@@ -37,12 +20,10 @@
     "types": ["node", "vitest/globals"]
   },
   "include": [
-    "adapters/**/*.ts",
     "apps/**/*.ts",
     "packages/**/*.ts",
     "plugins/**/*.ts",
     "tests/**/*.ts",
-    "tsup.legacy.config.ts",
     "tsup.config.ts",
     "vitest.config.ts"
   ]

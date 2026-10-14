@@ -4,11 +4,11 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { DatabaseSync as DatabaseSyncType } from 'node:sqlite'
 import { afterEach, describe, expect, it } from 'vitest'
-import type { Principal } from '@lumi/contracts'
 import {
   InMemoryPersonalMemoryStore,
   MemoryNotFoundError,
   MemoryStateConflictError,
+  type PersonalPrincipal,
   PersonalMemoryService,
   SqlitePersonalMemoryStore,
 } from '../src/index.ts'
@@ -209,7 +209,11 @@ describe('PersonalMemoryService', () => {
 
 })
 
-function principal(ownerId = 'owner-one', id = 'user-one'): Principal {
+function principal(ownerId = 'owner-one', id = 'user-one'): PersonalPrincipal & {
+  authStrength: 'local_process'
+  id: string
+  kind: 'owner'
+} {
   return {
     authStrength: 'local_process',
     id,

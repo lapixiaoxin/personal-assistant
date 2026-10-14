@@ -13,4 +13,4 @@ LUMI_PERSONAL_CONTEXT_PATH=/absolute/path/to/snapshot.json
 LUMI_OWNER_ID=stable-owner-id
 ```
 
-The current P0 is for isolated validation only. Do not point it at a real personal-data export or a production profile.
+The server profile may load this plugin only when `personalContextPath` is explicitly configured. Use a purpose-scoped snapshot, keep it private, and remember that injected content becomes part of DSH Session history.

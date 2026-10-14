@@ -4,16 +4,16 @@ export default defineConfig({
   test: {
     coverage: {
       include: [
-        'adapters/*/src/**/*.ts',
-        'apps/*/src/**/*.{ts,tsx}',
-        'packages/*/src/**/*.ts',
+        'apps/*/src/**/*.{js,ts}',
+        'channels/*/src/**/*.{js,ts}',
+        'packages/*/src/**/*.{js,ts}',
         'plugins/*/src/**/*.{js,ts}',
       ],
       provider: 'v8',
     },
     environment: 'node',
     include: [
-      '{adapters,apps,packages,plugins,channels}/*/tests/**/*.test.{js,ts,tsx}',
+      '{apps,packages,plugins,channels}/*/tests/**/*.test.{js,ts}',
       'tests/**/*.test.{js,ts}',
     ],
   },

@@ -1,9 +1,8 @@
-import { createHash } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { mkdirSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, resolve } from 'node:path'
 import type { DatabaseSync as DatabaseSyncType } from 'node:sqlite'
-import { createId, type Principal } from '@lumi/contracts'
 import { z } from 'zod'
 
 const { DatabaseSync } = createRequire(import.meta.url)('node:sqlite') as {
@@ -112,6 +111,10 @@ export const PersonalMemoryTombstoneSchema = z.object({
   ownerId: IdentifierSchema,
 })
 export type PersonalMemoryTombstone = z.infer<typeof PersonalMemoryTombstoneSchema>
+
+export interface PersonalPrincipal {
+  ownerId: string
+}
 
 export interface PersonalMemoryStore {
   close(): void
@@ -440,14 +443,14 @@ export class PersonalMemoryService {
     this.store.close()
   }
 
-  create(principal: Principal, input: PersonalMemoryCreate): PersonalMemory {
+  create(principal: PersonalPrincipal, input: PersonalMemoryCreate): PersonalMemory {
     const parsed = PersonalMemoryCreateSchema.parse(input)
     const timestamp = this.now()
     const memory = PersonalMemorySchema.parse({
       ...parsed,
       confirmedAt: parsed.status === 'confirmed' ? timestamp : null,
       createdAt: timestamp,
-      id: createId('memory'),
+      id: `memory_${randomUUID()}`,
       ownerId: principal.ownerId,
       retractedAt: null,
       revision: 1,
@@ -457,12 +460,12 @@ export class PersonalMemoryService {
     return memory
   }
 
-  get(principal: Principal, id: string): PersonalMemory {
+  get(principal: PersonalPrincipal, id: string): PersonalMemory {
     return this.#require(principal.ownerId, id)
   }
 
   list(
-    principal: Principal,
+    principal: PersonalPrincipal,
     query: PersonalMemoryListQuery = {},
   ): PersonalMemory[] {
     const parsed = PersonalMemoryListQuerySchema.parse(query)
@@ -476,7 +479,7 @@ export class PersonalMemoryService {
       .slice(0, parsed.limit)
   }
 
-  confirm(principal: Principal, id: string): PersonalMemory {
+  confirm(principal: PersonalPrincipal, id: string): PersonalMemory {
     const existing = this.#require(principal.ownerId, id)
     if (existing.status !== 'candidate') {
       throw new MemoryStateConflictError(
@@ -495,7 +498,7 @@ export class PersonalMemoryService {
   }
 
   correct(
-    principal: Principal,
+    principal: PersonalPrincipal,
     id: string,
     correction: PersonalMemoryCorrection,
   ): PersonalMemory {
@@ -525,7 +528,7 @@ export class PersonalMemoryService {
     })
   }
 
-  retract(principal: Principal, id: string): PersonalMemory {
+  retract(principal: PersonalPrincipal, id: string): PersonalMemory {
     const existing = this.#require(principal.ownerId, id)
     if (existing.status === 'retracted') return existing
     const timestamp = this.now()
@@ -538,7 +541,7 @@ export class PersonalMemoryService {
     })
   }
 
-  forget(principal: Principal, id: string): PersonalMemoryTombstone {
+  forget(principal: PersonalPrincipal, id: string): PersonalMemoryTombstone {
     const existing = this.#require(principal.ownerId, id)
     const tombstone = PersonalMemoryTombstoneSchema.parse({
       contentDigest: digest(existing.content),

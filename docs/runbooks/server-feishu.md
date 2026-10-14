@@ -1,6 +1,6 @@
 # 单机 DSH 管家与飞书入口
 
-状态：candidate · 2026-10-13。适用 SPEC-0016、Node >=22.19.0、pnpm 10.20.0、DSH `0.2.0-rc.2`、飞书 Node SDK `1.75.0`。本地契约与构建已验证；真实飞书、云模型对话和 Linux systemd 启动为 `not_run`。证据见 [SPEC-0016](../../specs/0016-dsh-server-feishu/evidence.md)。
+状态：`verified_once` · 2026-10-14。适用 [SPEC-0016](../../specs/0016-dsh-server-feishu.md)、Node >=22.19.0、pnpm 10.20.0、DSH `0.2.0-rc.2`、飞书 Node SDK `1.75.0`。macOS 前台、MiniMax M3.1 Flash 与真实 Bot 已观察到 4 条成功回复；Linux systemd 仍为 `not_run`。
 
 ## 准备专用飞书应用
 
@@ -66,7 +66,7 @@ pnpm server:status
 
 预期 `sent` 随确认送达的回复增加，未决记录单独可见。还需完成正常停止/重启后的会话续接、网络断开后的重连、陌生用户/群聊拒绝。观察 SDK 重投时同一平台 ID 只执行一次。测试飞书发送失败时不要反复手动补发以“试通”，先核对实际消息与本地状态。
 
-只有真实平台消息已收到并返回业务 message ID，才能将飞书收发从 `not_run` 改为 `verified_once`；离线测试、DSH 文本或启动日志不能替代此证据。
+2026-10-14 首次真实验收观察到 4 条 `sent`、1 个 Session、0 个未决记录，因此标 `verified_once`。这不证明长期稳定、断网重连或任意租户权限配置。
 
 ## 运行与故障
 

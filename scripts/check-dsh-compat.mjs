@@ -3,100 +3,75 @@ import { createRequire } from 'node:module'
 import { resolve } from 'node:path'
 import process from 'node:process'
 
-const require = createRequire(import.meta.url)
 const root = resolve(import.meta.dirname, '..')
-const pluginRequire = createRequire(resolve(root, 'plugins/dsh-action-bridge/package.json'))
-const contextPluginRequire = createRequire(resolve(root, 'plugins/dsh-lumi/package.json'))
-const lockfile = await readFile(resolve(root, 'pnpm-lock.yaml'), 'utf8')
-
-const [
-  adapter,
-  actionPlugin,
-  contextPlugin,
-  project,
-  upstream,
-  installedDsh,
-  installedMockServer,
-  installedSdk,
-  installedSystemPrompt,
-  installedTools,
-] = await Promise.all([
-  readJson(resolve(root, 'adapters/dsh/package.json')),
-  readJson(resolve(root, 'plugins/dsh-action-bridge/package.json')),
-  readJson(resolve(root, 'plugins/dsh-lumi/package.json')),
-  readJson(resolve(root, 'package.json')),
-  readJson(resolve(root, 'upstream.lock.json')),
-  readJson(require.resolve('@deepseek-ai/dsh/package.json')),
-  readJson(require.resolve('@deepseek-ai/dsh-llm-mock-server/package.json')),
-  readJson(require.resolve('@deepseek-ai/dsh-sdk-client/package.json')),
-  readJson(contextPluginRequire.resolve('@deepseek-ai/dsh-system-prompt/package.json')),
-  readJson(pluginRequire.resolve('@deepseek-ai/dsh-tools/package.json')),
-])
-
-const declaredSdk = project.dependencies?.['@deepseek-ai/dsh-sdk-client']
-const lockedSdk = upstream.deepseekHarness?.packages?.['@deepseek-ai/dsh-sdk-client']
-const lockedDsh = upstream.deepseekHarness?.packages?.['@deepseek-ai/dsh']
-const lockedTools = upstream.deepseekHarness?.packages?.['@deepseek-ai/dsh-tools']
-const bundledDsh = installedSdk.dependencies?.['@deepseek-ai/dsh']
+const require = createRequire(import.meta.url)
+const channelRequire = createRequire(resolve(root, 'plugins/dsh-channels/package.json'))
+const contextRequire = createRequire(resolve(root, 'plugins/dsh-lumi/package.json'))
+const project = await readJson(resolve(root, 'package.json'))
+const upstream = await readJson(resolve(root, 'upstream.lock.json'))
+const channelPlugin = await readJson(resolve(root, 'plugins/dsh-channels/package.json'))
+const contextPlugin = await readJson(resolve(root, 'plugins/dsh-lumi/package.json'))
+const installed = {
+  dsh: await readJson(require.resolve('@deepseek-ai/dsh/package.json')),
+  llm: await readJson(channelRequire.resolve('@deepseek-ai/dsh-llm/package.json')),
+  mock: await readJson(require.resolve('@deepseek-ai/dsh-llm-mock-server/package.json')),
+  sdk: await readJson(require.resolve('@deepseek-ai/dsh-sdk-client/package.json')),
+  systemPrompt: await readJson(contextRequire.resolve('@deepseek-ai/dsh-system-prompt/package.json')),
+  tools: await readJson(contextRequire.resolve('@deepseek-ai/dsh-tools/package.json')),
+}
+const expected = upstream.deepseekHarness?.version
 const versions = {
-  adapterSdk: adapter.dependencies?.['@deepseek-ai/dsh-sdk-client'],
-  bundledDsh,
-  declaredDsh: project.dependencies?.['@deepseek-ai/dsh'],
-  declaredSdk,
-  declaredMockServer: project.devDependencies?.['@deepseek-ai/dsh-llm-mock-server'],
-  installedDsh: installedDsh.version,
-  installedMockServer: installedMockServer.version,
-  installedSdk: installedSdk.version,
-  installedSystemPrompt: installedSystemPrompt.version,
-  installedTools: installedTools.version,
-  lockedDsh,
-  lockedMockServer: upstream.deepseekHarness?.packages?.['@deepseek-ai/dsh-llm-mock-server'],
-  lockedSdk,
-  lockedTools,
-  actionPluginTools: actionPlugin.dependencies?.['@deepseek-ai/dsh-tools'],
-  contextPluginSystemPrompt: contextPlugin.peerDependencies?.['@deepseek-ai/dsh-system-prompt'],
-  contextPluginSystemPromptDev: contextPlugin.devDependencies?.['@deepseek-ai/dsh-system-prompt'],
-  contextPluginTools: contextPlugin.peerDependencies?.['@deepseek-ai/dsh-tools'],
-  contextPluginToolsDev: contextPlugin.devDependencies?.['@deepseek-ai/dsh-tools'],
-  release: upstream.deepseekHarness?.version,
+  rootDsh: project.dependencies?.['@deepseek-ai/dsh'],
+  rootSdk: project.dependencies?.['@deepseek-ai/dsh-sdk-client'],
+  rootMock: project.devDependencies?.['@deepseek-ai/dsh-llm-mock-server'],
+  channelLlm: channelPlugin.dependencies?.['@deepseek-ai/dsh-llm'],
+  contextSystemPrompt: contextPlugin.peerDependencies?.['@deepseek-ai/dsh-system-prompt'],
+  contextTools: contextPlugin.peerDependencies?.['@deepseek-ai/dsh-tools'],
+  contextSystemPromptDev: contextPlugin.devDependencies?.['@deepseek-ai/dsh-system-prompt'],
+  contextToolsDev: contextPlugin.devDependencies?.['@deepseek-ai/dsh-tools'],
+  installedDsh: installed.dsh.version,
+  installedLlm: installed.llm.version,
+  installedMock: installed.mock.version,
+  installedSdk: installed.sdk.version,
+  installedSystemPrompt: installed.systemPrompt.version,
+  installedTools: installed.tools.version,
+  lockedDsh: upstream.deepseekHarness?.packages?.['@deepseek-ai/dsh'],
+  lockedMock: upstream.deepseekHarness?.packages?.['@deepseek-ai/dsh-llm-mock-server'],
+  lockedSdk: upstream.deepseekHarness?.packages?.['@deepseek-ai/dsh-sdk-client'],
+  lockedTools: upstream.deepseekHarness?.packages?.['@deepseek-ai/dsh-tools'],
 }
 
-for (const [name, value] of Object.entries(versions)) {
-  if (typeof value !== 'string' || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(value)) {
-    throw new Error(`DSH compatibility check: ${name} is not an exact version: ${String(value)}`)
+if (typeof expected !== 'string') throw new Error('DSH compatibility check: missing release')
+for (const [name, version] of Object.entries(versions)) {
+  if (version !== expected) {
+    throw new Error(`DSH compatibility check: ${name}=${String(version)} does not match ${expected}`)
   }
 }
 
-const expected = versions.release
-for (const [name, value] of Object.entries(versions)) {
-  if (value !== expected) {
-    throw new Error(`DSH compatibility check: ${name}=${value} does not match ${expected}`)
-  }
-}
-
-await assertCoreHasNoDshImports()
 await assertWorkspaceDeclarations(expected)
-const lockedPackageCount = assertLockHasSingleDshRelease(lockfile, expected)
-process.stdout.write(
-  `DSH compatibility pins are aligned at ${expected}; ${lockedPackageCount} lockfile packages checked\n`,
-)
+await assertPortablePackagesDoNotImportDsh()
+const lockfile = await readFile(resolve(root, 'pnpm-lock.yaml'), 'utf8')
+const count = assertLockHasSingleRelease(lockfile, expected)
+process.stdout.write(`DSH compatibility pins are aligned at ${expected}; ${count} lockfile packages checked\n`)
 
 async function readJson(path) {
   return JSON.parse(await readFile(path, 'utf8'))
 }
 
-async function assertWorkspaceDeclarations(expected) {
-  for (const category of ['apps', 'packages', 'adapters', 'plugins', 'channels']) {
+async function assertWorkspaceDeclarations(release) {
+  for (const category of ['apps', 'packages', 'plugins', 'channels']) {
     for (const entry of await readdir(resolve(root, category), { withFileTypes: true })) {
       if (!entry.isDirectory()) continue
       let manifest
-      try { manifest = await readJson(resolve(root, category, entry.name, 'package.json')) } catch (error) {
+      try {
+        manifest = await readJson(resolve(root, category, entry.name, 'package.json'))
+      } catch (error) {
         if (error.code === 'ENOENT') continue
         throw error
       }
       for (const group of ['dependencies', 'devDependencies', 'peerDependencies']) {
         for (const [name, version] of Object.entries(manifest[group] ?? {})) {
-          if (name.startsWith('@deepseek-ai/dsh') && version !== expected) {
+          if (name.startsWith('@deepseek-ai/dsh') && version !== release) {
             throw new Error(`DSH compatibility check: ${manifest.name} ${group} ${name}=${version}`)
           }
         }
@@ -105,21 +80,11 @@ async function assertWorkspaceDeclarations(expected) {
   }
 }
 
-async function assertCoreHasNoDshImports() {
-  const protectedDirectories = [
-    'packages/contracts',
-    'packages/assistant-core',
-    'packages/personal-context',
-    'packages/personal-memory',
-    'packages/policy',
-    'packages/reminders',
-    'packages/task-ledger',
-    'packages/task-recovery',
-  ]
-  for (const directory of protectedDirectories) {
+async function assertPortablePackagesDoNotImportDsh() {
+  for (const directory of ['packages/channel-store', 'packages/personal-context', 'packages/personal-memory']) {
     for (const path of await sourceFiles(resolve(root, directory))) {
       if ((await readFile(path, 'utf8')).includes('@deepseek-ai/dsh')) {
-        throw new Error(`DSH compatibility check: forbidden core import in ${path}`)
+        throw new Error(`DSH compatibility check: forbidden portable-package import in ${path}`)
       }
     }
   }
@@ -127,44 +92,38 @@ async function assertCoreHasNoDshImports() {
 
 async function sourceFiles(directory) {
   const entries = await readdir(directory, { withFileTypes: true })
-  const files = await Promise.all(entries.map(async (entry) => {
+  const files = await Promise.all(entries.map(async entry => {
     const path = resolve(directory, entry.name)
     if (entry.isDirectory()) return sourceFiles(path)
-    return entry.isFile() && entry.name.endsWith('.ts') ? [path] : []
+    return entry.isFile() && /\.(?:js|ts)$/.test(entry.name) ? [path] : []
   }))
   return files.flat()
 }
 
-function assertLockHasSingleDshRelease(lockfile, expected) {
+function assertLockHasSingleRelease(lockfile, release) {
   const packageStart = lockfile.indexOf('\npackages:\n')
   const snapshotStart = lockfile.indexOf('\nsnapshots:\n')
   if (packageStart < 0 || snapshotStart <= packageStart) {
     throw new Error('DSH compatibility check: lockfile package table is missing')
   }
-  const packageTable = lockfile.slice(packageStart, snapshotStart)
   const versions = new Map()
-  const packageEntry = /^ {2}'(@deepseek-ai\/dsh(?:-[^@']+)?)@([^']+)':$/gm
-  for (const match of packageTable.matchAll(packageEntry)) {
+  const entries = lockfile.slice(packageStart, snapshotStart)
+    .matchAll(/^ {2}'(@deepseek-ai\/dsh(?:-[^@']+)?)@([^']+)':$/gm)
+  for (const match of entries) {
     const name = match[1]
     const version = match[2]
     if (!name || !version) continue
-    const current = versions.get(name) ?? new Set()
-    current.add(version)
-    versions.set(name, current)
+    const found = versions.get(name) ?? new Set()
+    found.add(version)
+    versions.set(name, found)
   }
-  if (versions.size === 0) {
-    throw new Error('DSH compatibility check: lockfile contains no DSH packages')
-  }
+  if (versions.size === 0) throw new Error('DSH compatibility check: no DSH packages')
   const mismatches = []
-  for (const [name, packageVersions] of versions) {
-    for (const version of packageVersions) {
-      if (version !== expected) mismatches.push(`${name}=${version}`)
-    }
+  for (const [name, found] of versions) {
+    for (const version of found) if (version !== release) mismatches.push(`${name}=${version}`)
   }
   if (mismatches.length > 0) {
-    throw new Error(
-      `DSH compatibility check: mixed lockfile releases: ${mismatches.sort().join(', ')}`,
-    )
+    throw new Error(`DSH compatibility check: mixed releases: ${mismatches.sort().join(', ')}`)
   }
   return versions.size
 }
