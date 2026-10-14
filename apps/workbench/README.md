@@ -23,11 +23,11 @@ pnpm dev:web
 ## 生产构建
 
 ```bash
-pnpm build
+pnpm build:legacy
 pnpm start:legacy
 ```
 
-完整构建把页面输出到 `dist/workbench`，Gateway 在目录存在时通过 `http://127.0.0.1:4310/` 同源提供页面和哈希资源。
+legacy 构建把 Gateway/CLI 输出到 `dist/`，并把页面输出到 `dist/workbench`。Gateway 在目录存在时通过 `http://127.0.0.1:4310/` 同源提供页面和哈希资源。默认 `pnpm build` 只构建新 server。
 
 ## 当前边界
 

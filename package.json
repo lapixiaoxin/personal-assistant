@@ -18,10 +18,12 @@
     ]
   },
   "scripts": {
-    "build": "pnpm build:server && pnpm --filter @lumi/workbench build",
-    "build:server": "tsup",
-    "check": "pnpm lint && pnpm typecheck && pnpm check:architecture && pnpm check:dsh && pnpm test && pnpm build",
+    "build": "pnpm build:server",
+    "build:legacy": "node scripts/clean-dist.mjs && tsup --config tsup.legacy.config.ts && pnpm --filter @lumi/workbench build",
+    "build:server": "node scripts/clean-dist.mjs && tsup",
+    "check": "pnpm lint && pnpm typecheck && pnpm check:architecture && pnpm check:dsh && pnpm test && pnpm check:build",
     "check:architecture": "node scripts/check-architecture.mjs",
+    "check:build": "pnpm build:legacy && node scripts/check-build-output.mjs legacy && pnpm build && node scripts/check-build-output.mjs server",
     "check:dsh": "node scripts/check-dsh-compat.mjs",
     "check:dsh:latest": "node scripts/check-dsh-latest.mjs",
     "cli": "tsx apps/local-runner/src/main.ts",
@@ -36,7 +38,7 @@
     "test": "vitest run",
     "test:dsh": "vitest run tests/contract/dsh-runtime.test.ts",
     "test:dsh:bundle": "node scripts/verify-dsh-lumi-bundle.mjs",
-    "test:e2e": "pnpm build && playwright test",
+    "test:e2e": "pnpm build:legacy && playwright test",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
   },

@@ -35,6 +35,7 @@ pnpm cli --db ./data/action-check/assistant.db action get <action-id>
 
 ```bash
 export PA_HTTP_TOKEN="$(openssl rand -hex 32)"
+pnpm build:legacy
 PA_EXECUTOR=mock pnpm start:legacy
 ```
 

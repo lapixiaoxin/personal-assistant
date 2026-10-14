@@ -68,6 +68,6 @@ SDK 类型止于启动器、adapter 和 DSH 插件。平台 SDK 止于对应 cha
 
 ## 旧路径和后续扩展
 
-旧 `apps/runtime`、Gateway、CLI、Workbench、Assistant Core、Task Ledger 与工作流进入兼容维护。通过 `start:legacy / dev:legacy` 运行，不进入新服务器依赖图。个人数据和已验证动作/恢复模块保留；移除旧包前逐项确认替代能力和导出读回证据，见 [退役计划](../runbooks/legacy-retirement.md)。
+旧 `apps/runtime`、Gateway、CLI、Workbench、Assistant Core、Task Ledger 与工作流进入兼容维护。通过 `build:legacy / start:legacy / dev:legacy` 显式构建或运行，不进入新服务器依赖图和默认发布产物。个人数据和已验证动作/恢复模块保留；移除旧包前逐项确认替代能力和导出读回证据，见 [退役计划](../runbooks/legacy-retirement.md)。
 
-后续优先使用 DSH 已有 Skills、MCP、Agent 服务；ACP/A2A、外部个人 Agent 或设备由具体规范验证发现、认证、取消、结果和权限。Dots、Muse 不在当前接入范围。App 只增加 Surface，不成为另一份个人资产和授权事实源。发展顺序见 [路线](07-roadmap.md)。
+后续优先使用 DSH 已有 Skills、MCP、Agent 服务；ACP/A2A、外部个人 Agent 或设备由具体规范验证发现、认证、取消、结果和权限。当前不接任何具体外部 Agent。App 只增加 Surface，不成为另一份个人资产和授权事实源。发展顺序见 [路线](07-roadmap.md)。

@@ -1,20 +1,20 @@
 # lumi 工程事实
 
-当前更新：**2026-10-13 / SPEC-0016**。以下“当前”表覆盖旧状态描述；后半部分按日期保留历史，不能据历史版本判断现行默认入口。
+当前更新：**2026-10-14 / SPEC-0016**。以下“当前”表覆盖旧状态描述；后半部分按日期保留历史，不能据历史版本判断现行默认入口。
 
 ## 当前主线
 
 | 项目 | 已实现与验证范围 |
 | --- | --- |
 | 产品与核心 | 单服务器超级管家；DSH 独占推理、规划、Session、工具与子 Agent 核心。当前不接具体外部个人 Agent |
-| 默认入口 | `apps/server` 通过官方 SDK 启动常驻 DSH；`pnpm start/dev` 指向新 server，原 Gateway 为 `start:legacy/dev:legacy` |
+| 默认入口 | `apps/server` 通过官方 SDK 启动常驻 DSH；`pnpm build/start/dev` 只指向新 server，原 Gateway/CLI/Workbench 使用显式 legacy 构建与启动命令 |
 | 通道 | `channels/feishu` 使用官方 SDK 1.75.0 长连接；校验 app、单 owner open_id、私聊、文本与长度 |
 | 会话 | `plugins/dsh-channels` 调用原生 create/resume/followup/cancel；多轮、重启续接、`/new`、`/cancel` 已通过真实 DSH + mock 模型契约 |
 | 收发持久化 | `packages/channel-store` 保存平台输入去重、Session 映射、回复意图与回执；单机进程所有权；中断/未知结果不自动重复 |
 | 权限 | 新 server 默认拒绝业务工具与委派；只配置个人快照时开放只读状态工具。飞书身份不授予外部动作权限 |
 | 个性化 | 复用 `personal-context/v1` 与 `dsh-lumi`；新入口只加载显式快照，不自动导入旧库、同步或写入记忆 |
 | 上游 | DSH 全组合统一 0.2.0-rc.2；2026-10-13 registry 检查为 latest；外部 bundle 打包/安装/Web 启动验证通过 |
-| 检查 | Node22.19.0/pnpm10.20.0；完整 `pnpm check` 通过 32 文件 / 223 项测试与构建；旧保护性测试未改 |
+| 检查 | Node22.19.0/pnpm10.20.0；完整 `pnpm check` 通过 32 文件 / 223 项测试；legacy/server 构建边界分别验证，最终默认产物只有 server；旧保护性测试未改 |
 | 部署 | 配置样例、飞书 SOP 与 systemd candidate 已准备；未配置专用 Bot，未部署服务器或切换既有运行服务 |
 
 证据与限制：[SPEC-0016](../specs/0016-dsh-server-feishu/evidence.md)。目录和路线见 [架构](design/02-architecture.md)、[路线](design/07-roadmap.md)、[ADR-007](adr/0007-dsh-server-and-channel-boundary.md)。

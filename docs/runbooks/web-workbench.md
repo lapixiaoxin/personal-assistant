@@ -38,11 +38,11 @@ pnpm dev:web
 ## 生产构建运行
 
 ```bash
-pnpm build
+pnpm build:legacy
 PA_EXECUTOR=mock pnpm start:legacy
 ```
 
-打开 `http://127.0.0.1:4310`。完整构建先生成 Node 入口，再生成 `dist/workbench`；不要单独执行 `pnpm build:server` 后期待旧的 Workbench 产物仍存在，因为 tsup 会清理 `dist`。
+打开 `http://127.0.0.1:4310`。legacy 构建先生成 Gateway/CLI，再生成 `dist/workbench`；默认 `pnpm build` 会清理 `dist` 并只留下新 server 产物。
 
 ## 验证
 

@@ -20,7 +20,7 @@
 ## Workbench
 
 ```bash
-pnpm build
+pnpm build:legacy
 PA_HTTP_TOKEN='<local-token>' pnpm start:legacy
 ```
 

@@ -20,7 +20,9 @@
 
 ## 继续使用旧入口
 
-更新代码后先 `pnpm install --frozen-lockfile` 与 `pnpm build`。原 `pnpm dev/start` 已指向新 server；旧入口改用 `pnpm dev:legacy/start:legacy`。`pnpm cli` 与 `pnpm dev:web` 保持不变。`PA_*`、端口、认证、数据库格式和旧命令语义未变。
+更新代码后先 `pnpm install --frozen-lockfile`。原 `pnpm build/dev/start` 已只指向新 server；旧生产入口先执行 `pnpm build:legacy`，再用 `pnpm start:legacy`，开发入口使用 `pnpm dev:legacy`。`pnpm cli` 与 `pnpm dev:web` 保持不变。`PA_*`、端口、认证、数据库格式和旧命令语义未变。
+
+server 与 legacy 构建都会清理 `dist/`，因此最后执行的构建决定当前产物集合。完整 `pnpm check` 先验证 legacy，最后重新构建 server，避免默认交付意外带入旧 Gateway/Workbench。
 
 旧工作台见 [Workbench SOP](web-workbench.md)，个人资产见 [记忆 SOP](personal-memory.md)，未完成动作见 [动作门禁 SOP](action-boundary.md)，中断任务见 [恢复 SOP](task-recovery.md)。旧 HTTP 仍只用于可信本机环境；新飞书通道不调用这些 API。
 

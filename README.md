@@ -2,7 +2,7 @@
 
 属于自己的超级管家：在自己的服务器部署，通过一个入口对话，逐步组织个人助手、Code Agent、工具与设备。DSH 负责推理、规划、会话、工具和子 Agent 调度；lumi 维护个人资产、插件、通道和部署。
 
-当前交付是基础架构与飞书文本入口。**代码和离线契约已验证，真实 Bot 收发尚未验证，也未切换现有运行服务。** Dots、Muse 是产品例子，当前未接入任何具体外部 Agent。完整边界见 [工程事实](docs/current-state.md) 和 [SPEC-0016 证据](specs/0016-dsh-server-feishu/evidence.md)。
+当前交付是基础架构与飞书文本入口。**代码和离线契约已验证，真实 Bot 收发尚未验证，也未切换现有运行服务。** 当前不接入任何具体外部 Agent。完整边界见 [工程事实](docs/current-state.md) 和 [SPEC-0016 证据](specs/0016-dsh-server-feishu/evidence.md)。
 
 ## 工程结构
 
@@ -75,13 +75,17 @@ python3 scripts/check-docs.py
 旧 CLI、Gateway、Workbench 及任务/动作/记忆/提醒数据保留，进入维护与逐项退役阶段。`pnpm start`、`pnpm dev` 已改为新服务器，旧 Gateway 改用：
 
 ```bash
+# 旧 Gateway 开发模式无需预构建
 PA_EXECUTOR=mock PA_DATA_DIR=./data/legacy-smoke pnpm dev:legacy
-# 构建后的旧 Gateway
+# 构建旧 CLI、Gateway 和 Workbench 后启动
+pnpm build:legacy
 pnpm start:legacy
 # 原 CLI 与前端开发命令继续有效
 pnpm cli --help
 pnpm dev:web
 ```
+
+默认 `pnpm build` 只生成 `dist/server`。完整 `pnpm check` 会验证 legacy 构建，再重新生成 server 产物；两条路径不共享默认发布包。
 
 旧环境变量 `PA_*` 与 `data/assistant.db` 保持兼容。旧能力尚未迁入飞书 profile；旧工作台通过 Gateway 访问，[操作规程](docs/runbooks/web-workbench.md) 与 [原 MVP 验收](docs/evidence/2026-09-25-mvp-acceptance.md) 继续保留。宽权限 coding profile 仍只用于本机开发。
 

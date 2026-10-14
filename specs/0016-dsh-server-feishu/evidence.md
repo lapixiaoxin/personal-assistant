@@ -28,9 +28,20 @@ DSH 精确 release `0.2.0-rc.2`，官方源码 tag `dsh-v0.2.0-rc.2`；飞书 SD
 
 初期新会话用例还曾因 mock 响应序列耗尽失败，已明确配置 repeatLast；旧保护性 DSH 契约 11 项未改。安装时内部镜像元数据不全及 pnpm 写入位置受限，使用公开 registry、隔离 tooling 目录和既有 store 完成安装，没有关闭检查或放宽版本要求。
 
+## 2026-10-14 · 默认构建边界收口
+
+此前 `start/dev` 已切到新 server，但根 `pnpm build` 仍同时生成旧 CLI、Gateway 与 Workbench，默认产物与架构主线不一致。现将 `tsup.config.ts` 收敛为 server 单入口，旧入口移到 `tsup.legacy.config.ts` 和显式 `build:legacy`；`test:e2e` 相应只构建 legacy。
+
+首次加入产物检查时发现 tsup 的 `clean: true` 不会删除另一配置产生的 `dist/server`，证明两套构建仍可能混装。改为每次构建前由 `scripts/clean-dist.mjs` 删除完整 `dist/`，再由 `check-build-output.mjs` 检查顶层集合：
+
+- legacy 必须且只能包含 `cli / gateway / workbench`；
+- 默认 server 必须且只能包含 `server`。
+
+完整 `pnpm check` 最终通过：32 文件 / 223 项测试、架构与 DSH 版本检查、两类构建边界均通过，结束时 `dist/` 只含 `server/main.js` 及 source map。首次全量运行有一个既有 CLI recovery 用例在 5 秒阈值超时；未修改测试或实现，单独重跑 2/2 通过，随后无其他并行验证负载的完整门禁 223/223 通过。
+
 ## 交付与迁移
 
-新增 SDK server、原生会话接线插件、飞书通道、收发存储、server profile 与部署配置。默认启动转到 server，旧入口保留 legacy 命令；README/架构/路线删除重复旧默认叙述，专题 SOP 保留操作。ADR-007 明确 DSH 通用核心与个人外围职责。
+新增 SDK server、原生会话接线插件、飞书通道、收发存储、server profile 与部署配置。默认构建及启动均转到 server，旧入口保留显式 legacy 命令；README/架构/路线删除重复旧默认叙述，专题 SOP 保留操作。ADR-007 明确 DSH 通用核心与个人外围职责。
 
 [退役计划](../../docs/runbooks/legacy-retirement.md) 逐项列出旧入口与数据；未强行移动仍有调用方的包，没有删除旧库、用户 SVG 或旧保护性测试。[服务器 SOP](../../docs/runbooks/server-feishu.md) 包含专用 Bot、故障、备份、升级和回滚。
 

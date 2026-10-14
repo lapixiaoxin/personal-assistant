@@ -2,11 +2,8 @@ import { defineConfig } from 'tsup'
 
 export default defineConfig({
   bundle: true,
-  clean: true,
   dts: false,
   entry: {
-    'cli/main': 'apps/local-runner/src/main.ts',
-    'gateway/main': 'apps/gateway/src/main.ts',
     'server/main': 'apps/server/src/main.js',
   },
   esbuildOptions(options) {
@@ -15,7 +12,7 @@ export default defineConfig({
       'node-colon-prefix-import': true,
     }
   },
-  external: ['@deepseek-ai/dsh-sdk-client', '@lumi/dsh-channels-plugin/config', 'node:sqlite'],
+  external: ['@deepseek-ai/dsh-sdk-client', '@lumi/dsh-channels-plugin/config'],
   format: ['esm'],
   minify: false,
   outDir: 'dist',

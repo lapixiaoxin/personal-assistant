@@ -14,7 +14,7 @@
 
 2026-10-13：主线改为 DSH 常驻 SDK server + 外围插件。DSH 独占通用推理、规划、Session、工具和 Agent 调度；本仓维护个人资产、通道、插件和部署。新飞书单 owner 私聊文本入口、持久收件箱与原生 Session 接线已实现并本地验证；专用应用未配置，真实 Bot 收发、Linux 部署及现有服务切换尚未执行。DSH 组合固定 `0.2.0-rc.2`，提供每日/手动新鲜度检查。
 
-默认 `start/dev` 为新 server，旧 Gateway 改用 `start:legacy/dev:legacy`。旧 CLI/Workbench、任务/动作/记忆/恢复/提醒数据和保护性验收保留，按 [退役计划](docs/runbooks/legacy-retirement.md) 逐项迁移。新 profile 当前只开放对话与可选个人上下文状态，不接具体外部 Agent、设备或业务动作。Dots、Muse 只是用户举例，不能据此扩展实施范围。实时语音、多设备同步、分布式 lease/fencing、周期推送、自动记忆和自主发布尚未实现。
+默认 `build/start/dev` 为新 server，旧 Gateway/CLI/Workbench 使用 `build:legacy/start:legacy/dev:legacy` 等显式命令。旧任务/动作/记忆/恢复/提醒数据和保护性验收保留，按 [退役计划](docs/runbooks/legacy-retirement.md) 逐项迁移。新 profile 当前只开放对话与可选个人上下文状态，不接具体外部 Agent、设备或业务动作。具体个人 Agent 产品只是用户举例，不能据此扩展实施范围。实时语音、多设备同步、分布式 lease/fencing、周期推送、自动记忆和自主发布尚未实现。
 
 设计轮已完成方案、文档、现状验证及飞书发布。2026-09-24 用户明确版本管理交给 Agent 托管，可以直接将修改提交到当前仓库的 main 分支；2026-09-25 进一步授权完成验证后直接推送到当前跟踪的远端分支。具体开发仍以用户任务为准；已有明确范围内持续推进，常规可逆步骤无需反复确认。
 
