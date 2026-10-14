@@ -40,8 +40,10 @@ DSH 是唯一通用 Harness。lumi 不实现规划器、模型循环、专家路
 3. Host 将输入按稳定平台 message ID 先落 SQLite，再返回事件回执。
 4. Host 串行取队列，创建或恢复映射的 DSH Agent。
 5. DSH 管理 Session、提示词、模型和工具循环。
-6. Host 保存回复意图，只向原消息发送一次。
-7. 平台业务码和 message ID 有效后标 `sent`；不明确则标 `unknown`。
+6. Host 保存回复意图，文本模式向原消息发送一次；流式模式在模型前确认两张卡片，并持续更新同一目标。
+7. 平台业务码和 message ID 有效、流式卡片终态已确认后标 `sent`；不明确则标 `unknown`。
+
+双消息流式模式见 [SPEC-0020](../../specs/0020-feishu-streaming-replies.md)：Host 将 DSH 的正文事件投影为累计文本与公开进度，逐消息保存投递意图、目标和回执；飞书 Channel 封装 CardKit 创建、引用发送、文本更新和结束。模型内部 reasoning 不进入通道。流式展示不授予新工具权限。
 
 ## 扩展原则
 

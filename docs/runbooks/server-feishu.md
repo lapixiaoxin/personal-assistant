@@ -51,7 +51,7 @@ chmod 600 data/server/config.json
 | `turnTimeoutMs` | 单次生成时限；默认 120000，允许 1000–600000 |
 | `providerPatch` | 可选的实例级 DSH provider 覆盖；相对配置文件解析 |
 | `personalContextPath` | 可选的 `personal-context/v1` 快照；默认不加载 |
-| `feishu` | 专用 appId、appSecret、ownerOpenId |
+| `feishu` | 专用 appId、appSecret、ownerOpenId；可选 replyMode |
 
 所有相对文件路径都相对于配置文件，进程工作目录则须为仓库根目录。未知配置键被拒绝，JSON 权限必须禁止 group/other 访问。凭据和真实配置不入 Git。
 
@@ -67,6 +67,18 @@ pnpm start
 预期控制台显示 `lumi ready · DSH host + Feishu private chat`。配置缺失或长连接未就绪时退出失败；只输出固定错误提示，不转储 SDK 错误正文。可以用 `LUMI_SERVER_CONFIG=/absolute/private/config.json pnpm start` 指定配置位置。开发入口为 `pnpm dev`。
 
 可选个人快照的 owner 必须等于配置 owner，purpose 为 `general_assistance`；格式、生成和纠正限制见 [个人上下文插件](../../plugins/personal-context/README.md) 与 [bundle SOP](dsh-native-bundle.md)。旧记忆库不会自动同步；删除快照内容不清除已存在的 DSH 历史。
+
+## 双消息流式回复
+
+普通对话可配置 `feishu.replyMode: "streaming-cards"`。默认及样例为 `"text"`，省略字段也保留文本模式。流式模式先回复两张 Card 2.0：默认折叠的「处理进度」和持续更新的正文。进度只显示公开阶段说明；不发送模型内部 reasoning 原文。命令和未开始生成的排队取消通知仍是单条文本。
+
+启用前在专用应用中申请 `cardkit:card:write`，保留现有 Bot 消息权限，并按租户要求发布可用版本。客户端要求 ≥7.20。卡片权限不足时首次创建失败，该输入保留 `unknown`，不会调用模型或补发文本；应先核对配置、权限和原消息，再发送新请求。
+
+升级代码前正常停止服务并备份完整 `data/server`。新版把收件箱 SQLite v1 自动迁至 v2，保留既有记录和 Session 映射；新增 `stream_deliveries` 保存两条消息的卡片 ID、回执、递增 sequence 和最终内容。修改唯一私有配置的 replyMode 后重启。验收时发送普通文字，确认两条消息、折叠面板、正文在生成中增长及结束后停止加载；`pnpm server:status` 的 `streams` 显示未决卡片。
+
+每张卡片更新串行节流，生产间隔 300ms；正文按转义 JSON 大小限制截断并提示完整内容保留于 DSH，不因超长增加第三条消息。取消或失败会覆盖已确认卡片的正文并关闭流式状态。发送不明不重发；更新失败可在结束时对同一已知卡片作最终覆盖。重启仅关闭已知卡片或补写已持久最终内容，不续跑模型或补发未知消息。
+
+功能回退可改为 `"text"` 并重启；仍使用 v2 数据，新代码会处理历史已确认卡片。旧 v1 代码不能直接打开 v2 数据库。代码回退必须使用匹配备份并先对账，不能通过恢复旧收件箱重复回复。完整验收与证据见 [SPEC-0020](../../specs/0020-feishu-streaming-replies.md)。
 
 ## 首次真实验收
 
@@ -84,7 +96,7 @@ pnpm server:status
 
 ## 运行与故障
 
-`/help` 显示当前能力；`/new` 排队开始新会话，旧历史保留；`/cancel` 立即请求取消当前生成和排队输入；`/status` 返回通道及收发计数。所有回复绑定原消息；超过 12000 UTF-8 字节的回复会截断并提示，完整生成保留在本机 DSH。
+`/help` 显示当前能力；`/new` 排队开始新会话，旧历史保留；`/cancel` 立即请求取消当前生成和排队输入；`/status` 返回通道及收发计数和未决卡片数。所有回复绑定原消息；文本模式超过 12000 UTF-8 字节会截断并提示，完整生成保留在本机 DSH。
 
 默认待处理上限 100；单输入上限 12000 UTF-8 字节。超限输入不进入模型。持续超限、磁盘满或数据库不可写时应检查服务，不能依赖平台无限重投保住所有消息。
 
@@ -93,6 +105,8 @@ pnpm server:status
 | `queued / ready` | 明确未开始执行/发送，重启继续 |
 | `interrupted` | 生成时进程退出；不自动重放。核对会话后发送新请求，恢复失败可 `/new` |
 | `unknown` | 回复可能已经送达；核对原飞书消息，禁止自动重发。记录保留，当前无状态清除/强制重试命令 |
+| `streams` 未决 | 核对 part、card_id、receipt 和 sequence；初次发送不补发，已确认卡片可在重启时关闭并覆盖。中断记录即使卡片已关闭也保留 interrupted |
+| `channel_stream_reply_unresolved / channel_stream_update_unconfirmed` | 卡片投递或更新未确认；查应用 CardKit 权限和原消息，不把占位卡片送达视为最终回复完成 |
 | `feishu_reconnecting` | SDK 正在恢复连接；观察后续 `feishu_connected` 和实际收发 |
 | `feishu_connection_failed` | 查应用凭据、权限、启用状态；启动时会失败退出，已启动后的终止性连接故障需要检查并重启服务 |
 | `channel_storage_or_driver_failed` | 已停止接收/处理；修复本机数据或磁盘问题后再重启 |

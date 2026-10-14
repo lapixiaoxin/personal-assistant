@@ -23,7 +23,7 @@ function directory() {
   return path
 }
 
-async function start(path, model) {
+async function start(path, model, streaming = false) {
   const token = randomUUID()
   const harness = new DeepSeekHarness({
     cwd: path,
@@ -42,7 +42,7 @@ async function start(path, model) {
       DEEPSEEK_API_KEY: 'contract-key',
       DEEPSEEK_BASE_URL: `${model.baseURL}/v1`,
       LUMI_CHANNEL_TEST_CONFIG: JSON.stringify({
-        dataDir: path, workspace: path, token, turnTimeoutMs: 10000,
+        dataDir: path, workspace: path, token, turnTimeoutMs: 10000, streaming,
         model: { provider: 'deepseek-official', model: 'deepseek-v4-flash', maxTokens: 512 },
       }),
     },
@@ -77,6 +77,102 @@ async function start(path, model) {
 }
 
 describe('DSH native channel composition', () => {
+  it('streams before native turn/end, finishes two messages, and keeps commands as text', async () => {
+    const model = await startMockLlmServer({
+      apiKey: 'contract-key', sequence: ['slow_success'],
+      successText: 'a streaming native answer', chunkSize: 1, chunkDelayMs: 50,
+    })
+    models.push(model)
+    const fixture = await start(directory(), model, true)
+    await fixture.send('Stream this reply', 'stream')
+    await fixture.send('Stream this reply', 'stream')
+    const result = await fixture.wait()
+    expect(result.records[0].state).toBe('sent')
+    expect(result.replies.map(row => row.part)).toEqual(['progress', 'answer'])
+    expect(model.requests).toHaveLength(1)
+    const answerCard = result.replies[1].cardId
+    const partials = result.updates.filter(row => row.kind === 'write' && row.cardId === answerCard)
+    expect(partials.some(row => row.beforeEnd && row.text.startsWith('a')
+      && row.text.length < 'a streaming native answer'.length), JSON.stringify(result.updates)).toBe(true)
+    expect(result.updates.filter(row => row.kind === 'close')).toHaveLength(2)
+    expect(result.updates.find(row => row.kind === 'replace' && row.part === 'answer').text)
+      .toBe('a streaming native answer')
+    expect(result.unresolvedStreams).toEqual([])
+    await fixture.send('/help', 'help')
+    const commands = await fixture.wait()
+    expect(commands.replies).toHaveLength(3)
+    expect(commands.replies[2].text).toContain('/help')
+    expect(model.requests).toHaveLength(1)
+  }, 30000)
+
+  it('does not start DSH or replay messages after an unknown initial card send', async () => {
+    const model = await startMockLlmServer({
+      apiKey: 'contract-key', sequence: ['success'], successText: 'unused',
+    })
+    models.push(model)
+    const path = directory()
+    const first = await start(path, model, true)
+    await first.send('unknown-send', 'unknown')
+    const result = await first.wait()
+    expect(result.records[0].state).toBe('unknown')
+    expect(result.unresolvedStreams[0].state).toBe('unknown')
+    expect(result.replies).toEqual([])
+    expect(model.requests).toHaveLength(0)
+    await first.harness.close()
+    const second = await start(path, model, true)
+    await second.send('unknown-send', 'unknown')
+    expect((await second.wait()).replies).toEqual([])
+    expect(model.requests).toHaveLength(0)
+  }, 30000)
+
+  it('replaces partial output with cancellation and closes both cards without a third answer', async () => {
+    const model = await startMockLlmServer({
+      apiKey: 'contract-key', sequence: ['slow_success'],
+      successText: 'a deliberately slow answer', chunkSize: 1, chunkDelayMs: 200,
+    })
+    models.push(model)
+    const fixture = await start(directory(), model, true)
+    await fixture.send('Long streaming request', 'running')
+    await expect.poll(() => model.requests.length, { timeout: 5000 }).toBe(1)
+    await fixture.send('Queued request', 'queued')
+    await fixture.send('/cancel', 'cancel')
+    const result = await fixture.wait()
+    expect(model.requests).toHaveLength(1)
+    expect(result.replies.filter(row => row.id === 'cli_test:om_running')).toHaveLength(2)
+    expect(result.updates.find(row => row.kind === 'replace' && row.part === 'answer').text)
+      .toContain('取消')
+    expect(result.updates.filter(row => row.kind === 'close')).toHaveLength(2)
+    expect(result.replies.filter(row => row.text)).toHaveLength(2)
+    expect(result.unresolvedStreams).toEqual([])
+    expect(result.records.map(row => row.state)).toEqual(['sent', 'sent', 'sent'])
+  }, 30000)
+
+  it('closes known cards after a process crash even after switching back to text mode', async () => {
+    const model = await startMockLlmServer({
+      apiKey: 'contract-key', sequence: ['slow_success'],
+      successText: 'a deliberately slow answer', chunkSize: 1, chunkDelayMs: 200,
+    })
+    models.push(model)
+    const path = directory()
+    const first = await start(path, model, true)
+    await first.send('Before streaming crash', 'running')
+    await expect.poll(() => model.requests.length, { timeout: 5000 }).toBe(1)
+    const death = first.harness.client.subscribe(() => false)
+    const died = expect(death.next()).rejects.toThrow()
+    await first.request('/crash')
+    await died
+    await first.harness.close()
+    const second = await start(path, model)
+    const recovered = await second.wait()
+    expect(model.requests).toHaveLength(1)
+    expect(recovered.records[0].state).toBe('interrupted')
+    expect(recovered.replies).toEqual([])
+    expect(recovered.updates.filter(row => row.kind === 'close')).toHaveLength(2)
+    expect(recovered.updates.find(row => row.kind === 'replace' && row.part === 'answer').text)
+      .toContain('服务中断')
+    expect(recovered.unresolvedStreams).toEqual([])
+  }, 60000)
+
   it('serializes turns, restores history after process restart, and supports /new', async () => {
     const model = await startMockLlmServer({
       apiKey: 'contract-key', sequence: ['success'], repeatLast: true, successText: 'native answer',

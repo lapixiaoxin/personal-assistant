@@ -16,5 +16,6 @@
 | 本次精简 | [SPEC-0017](../specs/0017-repository-simplification.md) |
 | 当前三层结构 | [SPEC-0018](../specs/0018-host-channels-plugins.md) |
 | 运行配置边界 | [SPEC-0019](../specs/0019-runtime-configuration-hardening.md) |
+| 飞书双消息流式回复 | [SPEC-0020](../specs/0020-feishu-streaming-replies.md) |
 
 仓库只维护当前事实和可执行规程。历史方案、调研、发布投影与旧 MVP 验收均由 Git 历史追溯，不在工作树复制 archive。

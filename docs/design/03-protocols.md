@@ -12,6 +12,8 @@
 - 可选 `providerPatch / personalContextPath / turnTimeoutMs`
 - 飞书 `appId / appSecret / ownerOpenId`
 
+飞书可选 `replyMode: text | streaming-cards`；省略保持文本。流式模式使用两条 Card 2.0 消息，分别呈现折叠的公开进度与正文，命令仍使用文本。
+
 配置文件必须禁止 group/other 读取。平台凭据不放环境变量；模型 Key 由白名单环境变量传入 DSH 子进程。
 
 若 `profiles/providers/<provider>.patch.yml` 存在，Host 自动把它作为该 provider 的版本化定义加载；否则由 DSH 内置 catalog 解析。可选 `providerPatch` 仅用于实例级显式覆盖，优先于 tracked profile，不作为新增常用 provider 的默认位置。
@@ -52,6 +54,10 @@ queued -> running -> ready -> sending -> sent
 - `sent`：保存有效平台 message ID。
 
 SQLite 与 DSH Session 不是一个事务，因此不宣称 exactly-once。稳定发送 UUID 只是附加保护。
+
+流式投递增加 SQLite v2 子记录：按输入 ID 和 part 保存卡片目标、发送回执、最终公开内容、递增 sequence 和终态；临时累计正文只在内存中，持久正文依据是 DSH assistant/message。每次发送/更新先落意图后调用 Channel，未知发送不重放；已确认卡片可以用更高 sequence 覆盖为最终正文或中断状态。重启不续跑模型，仅关闭已知未结束卡片。完整状态与迁移见 [SPEC-0020](../../specs/0020-feishu-streaming-replies.md)。
+
+可选 `streaming` 端口提供 create/send/write/close/replace；`recoveryStreaming` 在回退文本模式后仍可结束历史卡片。Host 保持平台无关，Channel 接收累计正文、part、目标 ID 与已落盘的 sequence。每个子投递遵循 planned→created→sending→delivered，sending 重启归 unknown。整体 sent 需要两个 confirmed receipt 与两张卡片的终态更新成功；更新未决的 unknown 可在重启后仅对已知卡片覆盖成功后归 sent，发送未决始终保留 unknown。
 
 ## 会话与命令
 

@@ -1,12 +1,14 @@
 import { createHash } from 'node:crypto'
 import { AppType, Client, defaultHttpInstance, EventDispatcher, WSClient } from '@larksuiteoapi/node-sdk'
+import { createFeishuStreaming } from './streaming.js'
 
 export function validateFeishuConfig(config) {
   if (!config || typeof config !== 'object'
     || !/^cli_[A-Za-z0-9]+$/.test(config.appId)
     || typeof config.appSecret !== 'string' || config.appSecret.length < 8
     || !/^ou_[A-Za-z0-9_-]+$/.test(config.ownerOpenId)
-    || Object.keys(config).some(key => !['appId', 'appSecret', 'ownerOpenId'].includes(key))) {
+    || (config.replyMode !== undefined && !['text', 'streaming-cards'].includes(config.replyMode))
+    || Object.keys(config).some(key => !['appId', 'appSecret', 'ownerOpenId', 'replyMode'].includes(key))) {
     throw new Error('Feishu config requires appId, appSecret and ownerOpenId')
   }
   return config
@@ -86,7 +88,10 @@ export function createFeishuChannel(config, report = () => {}) {
     httpInstance,
   })
   let ws
+  const cardPort = createFeishuStreaming(client)
   return {
+    streaming: config.replyMode === 'streaming-cards' ? cardPort : undefined,
+    recoveryStreaming: cardPort,
     async start(receive) {
       await new Promise((resolve, reject) => {
         const timer = setTimeout(() => {

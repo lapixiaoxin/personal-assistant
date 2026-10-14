@@ -52,6 +52,8 @@ Bot 私聊支持普通文本和：
 /status
 ```
 
+普通对话可在私有配置中设置 `feishu.replyMode: "streaming-cards"`，使用默认折叠的公开进度和流式正文两条消息。默认保持文本模式；启用需 CardKit 权限，步骤见[飞书部署](docs/runbooks/server-feishu.md#双消息流式回复)。
+
 本机状态：
 
 ```bash
@@ -70,6 +72,8 @@ pnpm server:status
 不含凭据的 provider 定义位于 `profiles/providers/` 并随代码版本管理；模型 Key 放在 `.env` 或部署 secret store。`providerPatch` 只保留给实例级自定义覆盖。
 
 重复平台消息只处理一次。重启只继续尚未执行的 `queued` 和尚未发送的 `ready`；`running` 变为 `interrupted`，`sending` 变为 `unknown`，两者均不自动重复。
+
+收件箱新版为 SQLite v2。流式回复额外保存卡片 ID、回执和更新 sequence；重启只覆盖已知卡片的持久最终内容或中断说明，不补发未知消息。
 
 ## 开发
 

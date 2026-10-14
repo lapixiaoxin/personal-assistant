@@ -11,6 +11,7 @@
 | 结构 | Host 负责组合与持久运行，`channels/*` 负责终端，`plugins/*` 负责个人上下文和能力 |
 | 会话 | 原生 Agent create/resume/followup/cancel；支持多轮、`/new`、`/cancel` |
 | 收发 | SQLite 去重、串行处理、回复意图和平台 message ID 回执 |
+| 展示 | 可选 Card 2.0 双消息流式回复：折叠的公开进度 + 累计正文；当前实例已启用 |
 | 恢复 | queued/ready 继续；running→interrupted，sending→unknown，不自动重放 |
 | 权限 | 默认无文件、Shell、网络、外部 Agent 或业务动作工具 |
 | 个性化 | 可选 `personal-context/v1` 快照；个人记忆/上下文独立于 DSH |
@@ -22,16 +23,19 @@
 - 完整离线门禁在精简前通过 32 个文件 / 223 项测试。
 - DSH 原生通道契约覆盖多轮、重启、取消、新会话、工具拒绝和真实 `SIGKILL`。
 - 飞书边界测试使用官方 EventDispatcher，覆盖身份、消息类型、重复和发送回执。
-- 当前三层结构为 3 个生产 workspace、14 个生产源码文件和 1 条内部生产依赖边；7 个测试文件 / 36 项通过。
+- 当前三层结构为 3 个生产 workspace、16 个生产源码文件和 1 条内部生产依赖边；9 个测试文件 / 54 项通过。
 - 2026-10-14 三层结构切换后真实服务为 `ready / connected`，保留 7 条 `sent`、0 个 `interrupted/unknown`；状态为 `verified_once`。
 - MiniMax 中国区模型列表以当前 Key 返回并包含 `MiniMax-M3.1-Flash-Preview`。
+- SPEC-0020 完整门禁及 DSH bundle 通过。实际 DSH + mock 模型已验证 turn/end 前流式正文、取消、未知发送及 SIGKILL 后卡片关闭。
+- 2026-10-14T16:10:21Z，真实飞书 API 双卡片验证取得 2 个 IM message ID，并完成正文增量和两张卡片终态；状态 `verified_once`。该验证未模拟 WS 输入或调用真实模型，不等同于一次完整 Bot 新对话或人工客户端展示验收。
+- 当前私有实例已设 `streaming-cards`，SQLite 已迁至 v2，服务恢复 `ready / connected`；此前 8 条收件箱 sent 保留，0 个未决。上述验证使用独立私人投递账本，不伪造生产输入。
 
 仓库精简的文件与磁盘结果记录在 [SPEC-0017](../specs/0017-repository-simplification.md)；三层目录收敛记录在 [SPEC-0018](../specs/0018-host-channels-plugins.md)。
 
 ## 未实现
 
 - 具体外部 Agent、MCP/A2A 业务接入、设备和自己的 App。
-- 群聊、附件、语音、逐 token 流式展示。
+- 群聊、附件、语音。
 - 自动记忆写入、语义检索、跨设备同步。
 - 周期调度、主动推送、无人审批外部写入。
 - 多实例/多主机 lease、fencing、跨主机恢复和长期 soak。

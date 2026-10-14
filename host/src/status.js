@@ -13,6 +13,10 @@ try {
       counts: db.prepare('SELECT state, count(*) AS count FROM inbox GROUP BY state').all(),
       unresolved: db.prepare(`SELECT id, state, receipt, updated_at FROM inbox
         WHERE state IN ('interrupted','unknown') ORDER BY seq DESC LIMIT 20`).all(),
+      streams: db.prepare('PRAGMA user_version').get().user_version >= 2
+        ? db.prepare(`SELECT inbox_id, part, state, card_id, receipt, sequence,
+          update_pending, update_failed, finished FROM stream_deliveries
+          WHERE state = 'unknown' OR (state = 'delivered' AND finished = 0)`).all() : [],
     }, null, 2)}\n`)
   } finally { db.close() }
 } catch {

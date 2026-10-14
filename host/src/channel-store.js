@@ -12,14 +12,15 @@ export class ChannelStore {
   constructor(path, identity) {
     mkdirSync(dirname(path), { recursive: true, mode: 0o700 })
     this.db = new DatabaseSync(path)
-    chmodSync(path, 0o600)
     this.token = randomUUID()
     this.closed = false
     try {
-      this.db.exec('PRAGMA busy_timeout = 3000; PRAGMA journal_mode = WAL; PRAGMA synchronous = FULL')
       const version = this.db.prepare('PRAGMA user_version').get().user_version
-      if (version !== 0 && version !== 1) throw new Error('Unsupported channel database version')
-      this.db.exec(`
+      if (![0, 1, 2].includes(version)) throw new Error('Unsupported channel database version')
+      chmodSync(path, 0o600)
+      this.db.exec('PRAGMA busy_timeout = 3000; PRAGMA journal_mode = WAL; PRAGMA synchronous = FULL')
+      this.transaction(() => {
+        this.db.exec(`
         CREATE TABLE IF NOT EXISTS owner (
           singleton INTEGER PRIMARY KEY CHECK(singleton = 1),
           identity TEXT NOT NULL, host TEXT NOT NULL, pid INTEGER, token TEXT
@@ -35,9 +36,7 @@ export class ChannelStore {
             ('queued','running','ready','sending','sent','interrupted','unknown')),
           reply TEXT, receipt TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL
         );
-        PRAGMA user_version = 1;
       `)
-      this.transaction(() => {
         const previous = this.db.prepare('SELECT * FROM owner WHERE singleton = 1').get()
         if (previous && (previous.identity !== identity || previous.host !== hostname())) {
           throw new Error('Channel database belongs to another identity or host')
@@ -45,12 +44,26 @@ export class ChannelStore {
         if (previous?.pid && isAlive(previous.pid)) {
           throw new Error('Channel database already has a live owner')
         }
+        this.db.exec(`
+          CREATE TABLE IF NOT EXISTS stream_deliveries (
+            inbox_id TEXT NOT NULL, part TEXT NOT NULL CHECK(part IN ('progress','answer')),
+            state TEXT NOT NULL CHECK(state IN ('planned','created','sending','delivered','unknown')),
+            card_id TEXT, receipt TEXT,
+            sequence INTEGER NOT NULL DEFAULT 0,
+            update_pending INTEGER NOT NULL DEFAULT 0,
+            update_failed INTEGER NOT NULL DEFAULT 0,
+            terminal_text TEXT, finished INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY(inbox_id, part)
+          );
+          PRAGMA user_version = 2;
+        `)
         this.db.prepare(`INSERT INTO owner VALUES (1, ?, ?, ?, ?)
           ON CONFLICT(singleton) DO UPDATE SET pid = excluded.pid, token = excluded.token`)
           .run(identity, hostname(), process.pid, this.token)
         this.db.prepare(`UPDATE inbox SET state = CASE state
           WHEN 'running' THEN 'interrupted' ELSE 'unknown' END, updated_at = ?
           WHERE state IN ('running', 'sending')`).run(new Date().toISOString())
+        this.db.exec("UPDATE stream_deliveries SET state = 'unknown' WHERE state = 'sending'")
       })
     } catch (error) {
       this.db.close()
@@ -120,6 +133,59 @@ export class ChannelStore {
 
   records() {
     return this.db.prepare('SELECT id, state, receipt FROM inbox ORDER BY seq').all()
+  }
+
+  planStream(id) {
+    this.transaction(() => {
+      for (const part of ['progress', 'answer']) {
+        this.db.prepare(`INSERT INTO stream_deliveries (inbox_id, part, state)
+          VALUES (?, ?, 'planned')`).run(id, part)
+      }
+    })
+  }
+
+  streams(id) {
+    return this.db.prepare('SELECT * FROM stream_deliveries WHERE inbox_id = ? ORDER BY part DESC').all(id)
+  }
+
+  streamTransition(id, part, from, to, cardId = null, receipt = null) {
+    const result = this.db.prepare(`UPDATE stream_deliveries SET state = ?,
+      card_id = coalesce(?, card_id), receipt = coalesce(?, receipt)
+      WHERE inbox_id = ? AND part = ? AND state = ?`).run(to, cardId, receipt, id, part, from)
+    if (result.changes !== 1) throw new Error('Stream delivery state changed unexpectedly')
+  }
+
+  streamSequence(id, part) {
+    return this.db.prepare(`UPDATE stream_deliveries SET sequence = sequence + 1,
+      update_pending = 1 WHERE inbox_id = ? AND part = ? AND state = 'delivered'
+      RETURNING sequence`).get(id, part).sequence
+  }
+
+  streamUpdated(id, part, success, finished = false) {
+    this.db.prepare(`UPDATE stream_deliveries SET update_pending = 0, update_failed = ?,
+      finished = ? WHERE inbox_id = ? AND part = ?`).run(success ? 0 : 1, finished ? 1 : 0, id, part)
+  }
+
+  streamTerminal(id, progress, answer) {
+    this.transaction(() => {
+      for (const [part, text] of [['progress', progress], ['answer', answer]]) {
+        this.db.prepare(`UPDATE stream_deliveries SET terminal_text = ?
+          WHERE inbox_id = ? AND part = ?`).run(text, id, part)
+      }
+    })
+  }
+
+  streamRecovery() {
+    return this.db.prepare(`SELECT inbox.* FROM inbox WHERE state IN ('interrupted','unknown')
+      AND EXISTS (SELECT 1 FROM stream_deliveries WHERE inbox_id = inbox.id
+        AND state = 'delivered') ORDER BY seq`).all()
+      .map(row => ({ ...row, envelope: JSON.parse(row.envelope) }))
+  }
+
+  streamStatus() {
+    return this.db.prepare(`SELECT inbox_id, part, state, card_id, receipt, sequence,
+      update_pending, update_failed, finished FROM stream_deliveries
+      WHERE state = 'unknown' OR (state = 'delivered' AND finished = 0)`).all()
   }
 
   transaction(operation) {

@@ -30,6 +30,7 @@ Host 按以下顺序选择配置：
 5. provider/model 选择写入私有 JSON，模型 Key 写入 `.env` 或目标机 secret store。常用 provider 定义进入 `profiles/providers/`。
 6. 不打印完整私有 JSON。检查配置时只输出字段名、非敏感模型选择和脱敏状态。
 7. 启动前执行离线门禁；真实消息发送属于单独验收，不因服务启动成功而自动执行。
+8. example 的 `feishu.replyMode` 默认 `text`。启用双卡片流式回复前核对 `cardkit:card:write` 和客户端版本；已有 v1 收件箱升级前先正常停止并完整备份。新版使用 v2，回退文本模式保留 v2，不直接用旧代码打开新版库。详见[流式回复 SOP](../docs/runbooks/server-feishu.md#双消息流式回复)。
 
 ## 新机器首次部署
 

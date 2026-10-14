@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
@@ -60,6 +60,28 @@ describe('durable channel receipts', () => {
     const db = new DatabaseSync(path)
     db.exec('PRAGMA user_version = 99')
     db.close()
+    const before = readFileSync(path)
     expect(() => new ChannelStore(path, 'test-owner')).toThrow('Unsupported')
+    expect(readFileSync(path)).toEqual(before)
+  })
+
+  it('migrates a v1 inbox without changing receipts or session mappings', () => {
+    const { path, store } = fixture()
+    store.accept(envelope)
+    store.transition(envelope.id, 'queued', 'running')
+    store.transition(envelope.id, 'running', 'ready', 'previous answer')
+    store.transition(envelope.id, 'ready', 'sending')
+    store.transition(envelope.id, 'sending', 'sent', null, 'om_previous')
+    const mapping = store.conversation(envelope.chat)
+    store.close()
+    const db = new DatabaseSync(path)
+    db.exec('DROP TABLE stream_deliveries; PRAGMA user_version = 1')
+    db.close()
+    const migrated = new ChannelStore(path, 'test-owner')
+    stores.push(migrated)
+    expect(migrated.db.prepare('PRAGMA user_version').get().user_version).toBe(2)
+    expect(migrated.records()).toEqual([{ id: envelope.id, state: 'sent', receipt: 'om_previous' }])
+    expect(migrated.conversation(envelope.chat)).toEqual({ ...mapping, fresh: false })
+    expect(migrated.streams(envelope.id)).toEqual([])
   })
 })

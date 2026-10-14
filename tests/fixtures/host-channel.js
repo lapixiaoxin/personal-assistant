@@ -14,7 +14,33 @@ export async function apply(ctx) {
   const config = JSON.parse(process.env.LUMI_CHANNEL_TEST_CONFIG)
   const store = new ChannelStore(join(config.dataDir, 'channels.db'), 'test')
   const replies = []
+  const updates = []
+  let cards = 0
+  let streamEnded = false
+  ctx.on('session/event', (session, event) => {
+    if (session.id && event.type === 'turn/end') streamEnded = true
+  })
+  const streaming = {
+    intervalMs: 30,
+    async create() { return `card_${++cards}` },
+    async send(envelope, part, cardId) {
+      if (envelope.text === 'unknown-send') throw new Error('simulated network loss')
+      replies.push({ id: envelope.id, part, cardId })
+      return `om_reply_${replies.length}`
+    },
+    async write(cardId, text, sequence) {
+      updates.push({ kind: 'write', cardId, text, sequence, beforeEnd: !streamEnded })
+    },
+    async close(cardId, part, sequence) {
+      updates.push({ kind: 'close', cardId, part, sequence })
+    },
+    async replace(cardId, part, text, sequence) {
+      updates.push({ kind: 'replace', cardId, part, text, sequence })
+    },
+  }
   const channel = {
+    streaming: config.streaming ? streaming : undefined,
+    recoveryStreaming: streaming,
     async send(envelope, text) {
       if (envelope.text === 'unknown-send') throw new Error('simulated network loss')
       replies.push({ id: envelope.id, text })
@@ -43,7 +69,7 @@ export async function apply(ctx) {
       }
       response.setHeader('Content-Type', 'application/json')
       response.end(JSON.stringify({
-        records: store.records(), replies,
+        records: store.records(), replies, updates, unresolvedStreams: store.streamStatus(),
         sessions: ctx.agents.list().map(agent => agent.id),
       }))
       if (request.url === '/crash') setTimeout(() => process.kill(process.pid, 'SIGKILL'), 20)
