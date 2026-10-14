@@ -1,8 +1,7 @@
 packages:
-  - apps/*
-  - packages/*
-  - plugins/*
+  - host
   - channels/*
+  - plugins/*
 
 # DSH publishes its composition as many exact-version peer packages. Pin the
 # full peer surface to one release so pnpm cannot retain an older peer graph

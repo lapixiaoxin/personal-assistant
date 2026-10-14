@@ -14,6 +14,12 @@
 
 配置文件必须禁止 group/other 读取。平台凭据不放环境变量；模型 Key 由白名单环境变量传入 DSH 子进程。
 
+## 组合端口
+
+`host/` 是唯一组合根。可信 Channel 在进程内提供启动、发送、状态和关闭能力，并在完成平台认证后生成通道信封；这不是可由公网提交的协议。Host 不读取平台 SDK 事件，Channel 不读取 DSH Session。
+
+能力 Plugin 通过 DSH profile 装配。插件可用 `src/plugin.*` 适配 DSH，但 `src/domain/` 的数据和规则不依赖 DSH 或平台 SDK。插件返回的数据、远端 Session ID 和工具可见性均不自动产生 owner 身份或动作授权。
+
 ## 通道信封
 
 可信 channel 生成：
@@ -64,4 +70,4 @@ chat 映射到 DSH Session。恢复使用原生 `agents.resume()`；恢复前清
 
 ## 未来协议
 
-新增 App、设备或远端 Agent 时再定义跨进程认证、Conversation 关联、取消和版本兼容。MCP/A2A 的外部 Session ID 不成为 lumi owner 或授权事实。
+新增终端时复用通道信封语义，并单独定义平台认证和回执。新增设备或远端 Agent Plugin 时再定义跨进程认证、Conversation 关联、取消和版本兼容。MCP/A2A 的外部 Session ID 不成为 lumi owner 或授权事实。

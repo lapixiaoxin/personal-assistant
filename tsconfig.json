@@ -9,10 +9,6 @@
     "noFallthroughCasesInSwitch": true,
     "noImplicitOverride": true,
     "noUncheckedIndexedAccess": true,
-    "paths": {
-      "@lumi/personal-context": ["./packages/personal-context/src/index.ts"],
-      "@lumi/personal-memory": ["./packages/personal-memory/src/index.ts"]
-    },
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "strict": true,
@@ -20,8 +16,8 @@
     "types": ["node", "vitest/globals"]
   },
   "include": [
-    "apps/**/*.ts",
-    "packages/**/*.ts",
+    "channels/**/*.ts",
+    "host/**/*.ts",
     "plugins/**/*.ts",
     "tests/**/*.ts",
     "tsup.config.ts",

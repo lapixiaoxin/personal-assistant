@@ -3,7 +3,6 @@ import { dirname, relative, resolve } from 'node:path'
 import process from 'node:process'
 
 const root = resolve(import.meta.dirname, '..')
-const workspaceRoots = ['apps', 'packages', 'plugins', 'channels']
 const sourceExtensions = /\.(?:d\.ts|js|mjs|ts|tsx)$/
 const testFilePattern = /\.(?:spec|test)\.(?:js|mjs|ts|tsx)$/
 const rootDraftPattern = /^draft_[A-Za-z0-9_-]+_folder$/
@@ -64,7 +63,11 @@ async function inspectRepository(repositoryRoot) {
       }
       const source = await readFile(sourceFile, 'utf8')
       for (const specifier of importSpecifiers(source)) {
-        if (forbiddenExternalImport(workspacePackage.category, specifier)) {
+        if (forbiddenExternalImport(
+          workspacePackage.category,
+          specifier,
+          isPluginDomainSource(workspacePackage, sourceFile),
+        )) {
           violations.push(
             `${displayPath(sourceFile)} imports an external SDK across its ownership boundary: ${specifier}`,
           )
@@ -117,28 +120,36 @@ async function inspectRepository(repositoryRoot) {
 
 async function discoverPackages(repositoryRoot) {
   const packages = []
-  for (const category of workspaceRoots) {
+  const locations = [{
+    category: 'host',
+    directory: resolve(repositoryRoot, 'host'),
+  }]
+  for (const category of ['channels', 'plugins']) {
     const categoryRoot = resolve(repositoryRoot, category)
     for (const entry of await readdir(categoryRoot, { withFileTypes: true })) {
       if (!entry.isDirectory()) continue
-      const directory = resolve(categoryRoot, entry.name)
-      const manifestPath = resolve(directory, 'package.json')
-      try {
-        await access(manifestPath)
-      } catch {
-        continue
-      }
-      const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
-      if (typeof manifest.name !== 'string' || !manifest.name.startsWith('@lumi/')) {
-        throw new Error(`Workspace package has an invalid name: ${relative(repositoryRoot, manifestPath)}`)
-      }
-      packages.push({
+      locations.push({
         category,
-        directory,
-        manifest,
-        name: manifest.name,
+        directory: resolve(categoryRoot, entry.name),
       })
     }
+  }
+  for (const location of locations) {
+    const manifestPath = resolve(location.directory, 'package.json')
+    try {
+      await access(manifestPath)
+    } catch {
+      continue
+    }
+    const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
+    if (typeof manifest.name !== 'string' || !manifest.name.startsWith('@lumi/')) {
+      throw new Error(`Workspace package has an invalid name: ${relative(repositoryRoot, manifestPath)}`)
+    }
+    packages.push({
+      ...location,
+      manifest,
+      name: manifest.name,
+    })
   }
   return packages.sort((left, right) => left.name.localeCompare(right.name))
 }
@@ -166,14 +177,14 @@ function internalDependencies(dependencies = {}) {
 }
 
 function invalidLayerDependency(sourceCategory, targetCategory) {
-  if (sourceCategory === 'packages' && targetCategory !== 'packages') {
-    return `packages may depend only on packages, not ${targetCategory}`
+  if (sourceCategory === 'channels') {
+    return `channels must remain independently replaceable, not depend on ${targetCategory}`
   }
-  if (sourceCategory === 'channels' && targetCategory !== 'packages') {
-    return `channels may depend only on packages, not ${targetCategory}`
+  if (sourceCategory === 'plugins') {
+    return `plugins must remain independently replaceable, not depend on ${targetCategory}`
   }
-  if (sourceCategory === 'plugins' && !['packages', 'plugins', 'channels'].includes(targetCategory)) {
-    return `plugins may compose packages, plugins and channels, not ${targetCategory}`
+  if (sourceCategory === 'host' && !['channels', 'plugins'].includes(targetCategory)) {
+    return `the host may compose channels and plugins, not ${targetCategory}`
   }
   return undefined
 }
@@ -195,10 +206,18 @@ function missingProductionDependency(packageName, dependencies, importedPackage)
   return importedPackage !== packageName && !dependencies.includes(importedPackage)
 }
 
-function forbiddenExternalImport(category, specifier) {
-  return (category === 'packages' && (
-    specifier.startsWith('@deepseek-ai/') || specifier.startsWith('@larksuiteoapi/')
-  )) || (category === 'channels' && specifier.startsWith('@deepseek-ai/'))
+function forbiddenExternalImport(category, specifier, pluginDomain = false) {
+  const dsh = specifier.startsWith('@deepseek-ai/')
+  const platform = specifier.startsWith('@larksuiteoapi/')
+  return (category === 'channels' && dsh)
+    || (category === 'host' && platform)
+    || (category === 'plugins' && pluginDomain && (dsh || platform))
+}
+
+function isPluginDomainSource(workspacePackage, sourceFile) {
+  if (workspacePackage.category !== 'plugins') return false
+  const path = relative(workspacePackage.directory, sourceFile)
+  return path.split(/[\\/]/).slice(0, 2).join('/') === 'src/domain'
 }
 
 function isOutside(directory, target) {
@@ -240,8 +259,16 @@ function runSelfTests() {
     'cycle detection',
   )
   assert(
-    invalidLayerDependency('packages', 'adapters') !== undefined,
-    'package to adapter rejection',
+    invalidLayerDependency('channels', 'plugins') !== undefined,
+    'channel dependency rejection',
+  )
+  assert(
+    invalidLayerDependency('plugins', 'channels') !== undefined,
+    'plugin dependency rejection',
+  )
+  assert(
+    invalidLayerDependency('host', 'channels') === undefined,
+    'host channel composition',
   )
   assert(
     packageNameFromSpecifier('@lumi/example/internal') === '@lumi/example',
@@ -252,8 +279,20 @@ function runSelfTests() {
     'undeclared production dependency detection',
   )
   assert(
-    forbiddenExternalImport('packages', '@deepseek-ai/example'),
-    'domain package adapter SDK rejection',
+    forbiddenExternalImport('channels', '@deepseek-ai/example'),
+    'DSH-free channel',
+  )
+  assert(
+    forbiddenExternalImport('host', '@larksuiteoapi/node-sdk'),
+    'platform-SDK-free host',
+  )
+  assert(
+    forbiddenExternalImport('plugins', '@deepseek-ai/example', true),
+    'DSH-free plugin domain',
+  )
+  assert(
+    !forbiddenExternalImport('plugins', '@deepseek-ai/example', false),
+    'DSH plugin adapter',
   )
   assert(
     importSpecifiers("import x from '@lumi/x'; const y = import('./local.ts')")
@@ -261,15 +300,19 @@ function runSelfTests() {
     'import parsing',
   )
   assert(
-    isOutside('/repo/packages/a', '/repo/packages/b/src/index.ts'),
+    isOutside('/repo/plugins/a', '/repo/plugins/b/src/index.ts'),
     'cross-package relative import detection',
   )
   assert(testFilePattern.test('src/example.test.ts'), 'src test detection')
   assert(rootDraftPattern.test('draft_abc_folder'), 'root draft detection')
-  assert(invalidLayerDependency('channels', 'plugins') !== undefined, 'channel to plugin rejection')
-  assert(invalidLayerDependency('plugins', 'channels') === undefined, 'plugin channel composition')
-  assert(forbiddenExternalImport('channels', '@deepseek-ai/dsh'), 'DSH-free channel')
-  return 12
+  assert(
+    isPluginDomainSource(
+      { category: 'plugins', directory: '/repo/plugins/example' },
+      '/repo/plugins/example/src/domain/model.ts',
+    ),
+    'plugin domain detection',
+  )
+  return 15
 }
 
 function assert(condition, name) {

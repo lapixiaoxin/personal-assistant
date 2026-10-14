@@ -1,0 +1,43 @@
+{
+  "name": "@lumi/personal-context-plugin",
+  "version": "0.1.0",
+  "description": "Lumi personal memory, context projection, and DSH adapter",
+  "type": "module",
+  "main": "./src/plugin.js",
+  "types": "./src/plugin.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/plugin.d.ts",
+      "default": "./src/plugin.js"
+    },
+    "./context": "./src/domain/context.ts",
+    "./memory": "./src/domain/memory.ts",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "README.md",
+    "cordis.patch.yml",
+    "src/domain/context.ts",
+    "src/domain/memory.ts",
+    "src/plugin.d.ts",
+    "src/plugin.js"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "dependencies": {
+    "zod": "4.1.11"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "~4.0.4",
+    "@deepseek-ai/dsh-system-prompt": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-tools": "0.2.0-rc.2"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.4",
+    "@deepseek-ai/dsh-system-prompt": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-tools": "0.2.0-rc.2"
+  }
+}

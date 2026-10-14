@@ -12,12 +12,12 @@
 
 ## 实现边界
 
-- `apps/server`：配置、SDK 子进程和生命周期。
+- `host`：配置、SDK 子进程、通道宿主、持久收件箱、回执和生命周期。
 - `channels/feishu`：官方长连接、事件规范化和回复。
-- `plugins/dsh-channels`：原生 Agent create/resume/followup/cancel 接线。
-- `packages/channel-store`：SQLite 收件箱、回执、会话映射和单进程所有权。
-- `plugins/dsh-lumi`、`packages/personal-*`：可迁移个人上下文和记忆基础。
+- `plugins/personal-context`：可迁移的个人记忆、上下文快照和 DSH 注入。
 - `profiles/server`、`profiles/providers`：最小 DSH 组合。
+
+物理目录由 [SPEC-0018](0018-host-channels-plugins.md) 收敛，配置、数据库和收发协议未变化。
 
 私有配置必须为 `0600`，不进入 Git；SDK 子进程只继承白名单环境变量。数据默认位于 `data/server`，只支持同机单进程。
 

@@ -2,7 +2,7 @@
 
 状态：`verified_once` · DSH `0.2.0-rc.2`。
 
-`plugins/dsh-lumi` 可打包为不含 `workspace:*` 的外部 bundle，安装到标准 DSH Web profile，并动态读取 `lumi.personal-context/v1` 快照。状态工具只返回 schema、purpose、revision、时间和条目数。
+`plugins/personal-context` 可打包为不含 `workspace:*` 的外部 bundle，安装到标准 DSH Web profile，并动态读取 `lumi.personal-context/v1` 快照。状态工具只返回 schema、purpose、revision、时间和条目数。
 
 ```bash
 pnpm check:dsh
@@ -20,7 +20,7 @@ pnpm test:dsh:bundle
 成功输出：
 
 ```text
-DSH lumi bundle verified: packed, installed, composed, and served on temporary port <port>
+DSH personal-context bundle verified: packed, installed, composed, and served on temporary port <port>
 ```
 
 该验证不读取真实个人数据库，不证明生产记忆同步、动作权限、语音或多设备。snapshot 缺失、owner/purpose 不匹配或摘要篡改必须失败关闭，不能降级为空上下文并声称已个性化。

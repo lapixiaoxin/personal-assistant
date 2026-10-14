@@ -1,0 +1,7 @@
+# Load the production profile first; replace only the real transport composition.
+- id: lumi-host
+  disabled: true
+- insert:
+    - id: lumi-channel-contract
+      name: ./host-channel.js
+      inject: [agents, agentLoop, sessionPersistence, tools, llm]

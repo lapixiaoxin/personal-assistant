@@ -18,28 +18,28 @@
     ]
   },
   "scripts": {
-    "build": "pnpm build:server",
-    "build:server": "node scripts/clean-dist.mjs && tsup",
+    "build": "pnpm build:host",
+    "build:host": "node scripts/clean-dist.mjs && tsup",
     "check": "pnpm lint && pnpm typecheck && pnpm check:architecture && pnpm check:dsh && pnpm test && pnpm check:build",
     "check:architecture": "node scripts/check-architecture.mjs",
     "check:build": "pnpm build && node scripts/check-build-output.mjs",
     "check:dsh": "node scripts/check-dsh-compat.mjs",
     "check:dsh:latest": "node scripts/check-dsh-latest.mjs",
-    "dev": "node --env-file-if-exists=.env --watch apps/server/src/main.js",
+    "dev": "node --env-file-if-exists=.env --watch host/src/main.js",
     "dsh:web:minimax-cn": "DSH_HOME=./data/dsh-web node --env-file-if-exists=.env ./node_modules/@deepseek-ai/dsh/lib/bin.js web --patch ./profiles/providers/minimax-cn.patch.yml --no-open --host 127.0.0.1 --port 3081",
     "lint": "eslint .",
     "start": "node --env-file-if-exists=.env dist/server/main.js",
-    "server:status": "node --env-file-if-exists=.env apps/server/src/status.js",
+    "server:status": "node --env-file-if-exists=.env host/src/status.js",
     "test": "vitest run",
-    "test:dsh": "vitest run tests/contract/dsh-channels.test.js",
-    "test:dsh:bundle": "node scripts/verify-dsh-lumi-bundle.mjs",
+    "test:dsh": "vitest run tests/contract/host-channel.test.js",
+    "test:dsh:bundle": "node scripts/verify-personal-context-bundle.mjs",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@deepseek-ai/dsh": "0.2.0-rc.2",
     "@deepseek-ai/dsh-sdk-client": "0.2.0-rc.2",
-    "@lumi/dsh-channels-plugin": "workspace:*"
+    "@lumi/host": "workspace:*"
   },
   "devDependencies": {
     "@deepseek-ai/dsh-llm-mock-server": "0.2.0-rc.2",

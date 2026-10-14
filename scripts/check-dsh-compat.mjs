@@ -5,15 +5,15 @@ import process from 'node:process'
 
 const root = resolve(import.meta.dirname, '..')
 const require = createRequire(import.meta.url)
-const channelRequire = createRequire(resolve(root, 'plugins/dsh-channels/package.json'))
-const contextRequire = createRequire(resolve(root, 'plugins/dsh-lumi/package.json'))
+const hostRequire = createRequire(resolve(root, 'host/package.json'))
+const contextRequire = createRequire(resolve(root, 'plugins/personal-context/package.json'))
 const project = await readJson(resolve(root, 'package.json'))
 const upstream = await readJson(resolve(root, 'upstream.lock.json'))
-const channelPlugin = await readJson(resolve(root, 'plugins/dsh-channels/package.json'))
-const contextPlugin = await readJson(resolve(root, 'plugins/dsh-lumi/package.json'))
+const host = await readJson(resolve(root, 'host/package.json'))
+const contextPlugin = await readJson(resolve(root, 'plugins/personal-context/package.json'))
 const installed = {
   dsh: await readJson(require.resolve('@deepseek-ai/dsh/package.json')),
-  llm: await readJson(channelRequire.resolve('@deepseek-ai/dsh-llm/package.json')),
+  llm: await readJson(hostRequire.resolve('@deepseek-ai/dsh-llm/package.json')),
   mock: await readJson(require.resolve('@deepseek-ai/dsh-llm-mock-server/package.json')),
   sdk: await readJson(require.resolve('@deepseek-ai/dsh-sdk-client/package.json')),
   systemPrompt: await readJson(contextRequire.resolve('@deepseek-ai/dsh-system-prompt/package.json')),
@@ -24,7 +24,7 @@ const versions = {
   rootDsh: project.dependencies?.['@deepseek-ai/dsh'],
   rootSdk: project.dependencies?.['@deepseek-ai/dsh-sdk-client'],
   rootMock: project.devDependencies?.['@deepseek-ai/dsh-llm-mock-server'],
-  channelLlm: channelPlugin.dependencies?.['@deepseek-ai/dsh-llm'],
+  hostLlm: host.dependencies?.['@deepseek-ai/dsh-llm'],
   contextSystemPrompt: contextPlugin.peerDependencies?.['@deepseek-ai/dsh-system-prompt'],
   contextTools: contextPlugin.peerDependencies?.['@deepseek-ai/dsh-tools'],
   contextSystemPromptDev: contextPlugin.devDependencies?.['@deepseek-ai/dsh-system-prompt'],
@@ -49,7 +49,7 @@ for (const [name, version] of Object.entries(versions)) {
 }
 
 await assertWorkspaceDeclarations(expected)
-await assertPortablePackagesDoNotImportDsh()
+await assertPluginDomainsDoNotImportExternalSdks()
 const lockfile = await readFile(resolve(root, 'pnpm-lock.yaml'), 'utf8')
 const count = assertLockHasSingleRelease(lockfile, expected)
 process.stdout.write(`DSH compatibility pins are aligned at ${expected}; ${count} lockfile packages checked\n`)
@@ -59,33 +59,37 @@ async function readJson(path) {
 }
 
 async function assertWorkspaceDeclarations(release) {
-  for (const category of ['apps', 'packages', 'plugins', 'channels']) {
+  const manifests = [resolve(root, 'host/package.json')]
+  for (const category of ['channels', 'plugins']) {
     for (const entry of await readdir(resolve(root, category), { withFileTypes: true })) {
       if (!entry.isDirectory()) continue
-      let manifest
-      try {
-        manifest = await readJson(resolve(root, category, entry.name, 'package.json'))
-      } catch (error) {
-        if (error.code === 'ENOENT') continue
-        throw error
-      }
-      for (const group of ['dependencies', 'devDependencies', 'peerDependencies']) {
-        for (const [name, version] of Object.entries(manifest[group] ?? {})) {
-          if (name.startsWith('@deepseek-ai/dsh') && version !== release) {
-            throw new Error(`DSH compatibility check: ${manifest.name} ${group} ${name}=${version}`)
-          }
+      manifests.push(resolve(root, category, entry.name, 'package.json'))
+    }
+  }
+  for (const path of manifests) {
+    let manifest
+    try {
+      manifest = await readJson(path)
+    } catch (error) {
+      if (error.code === 'ENOENT') continue
+      throw error
+    }
+    for (const group of ['dependencies', 'devDependencies', 'peerDependencies']) {
+      for (const [name, version] of Object.entries(manifest[group] ?? {})) {
+        if (name.startsWith('@deepseek-ai/dsh') && version !== release) {
+          throw new Error(`DSH compatibility check: ${manifest.name} ${group} ${name}=${version}`)
         }
       }
     }
   }
 }
 
-async function assertPortablePackagesDoNotImportDsh() {
-  for (const directory of ['packages/channel-store', 'packages/personal-context', 'packages/personal-memory']) {
-    for (const path of await sourceFiles(resolve(root, directory))) {
-      if ((await readFile(path, 'utf8')).includes('@deepseek-ai/dsh')) {
-        throw new Error(`DSH compatibility check: forbidden portable-package import in ${path}`)
-      }
+async function assertPluginDomainsDoNotImportExternalSdks() {
+  const directory = resolve(root, 'plugins/personal-context/src/domain')
+  for (const path of await sourceFiles(directory)) {
+    const source = await readFile(path, 'utf8')
+    if (source.includes('@deepseek-ai/') || source.includes('@larksuiteoapi/')) {
+      throw new Error(`DSH compatibility check: forbidden plugin-domain SDK import in ${path}`)
     }
   }
 }

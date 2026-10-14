@@ -6,8 +6,9 @@
 
 | 范围 | 事实 |
 | --- | --- |
-| 核心 | 官方 SDK 启动 DSH `0.2.0-rc.2` 常驻进程；DSH 拥有 Agent、Session、模型和工具循环 |
+| 核心 | `host/` 通过官方 SDK 启动 DSH `0.2.0-rc.2` 常驻进程；DSH 拥有 Agent、Session、模型和工具循环 |
 | 入口 | 飞书自建 Bot，单 owner 私聊文本，官方长连接，无公网回调 |
+| 结构 | Host 负责组合与持久运行，`channels/*` 负责终端，`plugins/*` 负责个人上下文和能力 |
 | 会话 | 原生 Agent create/resume/followup/cancel；支持多轮、`/new`、`/cancel` |
 | 收发 | SQLite 去重、串行处理、回复意图和平台 message ID 回执 |
 | 恢复 | queued/ready 继续；running→interrupted，sending→unknown，不自动重放 |
@@ -21,10 +22,11 @@
 - 完整离线门禁在精简前通过 32 个文件 / 223 项测试。
 - DSH 原生通道契约覆盖多轮、重启、取消、新会话、工具拒绝和真实 `SIGKILL`。
 - 飞书边界测试使用官方 EventDispatcher，覆盖身份、消息类型、重复和发送回执。
+- 当前三层结构为 3 个生产 workspace、12 个生产源码文件和 1 条内部生产依赖边；7 个测试文件 / 33 项通过。
 - 2026-10-14 真实服务观察到 4 条 `sent`、1 个 Session、0 个 `interrupted/unknown`；状态为 `verified_once`。
 - MiniMax 中国区模型列表以当前 Key 返回并包含 `MiniMax-M3.1-Flash-Preview`。
 
-本次仓库精简后的最终文件数、测试数与磁盘结果记录在 [SPEC-0017](../specs/0017-repository-simplification.md)。
+仓库精简的文件与磁盘结果记录在 [SPEC-0017](../specs/0017-repository-simplification.md)；三层目录收敛记录在 [SPEC-0018](../specs/0018-host-channels-plugins.md)。
 
 ## 未实现
 

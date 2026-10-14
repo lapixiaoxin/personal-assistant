@@ -50,9 +50,9 @@ pnpm build
 pnpm start
 ```
 
-预期控制台显示 `lumi ready · DSH server + Feishu private chat`。配置缺失或长连接未就绪时退出失败；只输出固定错误提示，不转储 SDK 错误正文。可以用 `LUMI_SERVER_CONFIG=/absolute/private/config.json pnpm start` 指定配置位置。开发入口为 `pnpm dev`。
+预期控制台显示 `lumi ready · DSH host + Feishu private chat`。配置缺失或长连接未就绪时退出失败；只输出固定错误提示，不转储 SDK 错误正文。可以用 `LUMI_SERVER_CONFIG=/absolute/private/config.json pnpm start` 指定配置位置。开发入口为 `pnpm dev`。
 
-可选个人快照的 owner 必须等于配置 owner，purpose 为 `general_assistance`；格式、生成和纠正限制见 [上下文契约](../../packages/personal-context/README.md) 与 [bundle SOP](dsh-native-bundle.md)。旧记忆库不会自动同步；删除快照内容不清除已存在的 DSH 历史。
+可选个人快照的 owner 必须等于配置 owner，purpose 为 `general_assistance`；格式、生成和纠正限制见 [个人上下文插件](../../plugins/personal-context/README.md) 与 [bundle SOP](dsh-native-bundle.md)。旧记忆库不会自动同步；删除快照内容不清除已存在的 DSH 历史。
 
 ## 首次真实验收
 

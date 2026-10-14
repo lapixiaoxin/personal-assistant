@@ -13,5 +13,6 @@
 | Git 提交与推送 | [版本管理](runbooks/version-control.md) |
 | 当前实现规范 | [SPEC-0016](../specs/0016-dsh-server-feishu.md) |
 | 本次精简 | [SPEC-0017](../specs/0017-repository-simplification.md) |
+| 当前三层结构 | [SPEC-0018](../specs/0018-host-channels-plugins.md) |
 
 仓库只维护当前事实和可执行规程。历史方案、调研、发布投影与旧 MVP 验收均由 Git 历史追溯，不在工作树复制 archive。

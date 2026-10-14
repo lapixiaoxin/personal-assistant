@@ -1,6 +1,6 @@
 # 通道扩展
 
-当前只有 `feishu/`。通道负责平台认证、事件规范化与结果投递；不依赖 DSH、不规划任务、不直接修改个人记忆或授予动作权限。由 `plugins/dsh-channels` 在 DSH Host 中装配。
+当前只有 `feishu/`。通道负责平台认证、事件规范化与结果投递；不依赖 DSH、不规划任务、不直接修改个人记忆或授予动作权限。由 `host/` 统一装配。
 
 当前内部端口为 `start(receive)`、`send(envelope, text)`、`status()`、`close()`。信封包含稳定 `id`、`chat`、`sender`、原平台 `messageId` 与 `text`。`receive` 必须完成持久入队才返回平台回执；`send` 只作一次业务发送，返回已确认的平台 message ID，任何不明确结果由 Host 留作 unknown，不自动重试。
 

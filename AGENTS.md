@@ -22,7 +22,7 @@ lumi 是单 owner、可自己部署的超级管家。先读事实，再读方案
 - DSH 拥有通用推理、规划、Session、工具和 Agent 调度；lumi 不再实现第二套 Harness。
 - 个人身份、记忆、目标、授权和证据不属于模型、DSH Session 或某个入口。
 - Surface 只负责认证输入和展示，不复制业务授权。
-- 外部 SDK 留在所属 channel/plugin；`packages/*` 不依赖 DSH 或飞书 SDK。
+- 外部 SDK 留在所属 channel/plugin；Host 不直接依赖平台 SDK，`plugins/*/src/domain` 不依赖 DSH 或平台 SDK。
 - 插件可替换但不能绕过授权、审计、验收和发布控制。
 - 模型输出、HTTP 200 或执行者自报不能替代结果证据。
 - 未知副作用先对账；重试不得扩大授权或重复发送。

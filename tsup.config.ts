@@ -4,7 +4,7 @@ export default defineConfig({
   bundle: true,
   dts: false,
   entry: {
-    'server/main': 'apps/server/src/main.js',
+    'server/main': 'host/src/main.js',
   },
   esbuildOptions(options) {
     options.supported = {
@@ -12,7 +12,7 @@ export default defineConfig({
       'node-colon-prefix-import': true,
     }
   },
-  external: ['@deepseek-ai/dsh-sdk-client', '@lumi/dsh-channels-plugin/config'],
+  external: ['@deepseek-ai/dsh-sdk-client', '@lumi/host/config'],
   format: ['esm'],
   minify: false,
   outDir: 'dist',

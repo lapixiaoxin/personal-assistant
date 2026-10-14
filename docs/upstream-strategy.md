@@ -6,8 +6,8 @@
 
 - SDK、umbrella、mock、LLM、tools 和插件 peer 必须属于同一 release。
 - 优先使用 DSH 原生 Agent、Skills、MCP 和 Cordis 服务。
-- 上游缺口先用薄 patch/adapter 验证，优先反馈上游，不把兼容分支扩散到 portable package。
-- `packages/*` 不导入 DSH；兼容代码只在 server/plugin/profile/check script。
+- 上游缺口先用薄 patch/adapter 验证，优先反馈上游，不把兼容分支扩散到插件领域层。
+- `plugins/*/src/domain` 不导入 DSH；兼容代码只在 Host、插件 adapter、profile 和检查脚本。
 
 ## 新鲜度
 

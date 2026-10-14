@@ -1,23 +1,23 @@
 # lumi
 
-属于自己的超级管家：部署一套服务，通过一个入口对话，后续按需组织 Agent、工具和设备。
+属于自己的超级管家：多个终端通过独立通道接入同一个 DSH Host，个人习惯和各种能力以插件形式按需扩展。
 
-DSH 负责推理、规划、Session、工具与子 Agent 调度；lumi 只维护个人资产、可信插件、通道和部署。当前能力是单 owner 飞书 Bot 私聊文本，已完成一次真实收发验证。具体外部 Agent、设备和业务动作尚未接入。
+DSH 负责推理、规划、Session、工具与子 Agent 调度；lumi 只维护 Host、个人资产、可信插件、通道和部署。当前只启用了单 owner 飞书 Bot 私聊文本，已完成一次真实收发验证。其他终端、外部 Agent、设备和业务动作尚未接入。
 
 ## 结构
 
 ```text
-apps/server/              SDK 启动、DSH 生命周期、本地状态
-channels/feishu/          飞书长连接、身份校验、消息回复
-plugins/dsh-channels/     通道与 DSH 原生 Agent 接线
-plugins/dsh-lumi/         可移植个人上下文插件
-packages/channel-store/   收件箱、会话映射、回执与故障状态
-packages/personal-*/      独立于 DSH 的个人记忆与上下文
-profiles/                 server 与模型 provider 配置
-deploy/                   配置样例和 systemd 模板
-docs/                     当前事实、设计和运行规程
-specs/                    当前增量规范
+host/                       DSH 进程、通道宿主、持久收件箱和本地状态
+channels/feishu/            飞书认证、输入规范化和消息回复
+plugins/personal-context/   个人记忆、上下文投影和 DSH 插件
+profiles/                   Host 与模型 provider 组合
+deploy/                     配置样例和 systemd 模板
+tests/                      跨层 DSH 契约
+docs/                       当前事实、设计和运行规程
+specs/                      当前增量规范
 ```
+
+新增终端时增加 `channels/<surface>`；新增个人能力时增加 `plugins/<capability>`。Channel 不依赖 DSH，Plugin 的 `src/domain/` 不依赖 DSH 或平台 SDK，Host 是唯一组合与持久运行入口。
 
 历史 MVP、设计轮次和验收记录保留在 Git 历史，不在当前工作树重复维护。
 
@@ -78,6 +78,6 @@ pnpm check:dsh:latest
 python3 scripts/check-docs.py
 ```
 
-完整门禁覆盖 lint、类型、架构、DSH 版本、单元/契约测试与 server 构建。真实 Bot 成功只标 `verified_once`，不外推为长期稳定。
+完整门禁覆盖 lint、类型、架构、DSH 版本、单元/契约测试与 Host 构建。真实 Bot 成功只标 `verified_once`，不外推为长期稳定。
 
 [工程事实](docs/current-state.md) · [架构](docs/design/02-architecture.md) · [安全](docs/design/05-safety.md) · [路线](docs/design/07-roadmap.md) · [文档导航](docs/README.md)
