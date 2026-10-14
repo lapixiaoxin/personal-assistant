@@ -7,10 +7,22 @@
   ],
   "settings": {
     "files.exclude": {
-      "**/node_modules": true,
       "**/.pnpm-store": true,
-      "dist": true,
-      "coverage": true
+      "**/coverage": true,
+      "**/dist": true,
+      "**/node_modules": true
+    },
+    "files.watcherExclude": {
+      "**/.pnpm-store/**": true,
+      "**/coverage/**": true,
+      "**/dist/**": true,
+      "**/node_modules/**": true
+    },
+    "search.exclude": {
+      "**/.pnpm-store": true,
+      "**/coverage": true,
+      "**/dist": true,
+      "**/node_modules": true
     }
   }
 }
