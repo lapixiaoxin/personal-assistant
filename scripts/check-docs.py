@@ -10,12 +10,15 @@ root = Path.cwd()
 files = [root / "README.md", root / "AGENTS.md"]
 files += sorted((root / "docs").rglob("*.md"))
 files += sorted((root / "specs").glob("*.md"))
+for directory in ["channels", "data", "deploy", "host", "plugins", "tests"]:
+    files += sorted((root / directory).rglob("README.md"))
+files = sorted(set(files))
 errors = []
 link_count = 0
 
 for path in files:
     text = path.read_text()
-    visible = re.sub(r"```.*?```", "", text, flags=re.S)
+    visible = re.sub(r"```.*?```", "", text, flags=re.DOTALL)
     for target in re.findall(r"\[[^\]]+\]\(([^)]+)\)", visible):
         if urlparse(target).scheme or target.startswith("#"):
             continue
@@ -30,9 +33,9 @@ for path in sorted((root / "docs").rglob("*.svg")):
     except ElementTree.ParseError as error:
         errors.append(f"{path.relative_to(root)}: invalid SVG: {error}")
 
-current_spec = root / "specs/0017-repository-simplification.md"
-if not current_spec.exists() or "状态：" not in current_spec.read_text():
-    errors.append("SPEC-0017 must record an explicit status")
+for path in sorted((root / "specs").glob("*.md")):
+    if "状态：" not in path.read_text():
+        errors.append(f"{path.relative_to(root)} must record an explicit status")
 
 result = {
     "markdown_files": len(files),

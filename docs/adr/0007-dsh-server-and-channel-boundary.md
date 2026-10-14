@@ -10,6 +10,7 @@
 4. 个人记忆与 `personal-context/v1` 独立于 DSH 和 Surface。
 5. 飞书只接受专用应用的单 owner 私聊文本；入口身份不授予业务动作。
 6. DSH 完整依赖图固定同一 release，发现新版本与实际升级/部署分离。
+7. `deploy/` 和 `profiles/` 只保存可版本化、无凭据的模板与运行定义；每台机器的唯一权威配置和可变状态位于未提交的 `data/server/`，模型 Key 由 `.env` 或 secret store 提供。
 
 ## 原因
 
@@ -23,6 +24,7 @@
 - 进程内工具 guard 只适用于受信插件；第三方代码仍需隔离。
 - 旧 MVP 从当前工作树退役，Git 历史是恢复入口。
 - 新 App、Agent 或设备通过具体规范接入，不预建通用适配层。
+- `deploy/server.config.example.json` 只用于首次复制，不由 Host 读取，也不得写入真实凭据；跨机器部署按[部署资产说明](../../deploy/README.md)区分新实例、同机恢复和尚未支持的历史迁移。
 
 ## 证据
 

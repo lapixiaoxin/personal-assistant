@@ -14,6 +14,14 @@
 
 当前只支持飞书中国版、单 owner、私聊文本。群聊、其他用户、图片/语音/卡片不会进入模型，也不会自动回复。不要把陌生人的试发当作 Bot 故障。
 
+## 配置权威与模板
+
+[`deploy/server.config.example.json`](../../deploy/server.config.example.json) 是可提交的初始化模板，其中 App ID、App Secret 和 owner `open_id` 都是占位值。Host 不读取该文件；它只在首次部署时被复制为私有配置。
+
+当前机器唯一生效的配置是 `LUMI_SERVER_CONFIG` 指向的文件；未设置该变量时默认为 `data/server/config.json`。真实飞书凭据只写入这份 `0600` 私有 JSON，模型 Key 只写入 `.env` 或 secret store。不得直接编辑 example 填入真实值，也不得用 example 覆盖已经存在的私有配置。
+
+跨机器首次部署、同机恢复和当前不支持的历史迁移是三种不同操作，完整边界与 Agent 执行规则见[部署资产说明](../../deploy/README.md)。
+
 ## 本机配置与启动
 
 在仓库根目录执行：
@@ -27,6 +35,8 @@ chmod 700 data/server
 cp deploy/server.config.example.json data/server/config.json
 chmod 600 data/server/config.json
 ```
+
+上面的复制命令只适用于首次部署。若 `data/server/config.json` 已存在，应停止并核对当前实例，禁止覆盖。
 
 仓库以 `.node-version` 声明 Node 版本。所有 pnpm 脚本通过 `scripts/with-project-node.sh` 选择 runtime：本机存在 `data/tooling/node-v22.19.0` 时优先使用，否则要求 PATH 中的 Node 满足版本下限。
 

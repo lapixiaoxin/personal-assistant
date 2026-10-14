@@ -11,6 +11,8 @@
 
 `server/` 可能包含飞书 Secret、模型选择、自定义运行覆盖、消息、回执、DSH Session 和个人上下文，均按私人数据处理。不要提交、打印或上传。常用且不含凭据的 provider 定义属于 `profiles/providers/`，不应放入这里。
 
+`deploy/server.config.example.json` 只是首次部署模板，不是第二份配置，也不会被 Host 自动读取。新机器部署、恢复和迁移规则见[部署资产说明](../deploy/README.md)。
+
 删除或迁移前：
 
 1. 检查当前服务 PID 和未决 `interrupted/unknown`。

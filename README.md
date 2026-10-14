@@ -41,7 +41,7 @@ chmod 700 data/server
 chmod 600 data/server/config.json
 ```
 
-在私有 JSON 中配置模型、飞书 App ID / Secret 和同一应用下的 owner `open_id`；模型 Key 放在未提交的 `.env`。完整步骤见[飞书部署](docs/runbooks/server-feishu.md)。
+example 只用于首次复制，不会被运行时读取，也不得写入真实凭据。若私有配置已经存在，禁止用模板覆盖。在 `data/server/config.json` 中配置模型、飞书 App ID / Secret 和同一应用下的 owner `open_id`；模型 Key 放在未提交的 `.env`。完整边界见[部署资产说明](deploy/README.md)，操作步骤见[飞书部署](docs/runbooks/server-feishu.md)。
 
 Bot 私聊支持普通文本和：
 

@@ -7,6 +7,7 @@
 | 收发、恢复和扩展语义 | [协议](design/03-protocols.md) |
 | 权限与数据边界 | [安全](design/05-safety.md) |
 | 下一步建设顺序 | [路线](design/07-roadmap.md) |
+| 模板、私有配置与跨机器部署 | [部署资产说明](../deploy/README.md) |
 | 启动、备份和排障 | [飞书服务器 SOP](runbooks/server-feishu.md) |
 | 验证个人上下文 bundle | [bundle SOP](runbooks/dsh-native-bundle.md) |
 | 升级 DSH | [上游策略](upstream-strategy.md) |

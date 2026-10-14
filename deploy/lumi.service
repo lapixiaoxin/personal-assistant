@@ -1,3 +1,5 @@
+# Template only. Keep real credentials in the private file referenced by
+# LUMI_SERVER_CONFIG; see deploy/README.md before installing on another host.
 [Unit]
 Description=lumi personal steward (DSH + Feishu)
 After=network-online.target
