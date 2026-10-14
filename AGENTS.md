@@ -13,7 +13,7 @@ lumi 是单 owner、可自己部署的超级管家。先读事实，再读方案
 
 ## 当前事实
 
-2026-10-14：主线只有 DSH 常驻 SDK server、飞书通道、持久收件箱和可选个人上下文。真实 Bot 已观察到 4 条成功回复、无未决回执，状态为 `verified_once`。DSH 固定 `0.2.0-rc.2`。
+2026-10-14：主线只有 DSH 常驻 SDK Host、飞书通道、持久收件箱和可选个人上下文。真实 Bot 已观察到 7 条成功回复、无未决回执，状态为 `verified_once`。DSH 固定 `0.2.0-rc.2`。
 
 旧 Gateway、CLI、Workbench、Task/Action/Reminder/Research/Meeting MVP 已从当前工作树退役；历史在 Git，旧数据只归档不迁入新服务。当前不接具体外部 Agent、设备、App、自动记忆、周期推送或业务动作。
 

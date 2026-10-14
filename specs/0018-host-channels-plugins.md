@@ -61,4 +61,5 @@ specs/                      增量规范
 - 7 个测试文件 / 33 项通过；DSH Host-Channel 契约的多轮、恢复、取消、工具拒绝和真实进程中断保持通过。
 - lint、TypeScript、DSH `0.2.0-rc.2` 依赖图、文档链接和默认构建通过；`dist/` 仅包含 `server/`。
 - 个人上下文 bundle 已完成临时 pack、安装、profile 组合和 DSH Web 启动。
-- 真实服务切换、7 条 `sent` 读回和集成 commit 在合入 `main` 后补记。
+- `pnpm install --frozen-lockfile` 完成 lock 校验和 workspace 重连；沙箱审计在 pnpm 清理用户临时目录时额外返回非零，实际链接、构建和启动均已读回。
+- 核心迁移 commit `eda9e19` 已快进到 `main`；真实服务切换后为 `ready / connected`，保留 7 条 `sent`、0 条未决记录。
