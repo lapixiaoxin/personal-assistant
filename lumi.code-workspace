@@ -7,22 +7,27 @@
   ],
   "settings": {
     "files.exclude": {
+      "**/.DS_Store": true,
       "**/.pnpm-store": true,
       "**/coverage": true,
       "**/dist": true,
-      "**/node_modules": true
+      "**/node_modules": true,
+      "data/legacy-mvp-*": true,
+      "data/tooling": true
     },
     "files.watcherExclude": {
       "**/.pnpm-store/**": true,
       "**/coverage/**": true,
       "**/dist/**": true,
-      "**/node_modules/**": true
+      "**/node_modules/**": true,
+      "data/**": true
     },
     "search.exclude": {
       "**/.pnpm-store": true,
       "**/coverage": true,
       "**/dist": true,
-      "**/node_modules": true
+      "**/node_modules": true,
+      "data/**": true
     }
   }
 }
