@@ -41,4 +41,4 @@
 - 旧数据库及相关 DSH home 移动到 `data/legacy-mvp-20261014`，未改写正文。
 - 用户三份未提交 SVG 不属于本分支差异；集成后继续保留。
 
-未验证：精简代码尚未切换正在运行的进程；合并安装后需重启服务并再次读回状态。Linux systemd 仍未运行。
+集成后在 `main` 使用 frozen lock 重建依赖、构建并重启服务；状态读回为 `ready / connected`，保留 4 条 sent、0 未决。Linux systemd 仍未运行。
