@@ -11,7 +11,7 @@
 | 结构 | Host 负责组合与持久运行，`channels/*` 负责终端，`plugins/*` 负责个人上下文和能力 |
 | 会话 | 原生 Agent create/resume/followup/cancel；支持多轮、`/new`、`/cancel` |
 | 收发 | SQLite 去重、串行处理、回复意图和平台 message ID 回执 |
-| 展示 | 可选 Card 2.0 双消息流式回复：折叠的公开进度 + 累计正文；当前实例已启用 |
+| 展示 | 可选双消息流式回复；当前实例启用原生 COT 折叠进度 + Card 2.0 累计正文，保留双卡片和文本回退 |
 | 恢复 | queued/ready 继续；running→interrupted，sending→unknown，不自动重放 |
 | 权限 | 默认无文件、Shell、网络、外部 Agent 或业务动作工具 |
 | 个性化 | 可选 `personal-context/v1` 快照；个人记忆/上下文独立于 DSH |
@@ -20,7 +20,7 @@
 
 ## 证据
 
-- 完整离线门禁在精简前通过 32 个文件 / 223 项测试。
+- 当前完整门禁通过 11 个文件 / 67 项测试；含原生 COT、双卡片、文本三种模式及 DSH 合约。
 - DSH 原生通道契约覆盖多轮、重启、取消、新会话、工具拒绝和真实 `SIGKILL`。
 - 飞书边界测试使用官方 EventDispatcher，覆盖身份、消息类型、重复和发送回执。
 - 当前三层结构为 3 个生产 workspace、16 个生产源码文件和 1 条内部生产依赖边；9 个测试文件 / 54 项通过。
@@ -28,7 +28,8 @@
 - MiniMax 中国区模型列表以当前 Key 返回并包含 `MiniMax-M3.1-Flash-Preview`。
 - SPEC-0020 完整门禁及 DSH bundle 通过。实际 DSH + mock 模型已验证 turn/end 前流式正文、取消、未知发送及 SIGKILL 后卡片关闭。
 - 2026-10-14T16:10:21Z，真实飞书 API 双卡片验证取得 2 个 IM message ID，并完成正文增量和两张卡片终态；状态 `verified_once`。该验证未模拟 WS 输入或调用真实模型，不等同于一次完整 Bot 新对话或人工客户端展示验收。
-- 当前私有实例已设 `streaming-cards`，SQLite 已迁至 v2，服务恢复 `ready / connected`；此前 8 条收件箱 sent 保留，0 个未决。上述验证使用独立私人投递账本，不伪造生产输入。
+- 2026-10-15T03:34:36Z，真实 `message_cot` 创建、两次事件更新与 Complete 均取得确认回执；使用独立私人投递账本，未伪造生产输入或工具调用。API 生命周期为 `verified_once`，客户端多级折叠观感仍待人工确认。
+- 当前私有实例已设 `native-cot`，SQLite 已从 v2 迁至 v3，服务为 `ready / connected`；11 条收件箱 `sent` 保留，0 个未决。迁移前完整备份位于本机私有 `data/server-backups/pre-native-cot-FLoCPV/server`。
 - 2026-10-15 进度区调整为 compact 宽度、紧凑留白和跟随文字的折叠箭头；完整门禁通过 54 项，未发送卡片的真实 API 接受为 `verified_once`，客户端外观待确认。公开 text/post 无手动折叠字段，仍使用 CardKit，标题自适应需客户端 ≥7.32。
 
 仓库精简的文件与磁盘结果记录在 [SPEC-0017](../specs/0017-repository-simplification.md)；三层目录收敛记录在 [SPEC-0018](../specs/0018-host-channels-plugins.md)。

@@ -79,7 +79,7 @@ describe('durable channel receipts', () => {
     db.close()
     const migrated = new ChannelStore(path, 'test-owner')
     stores.push(migrated)
-    expect(migrated.db.prepare('PRAGMA user_version').get().user_version).toBe(2)
+    expect(migrated.db.prepare('PRAGMA user_version').get().user_version).toBe(3)
     expect(migrated.records()).toEqual([{ id: envelope.id, state: 'sent', receipt: 'om_previous' }])
     expect(migrated.conversation(envelope.chat)).toEqual({ ...mapping, fresh: false })
     expect(migrated.streams(envelope.id)).toEqual([])

@@ -1,7 +1,7 @@
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { INTERRUPTED, StreamReply } from './stream-reply.js'
 
-const HELP = '我是 lumi，你的个人管家。\n直接发送文字开始对话。\n/help 帮助\n/new 开始新会话\n/cancel 取消当前生成和排队请求\n/status 查看通道回执状态\n\n当前仅启用对话；外部 Agent、设备和动作能力尚未配置。'
+const HELP = '我是 lumi，你的个人管家。\n直接发送文字开始对话。\n/help 帮助\n/new 开始新会话\n/cancel 或 /stop 取消当前生成和排队请求\n/status 查看通道回执状态\n\n当前仅启用对话；外部 Agent、设备和动作能力尚未配置。'
 
 /** Maps a durable transport queue to DSH. No planning, routing, or tool execution here. */
 export class ChannelHost {
@@ -21,7 +21,7 @@ export class ChannelHost {
   receive(envelope) {
     if (this.closed || this.failed) throw new Error('Channel is not accepting input')
     if (!this.store.accept(envelope)) return
-    if (envelope.text === '/cancel') {
+    if (['/cancel', '/stop'].includes(envelope.text)) {
       this.store.transition(envelope.id, 'queued', 'running')
       this.store.cancelQueued(envelope.chat, envelope.id)
       if (this.active?.chat === envelope.chat) {
@@ -56,7 +56,7 @@ export class ChannelHost {
         const port = this.channel.recoveryStreaming ?? this.channel.streaming
         if (!port) continue
         if (this.store.streams(row.id).every(part => part.terminal_text === null)) {
-          this.store.streamTerminal(row.id, '服务中断，本次处理已停止。', INTERRUPTED)
+          this.store.streamTerminal(row.id, '服务中断，本次处理已停止。', INTERRUPTED, 'interrupted')
         }
         const stream = new StreamReply(this.store, port, row.id, this.report)
         if (await stream.finish() && row.state === 'unknown') {
@@ -78,7 +78,8 @@ export class ChannelHost {
         }
         if (this.closed) return // Leave running for explicit restart classification.
         if (stream) this.store.streamTerminal(row.id,
-          stream.completed ? '回复已完成。' : '本次处理已结束，未自动重试。', reply)
+          stream.completed ? '回复已完成。' : '本次处理已结束，未自动重试。', reply,
+          stream.completed ? 'done' : stream.cancelled ? 'interrupted' : 'error')
         this.store.transition(row.id, 'running', 'ready', reply)
       } else {
         this.store.transition(row.id, 'ready', 'sending')
@@ -107,7 +108,7 @@ export class ChannelHost {
     if (envelope.text === '/status') {
       return `通道：${this.channel.status()}\n${this.store.status()
         .map(row => `${row.state}: ${row.count}`).join('\n')}\ninterrupted / unknown 不自动重试，请在本机核对会话及飞书消息。`
-        + `\n流式卡片未决：${this.store.streamStatus().length}`
+        + `\n流式消息未决或进度历史不完整：${this.store.streamStatus().length}`
     }
     if (envelope.text === '/new') {
       const old = this.store.session(envelope.chat)
@@ -137,6 +138,7 @@ export class ChannelHost {
       let reason
       const dispose = this.ctx.on('session/event', (session, event) => {
         if (session.id !== handle.agent.session.id) return
+        stream?.progress?.event(event)
         if (event.type === 'assistant/message') {
           response = event.data.message.content.filter(block => block.type === 'text')
             .map(block => block.text).join('')
@@ -168,6 +170,7 @@ export class ChannelHost {
       if (stream) stream.completed = true
       return response
     } finally {
+      if (stream) stream.cancelled = active.cancelled
       try { await stream?.stop() } finally { this.active = undefined }
     }
   }

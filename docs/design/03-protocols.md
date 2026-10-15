@@ -12,7 +12,7 @@
 - 可选 `providerPatch / personalContextPath / turnTimeoutMs`
 - 飞书 `appId / appSecret / ownerOpenId`
 
-飞书可选 `replyMode: text | streaming-cards`；省略保持文本。流式模式使用两条 Card 2.0 消息，分别呈现折叠的公开进度与正文，命令仍使用文本。
+飞书可选 `replyMode: text | streaming-cards | native-cot`；省略保持文本。native-cot 使用原生进度消息与 Card 2.0 正文，streaming-cards 保留双卡片，命令仍使用文本。
 
 配置文件必须禁止 group/other 读取。平台凭据不放环境变量；模型 Key 由白名单环境变量传入 DSH 子进程。
 
@@ -59,12 +59,14 @@ SQLite 与 DSH Session 不是一个事务，因此不宣称 exactly-once。稳�
 
 可选 `streaming` 端口提供 create/send/write/close/replace；`recoveryStreaming` 在回退文本模式后仍可结束历史卡片。Host 保持平台无关，Channel 接收累计正文、part、目标 ID 与已落盘的 sequence。每个子投递遵循 planned→created→sending→delivered，sending 重启归 unknown。整体 sent 需要两个 confirmed receipt 与两张卡片的终态更新成功；更新未决的 unknown 可在重启后仅对已知卡片覆盖成功后归 sent，发送未决始终保留 unknown。
 
+SQLite v3 为流式子记录增加 kind、cot_id、事件预算、终止事件发送状态与终止原因，保留 v2 卡片记录。可选 progress 端口提供 start/append/complete；start 原子创建并发送，调用前直接 planned→sending，拿到目标和回执后 delivered。公开事件队列有界，追加前保留严格递增时间戳区间；追加结果不明不重放，单独记录 event_uncertain。终止事件至多尝试一次，之后对同一已知目标调用 Complete 设置终态。重启可以继续 Complete，但不重放增量或创建新消息；进度历史不确定与终态确认分别记录，正文仍独立收尾。回退模式仍可收尾旧 COT 和旧卡片。
+
 ## 会话与命令
 
 chat 映射到 DSH Session。恢复使用原生 `agents.resume()`；恢复前清除遗留 DSH inbox，避免把中断输入再次执行。
 
 - `/new`：创建新 Session 映射，保留旧历史。
-- `/cancel`：原生取消当前生成并清除排队输入。
+- `/cancel`、`/stop`：原生取消当前生成并清除排队输入；后者接飞书原生停止按钮，同样经过 owner 私聊认证，不进入模型或创建进度消息。
 - `/status`：展示通道和收发计数。
 - `/help`：展示当前命令和能力边界。
 

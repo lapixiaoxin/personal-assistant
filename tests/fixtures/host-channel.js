@@ -38,9 +38,26 @@ export async function apply(ctx) {
       updates.push({ kind: 'replace', cardId, part, text, sequence })
     },
   }
+  const nativeStreaming = {
+    ...streaming,
+    progress: {
+      async start(envelope) {
+        if (envelope.text === 'unknown-send') throw new Error('simulated network loss')
+        const cotId = `cot_${envelope.messageId}`
+        replies.push({ id: envelope.id, part: 'progress', cotId })
+        return { id: cotId, receipt: `om_reply_${replies.length}` }
+      },
+      async append(target, events, timestamp) {
+        updates.push({ kind: 'progress', cotId: target.cot_id, events, timestamp, beforeEnd: !streamEnded })
+      },
+      async complete(target) {
+        updates.push({ kind: 'complete', cotId: target.cot_id, status: target.terminal_status })
+      },
+    },
+  }
   const channel = {
-    streaming: config.streaming ? streaming : undefined,
-    recoveryStreaming: streaming,
+    streaming: config.streaming === 'native' ? nativeStreaming : config.streaming ? streaming : undefined,
+    recoveryStreaming: nativeStreaming,
     async send(envelope, text) {
       if (envelope.text === 'unknown-send') throw new Error('simulated network loss')
       replies.push({ id: envelope.id, text })

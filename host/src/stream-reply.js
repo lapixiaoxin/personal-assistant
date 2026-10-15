@@ -1,3 +1,5 @@
+import { StreamProgress } from './stream-progress.js'
+
 const INITIAL_ANSWER = '正在生成回复…'
 export const INTERRUPTED = '本次请求因服务中断而停止，未自动重试。请核对会话后发送新请求。'
 
@@ -15,11 +17,16 @@ export class StreamReply {
     this.lastOperation = 0
     this.blocked = false
     this.stopped = false
+    this.progress = port.progress ? new StreamProgress(this, port.progress) : undefined
   }
 
   async start(envelope) {
-    this.store.planStream(this.id)
+    this.store.planStream(this.id, Boolean(this.progress))
     for (const part of ['progress', 'answer']) {
+      if (part === 'progress' && this.progress) {
+        await this.progress.start(envelope)
+        continue
+      }
       const cardId = await this.port.create(part)
       this.store.streamTransition(this.id, part, 'planned', 'created', cardId)
       this.store.streamTransition(this.id, part, 'created', 'sending')
@@ -35,8 +42,16 @@ export class StreamReply {
   }
 
   text(part, text) {
+    if (part === 'progress' && this.progress) {
+      this.progress.stage(text)
+      return
+    }
     if (this.stopped || this.blocked || this.desired.get(part) === text) return
     this.desired.set(part, text)
+    this.schedule()
+  }
+
+  schedule() {
     if (this.timer) return
     this.timer = setTimeout(() => {
       this.timer = undefined
@@ -108,10 +123,13 @@ export class StreamReply {
   }
 
   async flush() {
-    if (this.stopped || this.blocked) return
+    if (this.stopped) return
+    await this.progress?.flush()
+    if (this.blocked) return
     for (const row of this.store.streams(this.id)) {
       const text = this.desired.get(row.part)
-      if (row.state !== 'delivered' || text === undefined || this.written.get(row.part) === text) continue
+      if (row.kind === 'cot' || row.state !== 'delivered'
+        || text === undefined || this.written.get(row.part) === text) continue
       if (!await this.operation(row, sequence => this.port.write(row.card_id, text, sequence))) {
         this.blocked = true
         return
@@ -126,12 +144,17 @@ export class StreamReply {
     this.timer = undefined
     await this.queue
     if (this.fault) throw this.fault
+    await this.progress?.flush()
   }
 
   async finish() {
     await this.stop()
     for (const row of this.store.streams(this.id)) {
       if (row.state !== 'delivered' || row.finished) continue
+      if (row.kind === 'cot') {
+        await this.progress?.finish(row)
+        continue
+      }
       if (!await this.operation(row, sequence => this.port.close(row.card_id, row.part, sequence))) continue
       await this.operation(row, sequence =>
         this.port.replace(row.card_id, row.part, row.terminal_text ?? INTERRUPTED, sequence), true)

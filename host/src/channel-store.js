@@ -16,7 +16,7 @@ export class ChannelStore {
     this.closed = false
     try {
       const version = this.db.prepare('PRAGMA user_version').get().user_version
-      if (![0, 1, 2].includes(version)) throw new Error('Unsupported channel database version')
+      if (![0, 1, 2, 3].includes(version)) throw new Error('Unsupported channel database version')
       chmodSync(path, 0o600)
       this.db.exec('PRAGMA busy_timeout = 3000; PRAGMA journal_mode = WAL; PRAGMA synchronous = FULL')
       this.transaction(() => {
@@ -55,7 +55,15 @@ export class ChannelStore {
             terminal_text TEXT, finished INTEGER NOT NULL DEFAULT 0,
             PRIMARY KEY(inbox_id, part)
           );
-          PRAGMA user_version = 2;
+        `)
+        if (version < 3) this.db.exec(`
+          ALTER TABLE stream_deliveries ADD COLUMN kind TEXT NOT NULL DEFAULT 'card';
+          ALTER TABLE stream_deliveries ADD COLUMN cot_id TEXT;
+          ALTER TABLE stream_deliveries ADD COLUMN event_count INTEGER NOT NULL DEFAULT 0;
+          ALTER TABLE stream_deliveries ADD COLUMN event_uncertain INTEGER NOT NULL DEFAULT 0;
+          ALTER TABLE stream_deliveries ADD COLUMN terminal_event TEXT NOT NULL DEFAULT 'planned';
+          ALTER TABLE stream_deliveries ADD COLUMN terminal_status TEXT NOT NULL DEFAULT 'error';
+          PRAGMA user_version = 3;
         `)
         this.db.prepare(`INSERT INTO owner VALUES (1, ?, ?, ?, ?)
           ON CONFLICT(singleton) DO UPDATE SET pid = excluded.pid, token = excluded.token`)
@@ -64,6 +72,8 @@ export class ChannelStore {
           WHEN 'running' THEN 'interrupted' ELSE 'unknown' END, updated_at = ?
           WHERE state IN ('running', 'sending')`).run(new Date().toISOString())
         this.db.exec("UPDATE stream_deliveries SET state = 'unknown' WHERE state = 'sending'")
+        this.db.exec(`UPDATE stream_deliveries SET event_uncertain = 1
+          WHERE kind = 'cot' AND update_pending = 1`)
       })
     } catch (error) {
       this.db.close()
@@ -83,7 +93,9 @@ export class ChannelStore {
       const count = this.db.prepare(
         "SELECT count(*) AS n FROM inbox WHERE state IN ('queued','running','ready','sending')",
       ).get().n
-      if (count >= 100 && envelope.text !== '/cancel') throw new Error('Channel inbox is full')
+      if (count >= 100 && !['/cancel', '/stop'].includes(envelope.text)) {
+        throw new Error('Channel inbox is full')
+      }
       const now = new Date().toISOString()
       this.db.prepare(`INSERT INTO inbox
         (id, digest, chat, envelope, state, created_at, updated_at)
@@ -135,11 +147,11 @@ export class ChannelStore {
     return this.db.prepare('SELECT id, state, receipt FROM inbox ORDER BY seq').all()
   }
 
-  planStream(id) {
+  planStream(id, nativeProgress = false) {
     this.transaction(() => {
       for (const part of ['progress', 'answer']) {
-        this.db.prepare(`INSERT INTO stream_deliveries (inbox_id, part, state)
-          VALUES (?, ?, 'planned')`).run(id, part)
+        this.db.prepare(`INSERT INTO stream_deliveries (inbox_id, part, state, kind)
+          VALUES (?, ?, 'planned', ?)`).run(id, part, nativeProgress && part === 'progress' ? 'cot' : 'card')
       }
     })
   }
@@ -148,10 +160,10 @@ export class ChannelStore {
     return this.db.prepare('SELECT * FROM stream_deliveries WHERE inbox_id = ? ORDER BY part DESC').all(id)
   }
 
-  streamTransition(id, part, from, to, cardId = null, receipt = null) {
+  streamTransition(id, part, from, to, cardId = null, receipt = null, cotId = null) {
     const result = this.db.prepare(`UPDATE stream_deliveries SET state = ?,
-      card_id = coalesce(?, card_id), receipt = coalesce(?, receipt)
-      WHERE inbox_id = ? AND part = ? AND state = ?`).run(to, cardId, receipt, id, part, from)
+      card_id = coalesce(?, card_id), receipt = coalesce(?, receipt), cot_id = coalesce(?, cot_id)
+      WHERE inbox_id = ? AND part = ? AND state = ?`).run(to, cardId, receipt, cotId, id, part, from)
     if (result.changes !== 1) throw new Error('Stream delivery state changed unexpectedly')
   }
 
@@ -166,13 +178,38 @@ export class ChannelStore {
       finished = ? WHERE inbox_id = ? AND part = ?`).run(success ? 0 : 1, finished ? 1 : 0, id, part)
   }
 
-  streamTerminal(id, progress, answer) {
+  streamTerminal(id, progress, answer, status = 'error') {
     this.transaction(() => {
       for (const [part, text] of [['progress', progress], ['answer', answer]]) {
-        this.db.prepare(`UPDATE stream_deliveries SET terminal_text = ?
-          WHERE inbox_id = ? AND part = ?`).run(text, id, part)
+        this.db.prepare(`UPDATE stream_deliveries SET terminal_text = ?, terminal_status = ?
+          WHERE inbox_id = ? AND part = ?`).run(text, status, id, part)
       }
     })
+  }
+
+  progressReserve(id, count, terminal = false) {
+    if (!Number.isInteger(count) || count < 1 || count > 48) throw new Error('Invalid event budget')
+    const row = this.db.prepare(`UPDATE stream_deliveries
+      SET sequence = max(sequence + 1, ?) + ? - 1, event_count = event_count + ?,
+      update_pending = 1, terminal_event = CASE WHEN ? THEN 'sending' ELSE terminal_event END
+      WHERE inbox_id = ? AND part = 'progress' AND kind = 'cot' AND state = 'delivered'
+      AND event_count + ? <= 999 AND (? = 0 OR terminal_event = 'planned')
+      RETURNING sequence`).get(Date.now(), count, count, terminal ? 1 : 0, id, count, terminal ? 1 : 0)
+    if (!row) throw new Error('Progress event reservation failed')
+    return row.sequence - count + 1
+  }
+
+  progressAppended(id, success, terminal = false) {
+    this.db.prepare(`UPDATE stream_deliveries SET update_pending = 0,
+      event_uncertain = max(event_uncertain, ?),
+      terminal_event = CASE WHEN ? THEN ? ELSE terminal_event END
+      WHERE inbox_id = ? AND part = 'progress'`)
+      .run(success ? 0 : 1, terminal ? 1 : 0, success ? 'confirmed' : 'unknown', id)
+  }
+
+  progressIncomplete(id) {
+    this.db.prepare(`UPDATE stream_deliveries SET event_uncertain = 1
+      WHERE inbox_id = ? AND part = 'progress' AND kind = 'cot'`).run(id)
   }
 
   streamRecovery() {
@@ -183,9 +220,9 @@ export class ChannelStore {
   }
 
   streamStatus() {
-    return this.db.prepare(`SELECT inbox_id, part, state, card_id, receipt, sequence,
-      update_pending, update_failed, finished FROM stream_deliveries
-      WHERE state = 'unknown' OR (state = 'delivered' AND finished = 0)`).all()
+    return this.db.prepare(`SELECT inbox_id, part, state, kind, card_id, cot_id, receipt, sequence,
+      update_pending, update_failed, finished, event_uncertain, terminal_event FROM stream_deliveries
+      WHERE state = 'unknown' OR (state = 'delivered' AND finished = 0) OR event_uncertain = 1`).all()
   }
 
   transaction(operation) {

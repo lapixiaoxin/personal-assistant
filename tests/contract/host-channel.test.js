@@ -77,13 +77,13 @@ async function start(path, model, streaming = false) {
 }
 
 describe('DSH native channel composition', () => {
-  it('streams before native turn/end, finishes two messages, and keeps commands as text', async () => {
+  it.each([true, 'native'])('streams before turn/end, finishes two messages, and keeps commands as text (%s)', async mode => {
     const model = await startMockLlmServer({
       apiKey: 'contract-key', sequence: ['slow_success'],
       successText: 'a streaming native answer', chunkSize: 1, chunkDelayMs: 50,
     })
     models.push(model)
-    const fixture = await start(directory(), model, true)
+    const fixture = await start(directory(), model, mode)
     await fixture.send('Stream this reply', 'stream')
     await fixture.send('Stream this reply', 'stream')
     const result = await fixture.wait()
@@ -94,7 +94,11 @@ describe('DSH native channel composition', () => {
     const partials = result.updates.filter(row => row.kind === 'write' && row.cardId === answerCard)
     expect(partials.some(row => row.beforeEnd && row.text.startsWith('a')
       && row.text.length < 'a streaming native answer'.length), JSON.stringify(result.updates)).toBe(true)
-    expect(result.updates.filter(row => row.kind === 'close')).toHaveLength(2)
+    expect(result.updates.filter(row => ['close', 'complete'].includes(row.kind))).toHaveLength(2)
+    if (mode === 'native') {
+      expect(result.updates.some(row => row.kind === 'progress' && row.beforeEnd)).toBe(true)
+      expect(result.updates.find(row => row.kind === 'complete').status).toBe('done')
+    }
     expect(result.updates.find(row => row.kind === 'replace' && row.part === 'answer').text)
       .toBe('a streaming native answer')
     expect(result.unresolvedStreams).toEqual([])
@@ -105,13 +109,13 @@ describe('DSH native channel composition', () => {
     expect(model.requests).toHaveLength(1)
   }, 30000)
 
-  it('does not start DSH or replay messages after an unknown initial card send', async () => {
+  it.each([true, 'native'])('does not start DSH or replay messages after an unknown initial send (%s)', async mode => {
     const model = await startMockLlmServer({
       apiKey: 'contract-key', sequence: ['success'], successText: 'unused',
     })
     models.push(model)
     const path = directory()
-    const first = await start(path, model, true)
+    const first = await start(path, model, mode)
     await first.send('unknown-send', 'unknown')
     const result = await first.wait()
     expect(result.records[0].state).toBe('unknown')
@@ -119,42 +123,43 @@ describe('DSH native channel composition', () => {
     expect(result.replies).toEqual([])
     expect(model.requests).toHaveLength(0)
     await first.harness.close()
-    const second = await start(path, model, true)
+    const second = await start(path, model, mode)
     await second.send('unknown-send', 'unknown')
     expect((await second.wait()).replies).toEqual([])
     expect(model.requests).toHaveLength(0)
   }, 30000)
 
-  it('replaces partial output with cancellation and closes both cards without a third answer', async () => {
+  it.each([true, 'native'])('replaces partial output with cancellation and closes both messages (%s)', async mode => {
     const model = await startMockLlmServer({
       apiKey: 'contract-key', sequence: ['slow_success'],
       successText: 'a deliberately slow answer', chunkSize: 1, chunkDelayMs: 200,
     })
     models.push(model)
-    const fixture = await start(directory(), model, true)
+    const fixture = await start(directory(), model, mode)
     await fixture.send('Long streaming request', 'running')
     await expect.poll(() => model.requests.length, { timeout: 5000 }).toBe(1)
     await fixture.send('Queued request', 'queued')
-    await fixture.send('/cancel', 'cancel')
+    await fixture.send(mode === 'native' ? '/stop' : '/cancel', 'cancel')
     const result = await fixture.wait()
     expect(model.requests).toHaveLength(1)
     expect(result.replies.filter(row => row.id === 'cli_test:om_running')).toHaveLength(2)
     expect(result.updates.find(row => row.kind === 'replace' && row.part === 'answer').text)
       .toContain('取消')
-    expect(result.updates.filter(row => row.kind === 'close')).toHaveLength(2)
+    expect(result.updates.filter(row => ['close', 'complete'].includes(row.kind))).toHaveLength(2)
+    if (mode === 'native') expect(result.updates.find(row => row.kind === 'complete').status).toBe('interrupted')
     expect(result.replies.filter(row => row.text)).toHaveLength(2)
     expect(result.unresolvedStreams).toEqual([])
     expect(result.records.map(row => row.state)).toEqual(['sent', 'sent', 'sent'])
   }, 30000)
 
-  it('closes known cards after a process crash even after switching back to text mode', async () => {
+  it.each([true, 'native'])('closes known streams after a process crash even after switching to text (%s)', async mode => {
     const model = await startMockLlmServer({
       apiKey: 'contract-key', sequence: ['slow_success'],
       successText: 'a deliberately slow answer', chunkSize: 1, chunkDelayMs: 200,
     })
     models.push(model)
     const path = directory()
-    const first = await start(path, model, true)
+    const first = await start(path, model, mode)
     await first.send('Before streaming crash', 'running')
     await expect.poll(() => model.requests.length, { timeout: 5000 }).toBe(1)
     const death = first.harness.client.subscribe(() => false)
@@ -167,7 +172,8 @@ describe('DSH native channel composition', () => {
     expect(model.requests).toHaveLength(1)
     expect(recovered.records[0].state).toBe('interrupted')
     expect(recovered.replies).toEqual([])
-    expect(recovered.updates.filter(row => row.kind === 'close')).toHaveLength(2)
+    expect(recovered.updates.filter(row => ['close', 'complete'].includes(row.kind))).toHaveLength(2)
+    if (mode === 'native') expect(recovered.updates.find(row => row.kind === 'complete').status).toBe('interrupted')
     expect(recovered.updates.find(row => row.kind === 'replace' && row.part === 'answer').text)
       .toContain('服务中断')
     expect(recovered.unresolvedStreams).toEqual([])
@@ -230,17 +236,22 @@ describe('DSH native channel composition', () => {
     expect(model.requests).toHaveLength(1)
   }, 60000)
 
-  it('keeps native shell execution disabled even if a model requests it', async () => {
+  it.each([false, 'native'])('keeps shell execution disabled and accurately projects denied calls (%s)', async mode => {
     const model = await startMockLlmServer({
       apiKey: 'contract-key', sequence: ['tool_call_success', 'success'],
       toolName: 'bash', toolArguments: '{"command":"printf must-not-run"}',
       successText: 'Tool was denied',
     })
     models.push(model)
-    const fixture = await start(directory(), model)
+    const fixture = await start(directory(), model, mode)
     await fixture.send('Try a tool', 'blocked')
     const result = await fixture.wait()
-    expect(result.replies[0].text).toBe('Tool was denied')
+    if (mode === 'native') {
+      expect(result.updates.find(row => row.kind === 'replace' && row.part === 'answer').text).toBe('Tool was denied')
+      const events = result.updates.filter(row => row.kind === 'progress').flatMap(row => row.events)
+      expect(events.some(row => row.kind === 'tool_started')).toBe(true)
+      expect(events.some(row => row.kind === 'tool_finished' && row.failed)).toBe(true)
+    } else expect(result.replies[0].text).toBe('Tool was denied')
     const first = JSON.stringify(model.requests[0].body)
     expect(first).not.toContain('"name":"bash"')
     expect(JSON.stringify(model.requests[1].body)).toMatch(/disabled|not available|not found|not enabled|unknown/i)

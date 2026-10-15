@@ -1,13 +1,14 @@
 import { createHash } from 'node:crypto'
 import { AppType, Client, defaultHttpInstance, EventDispatcher, WSClient } from '@larksuiteoapi/node-sdk'
 import { createFeishuStreaming } from './streaming.js'
+import { createFeishuProgress } from './progress.js'
 
 export function validateFeishuConfig(config) {
   if (!config || typeof config !== 'object'
     || !/^cli_[A-Za-z0-9]+$/.test(config.appId)
     || typeof config.appSecret !== 'string' || config.appSecret.length < 8
     || !/^ou_[A-Za-z0-9_-]+$/.test(config.ownerOpenId)
-    || (config.replyMode !== undefined && !['text', 'streaming-cards'].includes(config.replyMode))
+    || (config.replyMode !== undefined && !['text', 'streaming-cards', 'native-cot'].includes(config.replyMode))
     || Object.keys(config).some(key => !['appId', 'appSecret', 'ownerOpenId', 'replyMode'].includes(key))) {
     throw new Error('Feishu config requires appId, appSecret and ownerOpenId')
   }
@@ -36,7 +37,8 @@ export function normalizeFeishuEvent(event, config) {
     chat: `${config.appId}:${message.chat_id}`,
     sender: config.ownerOpenId,
     messageId: message.message_id,
-    text: content.text.trim(),
+    text: content.text.replace(/[\u200B-\u200D\uFEFF]/g, '').trim() === '/stop'
+      ? '/stop' : content.text.trim(),
   }
 }
 
@@ -89,9 +91,11 @@ export function createFeishuChannel(config, report = () => {}) {
   })
   let ws
   const cardPort = createFeishuStreaming(client)
+  const nativePort = { ...cardPort, progress: createFeishuProgress(client) }
   return {
-    streaming: config.replyMode === 'streaming-cards' ? cardPort : undefined,
-    recoveryStreaming: cardPort,
+    streaming: config.replyMode === 'native-cot' ? nativePort
+      : config.replyMode === 'streaming-cards' ? cardPort : undefined,
+    recoveryStreaming: nativePort,
     async start(receive) {
       await new Promise((resolve, reject) => {
         const timer = setTimeout(() => {
