@@ -10,6 +10,8 @@
 
 飞书配置新增可选 `replyMode: text | streaming-cards`，省略时保持 text。目标应用需要 `cardkit:card:write` 和现有 Bot 发消息权限；真实实例只在权限与本机门禁通过后切换。
 
+2026-10-15 展示调整：进度卡使用 compact 宽度和 8px 外层留白，面板无背景与描边；标题收起时按文字宽度排列，右侧紧跟显式下箭头，展开后旋转。正文卡保留原有样式。该调整仍使用 interactive 卡片，不宣称普通消息支持手动折叠；不改发送、持久化或授权协议，无数据迁移。
+
 ## 输出与持久协议
 
 - DSH `agent/assistant-stream` 按 Agent 身份过滤，并按 attempt 区分重试/新步骤；revision 每帧递增，按 revision/index 去重，只投影 text 块。reasoning 事件只触发固定阶段说明，不读取/保存/发送其原文。
@@ -44,6 +46,9 @@
 - [流式更新文本](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/cardkit-v1/card-element/content)
 - [更新卡片配置](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/cardkit-v1/card/settings)
 - [更新卡片实体](https://open.feishu.cn/document/uAjLw4CM/ukTMukTMukTM/cardkit-v1/card/update)
+- [消息内容结构](https://open.feishu.cn/document/server-docs/im-v1/message-content-description/create_json?lang=zh-CN)：公开 text/post 字段没有手动折叠设置；post 的 md 明确不支持任意 raw HTML，因此不能使用 HTML details/summary 模拟。
+- [编辑普通消息](https://open.feishu.cn/document/server-docs/im-v1/message/update?lang=zh-CN)：text/post 每条最多编辑 20 次；不替换当前 CardKit 流式协议。
+- [折叠面板 JSON 2.0](https://open.feishu.cn/document/feishu-cards/card-json-v2-components/containers/collapsible-panel?lang=zh-CN)：支持 header.width、icon、icon_position、icon_expanded_angle。auto_when_fold 需要客户端 ≥7.32，旧客户端可能保留默认标题宽度，卡片整体仍要求 ≥7.20。本次仅采用这些公开样式字段。
 
 官方文档说明 Card 2.0 要求客户端 ≥7.20；单卡操作 ≤10 次/秒，本文实现采用串行节流并主动关闭流式状态。单卡实体只能发送一次，有效期 14 天；流式模式最长 10 分钟，当前 turnTimeoutMs 上限 10 分钟内仍需显式结束。
 
@@ -56,3 +61,5 @@
 - 完整 `pnpm check` 通过 9 文件 / 54 项测试、16 生产源码文件 / 1 内部依赖边；DSH bundle 与文档检查通过。补充验证「两张终态回执已落盘、整体 sent 尚未提交时崩溃」可仅凭账本归 sent，无新增 API 调用。
 - 2026-10-14T16:06:08Z，正常停止旧服务后备份完整 v1 实例至本机私有 `data/server-backups/pre-streaming-xxgSdF/server`，匹配旧 commit `7445962` / DSH `0.2.0-rc.2`，保留此前 8 条 sent。随后设 `streaming-cards` 并启动 v2，状态 `ready / connected`、0 未决。
 - 2026-10-14T16:10:21Z，绑定 owner 既有私聊完成一组明确标注「部署验证」的双卡片：2 个真实 IM message ID，progress sequence 3 / answer sequence 4，均 finished。使用独立私人投递账本 `data/feishu-streaming-live`，未向生产 inbox 插入假事件，也未调用真实模型。真实 API 投递、更新和关闭为 `verified_once`；完整真实 WS→模型→Bot 新对话与人工客户端展示尚未验收。
+- 2026-10-15 紧凑样式增量通过完整 `pnpm check`（54 项）、DSH bundle 和文档检查。00:56:38Z 真实 CardKit 创建未发送进度卡，正文更新、关闭与最终替换成功，`messagesSent: 0`，样式 JSON 接受为 `verified_once`；展开箭头与留白的客户端观感待人工确认。
+- 同次正常停止后整目录备份于私有 `data/server-backups/pre-compact-progress-AzaFg6/server`，对应旧 commit `6fab13e`；样式回退可恢复该提交的 `replyCard` 展示字段，无需还原数据库或重投历史消息。

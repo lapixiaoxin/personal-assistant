@@ -23,16 +23,28 @@ export function replyCard(part, text, streaming = true) {
     schema: '2.0',
     config: {
       update_multi: true, streaming_mode: streaming,
+      ...(part === 'progress' ? { width_mode: 'compact' } : {}),
       summary: { content: part === 'progress' ? 'lumi · 处理进度' : 'lumi · 回复' },
       ...(streaming ? { streaming_config: {
         print_frequency_ms: { default: 70 }, print_step: { default: 1 }, print_strategy: 'fast',
       } } : {}),
     },
-    body: { elements: part === 'progress' ? [{
-      tag: 'collapsible_panel', expanded: false,
-      header: { title: { tag: 'plain_text', content: '处理进度' } },
-      elements: [markdown],
-    }] : [markdown] },
+    body: {
+      ...(part === 'progress' ? { padding: '8px' } : {}),
+      elements: part === 'progress' ? [{
+        tag: 'collapsible_panel', expanded: false, padding: '0px',
+        header: {
+          title: { tag: 'plain_text', content: '处理进度' },
+          width: 'auto_when_fold', padding: '0px',
+          icon: {
+            tag: 'standard_icon', token: 'down-small-ccm_outlined',
+            color: 'grey', size: '16px 16px',
+          },
+          icon_position: 'follow_text', icon_expanded_angle: -180,
+        },
+        elements: [markdown],
+      }] : [markdown],
+    },
   }
 }
 

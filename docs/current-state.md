@@ -1,6 +1,6 @@
 # lumi 工程事实
 
-更新：2026-10-14。
+更新：2026-10-15。
 
 ## 当前能力
 
@@ -29,6 +29,7 @@
 - SPEC-0020 完整门禁及 DSH bundle 通过。实际 DSH + mock 模型已验证 turn/end 前流式正文、取消、未知发送及 SIGKILL 后卡片关闭。
 - 2026-10-14T16:10:21Z，真实飞书 API 双卡片验证取得 2 个 IM message ID，并完成正文增量和两张卡片终态；状态 `verified_once`。该验证未模拟 WS 输入或调用真实模型，不等同于一次完整 Bot 新对话或人工客户端展示验收。
 - 当前私有实例已设 `streaming-cards`，SQLite 已迁至 v2，服务恢复 `ready / connected`；此前 8 条收件箱 sent 保留，0 个未决。上述验证使用独立私人投递账本，不伪造生产输入。
+- 2026-10-15 进度区调整为 compact 宽度、紧凑留白和跟随文字的折叠箭头；完整门禁通过 54 项，未发送卡片的真实 API 接受为 `verified_once`，客户端外观待确认。公开 text/post 无手动折叠字段，仍使用 CardKit，标题自适应需客户端 ≥7.32。
 
 仓库精简的文件与磁盘结果记录在 [SPEC-0017](../specs/0017-repository-simplification.md)；三层目录收敛记录在 [SPEC-0018](../specs/0018-host-channels-plugins.md)。
 

@@ -72,6 +72,8 @@ pnpm start
 
 普通对话可配置 `feishu.replyMode: "streaming-cards"`。默认及样例为 `"text"`，省略字段也保留文本模式。流式模式先回复两张 Card 2.0：默认折叠的「处理进度」和持续更新的正文。进度只显示公开阶段说明；不发送模型内部 reasoning 原文。命令和未开始生成的排队取消通知仍是单条文本。
 
+进度区采用 compact 宽度、紧凑留白和跟随文字的展开/收起箭头；标题收起时自适应需要客户端 ≥7.32，旧客户端可能仍以默认宽度显示。公开 text/post 消息没有可配置的手动折叠字段，post Markdown 也不支持 HTML details/summary，因此当前仍使用原生卡片折叠组件。依据见 [SPEC-0020](../../specs/0020-feishu-streaming-replies.md#官方依据)。
+
 启用前在专用应用中申请 `cardkit:card:write`，保留现有 Bot 消息权限，并按租户要求发布可用版本。客户端要求 ≥7.20。卡片权限不足时首次创建失败，该输入保留 `unknown`，不会调用模型或补发文本；应先核对配置、权限和原消息，再发送新请求。
 
 升级代码前正常停止服务并备份完整 `data/server`。新版把收件箱 SQLite v1 自动迁至 v2，保留既有记录和 Session 映射；新增 `stream_deliveries` 保存两条消息的卡片 ID、回执、递增 sequence 和最终内容。修改唯一私有配置的 replyMode 后重启。验收时发送普通文字，确认两条消息、折叠面板、正文在生成中增长及结束后停止加载；`pnpm server:status` 的 `streams` 显示未决卡片。

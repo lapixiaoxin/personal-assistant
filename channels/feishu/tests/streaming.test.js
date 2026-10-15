@@ -23,10 +23,19 @@ describe('Feishu streaming card protocol', () => {
     const card = JSON.parse(create.mock.calls[0][0].data.data)
     expect(card.schema).toBe('2.0')
     expect(card.config.streaming_mode).toBe(true)
+    expect(card.config.width_mode).toBe('compact')
+    expect(card.body.padding).toBe('8px')
     expect(card.body.elements[0]).toMatchObject({
-      tag: 'collapsible_panel', expanded: false,
+      tag: 'collapsible_panel', expanded: false, padding: '0px',
+      header: {
+        width: 'auto_when_fold', padding: '0px', icon_position: 'follow_text',
+        icon_expanded_angle: -180,
+        icon: { tag: 'standard_icon', token: 'down-small-ccm_outlined' },
+      },
       elements: [{ tag: 'markdown', element_id: 'stream_body' }],
     })
+    expect(replyCard('progress', '已结束', false).body.elements[0].header)
+      .toEqual(card.body.elements[0].header)
     await port.send(envelope, 'progress', 'card_one')
     await port.send(envelope, 'answer', 'card_two')
     await port.send(envelope, 'progress', 'card_one')
