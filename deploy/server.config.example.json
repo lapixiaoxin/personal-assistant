@@ -13,6 +13,7 @@
     "replyMode": "text",
     "appId": "cli_REPLACE",
     "appSecret": "REPLACE_WITH_APP_SECRET",
-    "ownerOpenId": "ou_REPLACE"
+    "ownerOpenId": "ou_REPLACE",
+    "groupChatIds": []
   }
 }

@@ -79,6 +79,7 @@ export function createFeishuStreaming(client) {
         data: {
           msg_type: 'interactive',
           content: JSON.stringify({ type: 'card', data: { card_id: cardId } }),
+          reply_in_thread: Boolean(envelope.replyInThread),
           uuid: uuid(`lumi-stream:${envelope.id}:${part}`),
         },
       }))

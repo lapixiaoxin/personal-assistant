@@ -2,7 +2,7 @@
 
 属于自己的超级管家：多个终端通过独立通道接入同一个 DSH Host，个人习惯和各种能力以插件形式按需扩展。
 
-DSH 负责推理、规划、Session、工具与子 Agent 调度；lumi 只维护 Host、个人资产、可信插件、通道和部署。当前只启用了单 owner 飞书 Bot 私聊文本，已完成一次真实收发验证。其他终端、外部 Agent、设备和业务动作尚未接入。
+DSH 负责推理、规划、Session、工具与子 Agent 调度；lumi 只维护 Host、个人资产、可信插件、通道和部署。私聊每条主线消息开启独立飞书话题与 DSH Session；可选白名单群聊只处理显式 @Bot 的消息。其他终端、外部 Agent、设备和业务动作尚未接入。
 
 ## 结构
 
@@ -41,7 +41,7 @@ chmod 700 data/server
 chmod 600 data/server/config.json
 ```
 
-example 只用于首次复制，不会被运行时读取，也不得写入真实凭据。若私有配置已经存在，禁止用模板覆盖。在 `data/server/config.json` 中配置模型、飞书 App ID / Secret 和同一应用下的 owner `open_id`；模型 Key 放在未提交的 `.env`。完整边界见[部署资产说明](deploy/README.md)，操作步骤见[飞书部署](docs/runbooks/server-feishu.md)。
+example 只用于首次复制，不会被运行时读取，也不得写入真实凭据。若私有配置已经存在，禁止用模板覆盖。在 `data/server/config.json` 中配置模型、飞书 App ID / Secret 和同一应用下的 owner `open_id`；群入口另需精确 `groupChatIds` 白名单。模型 Key 放在未提交的 `.env`。完整边界见[部署资产说明](deploy/README.md)，操作步骤见[飞书部署](docs/runbooks/server-feishu.md)。
 
 Bot 私聊支持普通文本和：
 
@@ -74,7 +74,7 @@ pnpm server:status
 
 重复平台消息只处理一次。重启只继续尚未执行的 `queued` 和尚未发送的 `ready`；`running` 变为 `interrupted`，`sending` 变为 `unknown`，两者均不自动重复。
 
-收件箱新版为 SQLite v3。流式回复额外保存卡片/COT ID、回执、更新 sequence 和进度事件状态；重启只收尾已知消息，不重放模型或未知发送。进度追加结果不明保留独立证据，不自动重复追加。
+收件箱新版为 SQLite v4。它按飞书话题/群 @Bot scope 保存 DSH Session 映射，并额外保存流式卡片/COT ID、回执、更新 sequence 和进度事件状态；重启只收尾已知消息，不重放模型或未知发送。进度追加结果不明保留独立证据，不自动重复追加。
 
 ## 开发
 

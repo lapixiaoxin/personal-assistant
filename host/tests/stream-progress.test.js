@@ -8,7 +8,10 @@ import { StreamReply } from '../src/stream-reply.js'
 
 const dirs = []
 const stores = []
-const envelope = { id: 'input', chat: 'app:oc_chat', messageId: 'om_input', text: 'hi' }
+const envelope = {
+  id: 'input', chat: 'app:oc_chat', conversation: 'app:oc_chat:topic:om_input',
+  messageId: 'om_input', text: 'hi',
+}
 afterEach(() => {
   for (const store of stores.splice(0)) store.close()
   for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true })
@@ -133,11 +136,12 @@ describe('durable native progress', () => {
     for (const column of ['kind', 'cot_id', 'event_count', 'event_uncertain', 'terminal_event', 'terminal_status']) {
       db.exec(`ALTER TABLE stream_deliveries DROP COLUMN ${column}`)
     }
+    db.exec('ALTER TABLE inbox DROP COLUMN conversation')
     db.exec('PRAGMA user_version = 2')
     db.close()
     const reopened = new ChannelStore(path, 'test')
     stores.push(reopened)
     expect(reopened.streams(envelope.id)).toEqual(before)
-    expect(reopened.db.prepare('PRAGMA user_version').get().user_version).toBe(3)
+    expect(reopened.db.prepare('PRAGMA user_version').get().user_version).toBe(4)
   })
 })

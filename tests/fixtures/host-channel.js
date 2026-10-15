@@ -25,7 +25,7 @@ export async function apply(ctx) {
     async create() { return `card_${++cards}` },
     async send(envelope, part, cardId) {
       if (envelope.text === 'unknown-send') throw new Error('simulated network loss')
-      replies.push({ id: envelope.id, part, cardId })
+      replies.push({ id: envelope.id, part, cardId, replyInThread: envelope.replyInThread })
       return `om_reply_${replies.length}`
     },
     async write(cardId, text, sequence) {
@@ -44,7 +44,7 @@ export async function apply(ctx) {
       async start(envelope) {
         if (envelope.text === 'unknown-send') throw new Error('simulated network loss')
         const cotId = `cot_${envelope.messageId}`
-        replies.push({ id: envelope.id, part: 'progress', cotId })
+        replies.push({ id: envelope.id, part: 'progress', cotId, replyInThread: envelope.replyInThread })
         return { id: cotId, receipt: `om_reply_${replies.length}` }
       },
       async append(target, events, timestamp) {
@@ -60,7 +60,7 @@ export async function apply(ctx) {
     recoveryStreaming: nativeStreaming,
     async send(envelope, text) {
       if (envelope.text === 'unknown-send') throw new Error('simulated network loss')
-      replies.push({ id: envelope.id, text })
+      replies.push({ id: envelope.id, text, replyInThread: envelope.replyInThread })
       return `om_reply_${replies.length}`
     },
     close() {},
@@ -78,15 +78,16 @@ export async function apply(ctx) {
         let body = ''
         for await (const chunk of request) body += chunk.toString()
         const envelope = normalizeFeishuEvent(JSON.parse(body), {
-          appId: 'cli_test', ownerOpenId: 'ou_owner',
-        })
+          appId: 'cli_test', ownerOpenId: 'ou_owner', groupChatIds: config.groupChatIds,
+        }, config.botOpenId)
         if (envelope) host.receive(envelope)
       } else if (request.url === '/wait') {
         await host.pump
       }
       response.setHeader('Content-Type', 'application/json')
       response.end(JSON.stringify({
-        records: store.records(), replies, updates, unresolvedStreams: store.streamStatus(),
+        records: store.records(), envelopes: store.envelopes(), replies, updates,
+        unresolvedStreams: store.streamStatus(),
         sessions: ctx.agents.list().map(agent => agent.id),
       }))
       if (request.url === '/crash') setTimeout(() => process.kill(process.pid, 'SIGKILL'), 20)

@@ -8,11 +8,11 @@ describe('native Feishu progress protocol', () => {
   it('creates in the real chat, appends ordered serialized events, then completes with empty body', async () => {
     const request = vi.fn().mockResolvedValue({ code: 0, data: { cot_id: 'cot_test', message_id: 'om_progress' } })
     const port = createFeishuProgress({ request })
-    expect(await port.start({ chat: 'cli_test:oc_chat', messageId: 'om_input' }))
+    expect(await port.start({ chat: 'cli_test:oc_chat', messageId: 'om_input', replyInThread: true }))
       .toEqual({ id: 'cot_test', receipt: 'om_progress' })
     expect(request.mock.calls[0][0]).toMatchObject({
       method: 'POST', params: { receive_id_type: 'chat_id' },
-      data: { receive_id: 'oc_chat', origin_message_id: 'om_input', reply_in_thread: false },
+      data: { receive_id: 'oc_chat', origin_message_id: 'om_input', reply_in_thread: true },
     })
     await port.append(target, [
       { kind: 'started' }, { kind: 'stage', text: '正在处理' },

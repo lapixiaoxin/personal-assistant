@@ -26,11 +26,11 @@ Host 按以下顺序选择配置：
 1. 不得把真实 App ID、App Secret、owner `open_id` 或模型 Key 写入 `deploy/`、`profiles/`、文档、日志、命令输出或 Git。
 2. 仅当目标机不存在 `data/server/config.json` 时，才从 example 创建；已有配置不得被模板覆盖。
 3. `data/server` 设为 `0700`，`config.json` 和 `.env` 设为 `0600`。不要通过放宽权限解决启动失败。
-4. 飞书 `appId`、`appSecret` 和 `ownerOpenId` 必须来自同一个应用；`ownerOpenId` 不可从其他应用复用。
+4. 飞书 `appId`、`appSecret` 和 `ownerOpenId` 必须来自同一个应用；`ownerOpenId` 不可从其他应用复用。`groupChatIds` 是可选精确群白名单，空数组/省略均不接收群消息。
 5. provider/model 选择写入私有 JSON，模型 Key 写入 `.env` 或目标机 secret store。常用 provider 定义进入 `profiles/providers/`。
 6. 不打印完整私有 JSON。检查配置时只输出字段名、非敏感模型选择和脱敏状态。
 7. 启动前执行离线门禁；真实消息发送属于单独验收，不因服务启动成功而自动执行。
-8. example 的 `feishu.replyMode` 默认 `text`。启用 `native-cot` 或双卡片流式回复前核对 `cardkit:card:write` 和客户端版本；已有 v1/v2 收件箱升级前先正常停止并完整备份。新版使用 v3，回退文本模式保留 v3，不直接用旧代码打开新版库。详见[流式回复 SOP](../docs/runbooks/server-feishu.md#双消息流式回复)。
+8. example 的 `feishu.replyMode` 默认 `text`。启用 `native-cot` 或双卡片流式回复前核对 `cardkit:card:write` 和客户端版本；启用群白名单前核对 `im:message.group_at_msg:readonly`。已有 v1/v2/v3 收件箱升级前先正常停止并完整备份。新版使用 v4，回退文本模式保留 v4，不直接用旧代码打开新版库。详见[飞书服务器 SOP](../docs/runbooks/server-feishu.md)。
 
 ## 新机器首次部署
 

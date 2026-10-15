@@ -1,6 +1,8 @@
 import { EventDispatcher } from '@larksuiteoapi/node-sdk'
 import { describe, expect, it, vi } from 'vitest'
-import { formatReply, normalizeFeishuEvent, sendFeishuReply } from '../src/index.js'
+import {
+  fetchFeishuBotOpenId, formatReply, normalizeFeishuEvent, sendFeishuReply, validateFeishuConfig,
+} from '../src/index.js'
 
 const config = { appId: 'cli_test', appSecret: 'synthetic-secret', ownerOpenId: 'ou_owner' }
 const event = {
@@ -26,6 +28,9 @@ describe('Feishu platform boundary', () => {
     expect(first).toEqual(normalizeFeishuEvent({ ...event, event_id: 'attempt2' }, config))
     expect(first.messageId).toBe('om_input')
     expect(first.text).toBe('你好')
+    expect(first).toMatchObject({
+      conversation: 'cli_test:oc_private:topic:om_input', replyInThread: true, chatType: 'p2p',
+    })
   })
 
   it.each([
@@ -40,6 +45,39 @@ describe('Feishu platform boundary', () => {
     expect(normalizeFeishuEvent(input, config)).toBeUndefined()
   })
 
+  it('accepts only explicit Bot mentions from configured group chats and scopes topics by root message', () => {
+    const groupConfig = { ...config, groupChatIds: ['oc_group'] }
+    const groupEvent = {
+      ...event,
+      sender: { sender_type: 'user', sender_id: { open_id: 'ou_colleague' } },
+      message: {
+        ...event.message, message_id: 'om_group_input', chat_id: 'oc_group', chat_type: 'group',
+        content: JSON.stringify({ text: '@_user_1 帮我总结' }),
+        mentions: [{ key: '@_user_1', id: { open_id: 'ou_bot' }, mentioned_type: 'bot', name: 'lumi' }],
+      },
+    }
+    expect(normalizeFeishuEvent(groupEvent, groupConfig, 'ou_bot')).toMatchObject({
+      sender: 'ou_colleague', text: '帮我总结', conversation: 'cli_test:oc_group:group',
+      replyInThread: false, chatType: 'group',
+    })
+    const thread = {
+      ...groupEvent,
+      message: {
+        ...groupEvent.message, message_id: 'om_reply', root_id: 'om_group_input', thread_id: 'omt_topic',
+      },
+    }
+    expect(normalizeFeishuEvent(thread, groupConfig, 'ou_bot')).toMatchObject({
+      conversation: 'cli_test:oc_group:topic:om_group_input', replyInThread: true,
+    })
+    expect(normalizeFeishuEvent(groupEvent, groupConfig)).toBeUndefined()
+    expect(normalizeFeishuEvent({
+      ...groupEvent, message: { ...groupEvent.message, mentions: [] },
+    }, groupConfig, 'ou_bot')).toBeUndefined()
+    expect(normalizeFeishuEvent({
+      ...groupEvent, message: { ...groupEvent.message, chat_id: 'oc_other' },
+    }, groupConfig, 'ou_bot')).toBeUndefined()
+  })
+
   it('binds one reply to the inbound message and requires a business receipt', async () => {
     const reply = vi.fn().mockResolvedValue({ code: 0, data: { message_id: 'om_receipt' } })
     const client = { im: { message: { reply } } }
@@ -47,7 +85,9 @@ describe('Feishu platform boundary', () => {
     expect(await sendFeishuReply(client, input, '答复')).toBe('om_receipt')
     expect(reply.mock.calls[0][0]).toMatchObject({
       path: { message_id: 'om_input' },
-      data: { msg_type: 'text', content: '{"text":"答复"}', uuid: expect.any(String) },
+      data: {
+        msg_type: 'text', content: '{"text":"答复"}', reply_in_thread: true, uuid: expect.any(String),
+      },
     })
     reply.mockRejectedValue(new Error('Authorization: secret-token'))
     await expect(sendFeishuReply(client, input, '答复')).rejects.toThrow('no confirmed receipt')
@@ -63,5 +103,21 @@ describe('Feishu platform boundary', () => {
     expect(Buffer.byteLength(output, 'utf8')).toBeLessThanOrEqual(12000)
     expect(output).toContain('已截断')
     expect(output).not.toContain('\uFFFD')
+  })
+
+  it('resolves and validates the current Bot identity without exposing SDK errors', async () => {
+    const request = vi.fn().mockResolvedValue({ code: 0, bot: { open_id: 'ou_bot' } })
+    await expect(fetchFeishuBotOpenId({ request })).resolves.toBe('ou_bot')
+    request.mockResolvedValue({ code: 0, bot: {} })
+    await expect(fetchFeishuBotOpenId({ request })).rejects.toThrow('no confirmed result')
+    request.mockRejectedValue(new Error('Authorization: private-token'))
+    await expect(fetchFeishuBotOpenId({ request })).rejects.not.toThrow('private-token')
+  })
+
+  it('requires bounded, unique group chat allowlists', () => {
+    expect(() => validateFeishuConfig({ ...config, groupChatIds: ['oc_group', 'oc_second'] })).not.toThrow()
+    for (const groupChatIds of [['oc_group', 'oc_group'], ['oc_invalid!'], 'oc_group', Array(65).fill('oc_group')]) {
+      expect(() => validateFeishuConfig({ ...config, groupChatIds })).toThrow()
+    }
   })
 })

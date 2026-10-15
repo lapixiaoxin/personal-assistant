@@ -15,7 +15,10 @@ function fixture() {
   stores.push(store)
   return { path, store }
 }
-const envelope = { id: 'app:om_one', chat: 'app:oc_one', messageId: 'om_one', sender: 'owner', text: 'hi' }
+const envelope = {
+  id: 'app:om_one', chat: 'app:oc_one', conversation: 'app:oc_one:topic:om_one',
+  messageId: 'om_one', sender: 'owner', text: 'hi',
+}
 
 afterEach(() => {
   for (const store of stores.splice(0)) store.close()
@@ -42,7 +45,7 @@ describe('durable channel receipts', () => {
     store.transition('two', 'ready', 'sending')
     store.transition('three', 'queued', 'running')
     store.transition('three', 'running', 'ready', 'not sent yet')
-    const conversation = store.conversation(envelope.chat)
+    const conversation = store.conversation(envelope.conversation)
     store.close()
     const reopened = new ChannelStore(path, 'test-owner')
     stores.push(reopened)
@@ -50,7 +53,7 @@ describe('durable channel receipts', () => {
       'interrupted', 'unknown', 'ready', 'queued',
     ])
     expect(reopened.next().reply).toBe('not sent yet')
-    expect(reopened.conversation(envelope.chat)).toEqual({ ...conversation, fresh: false })
+    expect(reopened.conversation(envelope.conversation)).toEqual({ ...conversation, fresh: false })
     expect(() => reopened.transition('two', 'ready', 'sending')).toThrow('unexpectedly')
   })
 
@@ -72,16 +75,35 @@ describe('durable channel receipts', () => {
     store.transition(envelope.id, 'running', 'ready', 'previous answer')
     store.transition(envelope.id, 'ready', 'sending')
     store.transition(envelope.id, 'sending', 'sent', null, 'om_previous')
-    const mapping = store.conversation(envelope.chat)
+    const mapping = store.conversation(envelope.conversation)
     store.close()
     const db = new DatabaseSync(path)
-    db.exec('DROP TABLE stream_deliveries; PRAGMA user_version = 1')
+    db.exec('DROP TABLE stream_deliveries; ALTER TABLE inbox DROP COLUMN conversation; PRAGMA user_version = 1')
     db.close()
     const migrated = new ChannelStore(path, 'test-owner')
     stores.push(migrated)
-    expect(migrated.db.prepare('PRAGMA user_version').get().user_version).toBe(3)
+    expect(migrated.db.prepare('PRAGMA user_version').get().user_version).toBe(4)
     expect(migrated.records()).toEqual([{ id: envelope.id, state: 'sent', receipt: 'om_previous' }])
-    expect(migrated.conversation(envelope.chat)).toEqual({ ...mapping, fresh: false })
+    expect(migrated.conversation(envelope.conversation)).toEqual({ ...mapping, fresh: false })
     expect(migrated.streams(envelope.id)).toEqual([])
+  })
+
+  it('migrates v3 inbox scopes to their legacy chat value without changing receipts', () => {
+    const { path, store } = fixture()
+    store.accept(envelope)
+    store.transition(envelope.id, 'queued', 'running')
+    store.transition(envelope.id, 'running', 'ready', 'previous answer')
+    store.transition(envelope.id, 'ready', 'sending')
+    store.transition(envelope.id, 'sending', 'sent', null, 'om_previous')
+    store.close()
+    const db = new DatabaseSync(path)
+    db.exec('ALTER TABLE inbox DROP COLUMN conversation; PRAGMA user_version = 3')
+    db.close()
+    const migrated = new ChannelStore(path, 'test-owner')
+    stores.push(migrated)
+    expect(migrated.db.prepare('PRAGMA user_version').get().user_version).toBe(4)
+    expect(migrated.db.prepare('SELECT conversation FROM inbox WHERE id = ?').get(envelope.id).conversation)
+      .toBe(envelope.chat)
+    expect(migrated.records()).toEqual([{ id: envelope.id, state: 'sent', receipt: 'om_previous' }])
   })
 })

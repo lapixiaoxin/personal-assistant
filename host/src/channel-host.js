@@ -1,7 +1,7 @@
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { INTERRUPTED, StreamReply } from './stream-reply.js'
 
-const HELP = '我是 lumi，你的个人管家。\n直接发送文字开始对话。\n/help 帮助\n/new 开始新会话\n/cancel 或 /stop 取消当前生成和排队请求\n/status 查看通道回执状态\n\n当前仅启用对话；外部 Agent、设备和动作能力尚未配置。'
+const HELP = '我是 lumi，你的个人管家。\n私聊主线的每条新消息都会开始一个话题；在话题内继续发送可延续该会话。\n/help 帮助\n/new 为当前话题开始新会话\n/cancel 或 /stop 取消当前生成和排队请求\n/status 查看通道回执状态\n\n当前仅启用对话；外部 Agent、设备和动作能力尚未配置。'
 
 /** Maps a durable transport queue to DSH. No planning, routing, or tool execution here. */
 export class ChannelHost {
@@ -23,8 +23,11 @@ export class ChannelHost {
     if (!this.store.accept(envelope)) return
     if (['/cancel', '/stop'].includes(envelope.text)) {
       this.store.transition(envelope.id, 'queued', 'running')
-      this.store.cancelQueued(envelope.chat, envelope.id)
-      if (this.active?.chat === envelope.chat) {
+      const privateMainControl = envelope.chatType === 'p2p' && !envelope.replyInThread
+      if (privateMainControl) this.store.cancelQueuedChat(envelope.chat, envelope.id)
+      else this.store.cancelQueued(envelope.conversation, envelope.id)
+      if ((privateMainControl && this.active?.chat === envelope.chat)
+        || (!privateMainControl && this.active?.conversation === envelope.conversation)) {
         this.active.cancelled = true
         this.active.handle?.agent.cancel({ kind: 'user' })
       }
@@ -111,22 +114,27 @@ export class ChannelHost {
         + `\n流式消息未决或进度历史不完整：${this.store.streamStatus().length}`
     }
     if (envelope.text === '/new') {
-      const old = this.store.session(envelope.chat)
+      if (envelope.chatType === 'p2p' && !envelope.replyInThread) {
+        return '私聊主线的下一条消息会自动开始新话题和新会话。'
+      }
+      const old = this.store.session(envelope.conversation)
       const handle = this.handles.get(old)
       if (handle) await handle.dispose()
       this.handles.delete(old)
       // Create before replying: the new session is ready for the next message.
-      const mapping = this.store.conversation(envelope.chat, true)
+      const mapping = this.store.conversation(envelope.conversation, true)
       this.handles.set(mapping.session, await this.create(mapping))
       return '已开始新会话。个人上下文仍按配置加载，旧会话记录保留在本机。'
     }
     if (envelope.text.startsWith('/')) return HELP
-    const active = { chat: envelope.chat, cancelled: false, handle: undefined }
+    const active = {
+      chat: envelope.chat, conversation: envelope.conversation, cancelled: false, handle: undefined,
+    }
     this.active = active
     try {
       if (stream) await stream.start(envelope)
       if (active.cancelled || this.closed) return '本次生成已取消。'
-      const mapping = this.store.conversation(envelope.chat)
+      const mapping = this.store.conversation(envelope.conversation)
       let handle = this.handles.get(mapping.session)
       if (!handle) {
         handle = await this.create(mapping)

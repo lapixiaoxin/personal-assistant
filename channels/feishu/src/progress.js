@@ -69,7 +69,10 @@ export function createFeishuProgress(client) {
       if (!/^oc_[A-Za-z0-9_-]+$/.test(chat)) throw new Error('Invalid progress receiver')
       const data = await checked({
         method: 'POST', url: PATH, params: { receive_id_type: 'chat_id' },
-        data: { receive_id: chat, origin_message_id: envelope.messageId, reply_in_thread: false },
+        data: {
+          receive_id: chat, origin_message_id: envelope.messageId,
+          reply_in_thread: Boolean(envelope.replyInThread),
+        },
       })
       if (typeof data?.cot_id !== 'string' || !/^[A-Za-z0-9_-]+$/.test(data.cot_id)
         || typeof data?.message_id !== 'string' || !/^om_[A-Za-z0-9_-]+$/.test(data.message_id)) {

@@ -16,7 +16,7 @@ export class ChannelStore {
     this.closed = false
     try {
       const version = this.db.prepare('PRAGMA user_version').get().user_version
-      if (![0, 1, 2, 3].includes(version)) throw new Error('Unsupported channel database version')
+      if (![0, 1, 2, 3, 4].includes(version)) throw new Error('Unsupported channel database version')
       chmodSync(path, 0o600)
       this.db.exec('PRAGMA busy_timeout = 3000; PRAGMA journal_mode = WAL; PRAGMA synchronous = FULL')
       this.transaction(() => {
@@ -65,6 +65,11 @@ export class ChannelStore {
           ALTER TABLE stream_deliveries ADD COLUMN terminal_status TEXT NOT NULL DEFAULT 'error';
           PRAGMA user_version = 3;
         `)
+        if (version < 4) this.db.exec(`
+          ALTER TABLE inbox ADD COLUMN conversation TEXT NOT NULL DEFAULT '';
+          UPDATE inbox SET conversation = chat WHERE conversation = '';
+          PRAGMA user_version = 4;
+        `)
         this.db.prepare(`INSERT INTO owner VALUES (1, ?, ?, ?, ?)
           ON CONFLICT(singleton) DO UPDATE SET pid = excluded.pid, token = excluded.token`)
           .run(identity, hostname(), process.pid, this.token)
@@ -82,6 +87,10 @@ export class ChannelStore {
   }
 
   accept(envelope) {
+    if (typeof envelope?.conversation !== 'string' || !envelope.conversation
+      || Buffer.byteLength(envelope.conversation, 'utf8') > 512) {
+      throw new Error('Channel envelope requires a bounded conversation scope')
+    }
     const encoded = JSON.stringify(envelope)
     const digest = createHash('sha256').update(encoded).digest('hex')
     return this.transaction(() => {
@@ -98,9 +107,9 @@ export class ChannelStore {
       }
       const now = new Date().toISOString()
       this.db.prepare(`INSERT INTO inbox
-        (id, digest, chat, envelope, state, created_at, updated_at)
-        VALUES (?, ?, ?, ?, 'queued', ?, ?)`)
-        .run(envelope.id, digest, envelope.chat, encoded, now, now)
+        (id, digest, chat, conversation, envelope, state, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, 'queued', ?, ?)`)
+        .run(envelope.id, digest, envelope.chat, envelope.conversation, encoded, now, now)
       return true
     })
   }
@@ -120,20 +129,26 @@ export class ChannelStore {
     if (result.changes !== 1) throw new Error('Channel state changed unexpectedly')
   }
 
-  conversation(chat, reset = false) {
-    const existing = this.db.prepare('SELECT session FROM conversations WHERE chat = ?').get(chat)
+  conversation(scope, reset = false) {
+    const existing = this.db.prepare('SELECT session FROM conversations WHERE chat = ?').get(scope)
     if (existing && !reset) return { session: existing.session, fresh: false }
     const session = `lumi-${randomUUID()}`
     this.db.prepare(`INSERT INTO conversations VALUES (?, ?)
-      ON CONFLICT(chat) DO UPDATE SET session = excluded.session`).run(chat, session)
+      ON CONFLICT(chat) DO UPDATE SET session = excluded.session`).run(scope, session)
     return { session, fresh: true }
   }
 
-  session(chat) {
-    return this.db.prepare('SELECT session FROM conversations WHERE chat = ?').get(chat)?.session
+  session(scope) {
+    return this.db.prepare('SELECT session FROM conversations WHERE chat = ?').get(scope)?.session
   }
 
-  cancelQueued(chat, exceptId) {
+  cancelQueued(conversation, exceptId) {
+    this.db.prepare(`UPDATE inbox SET state = 'ready', reply = '该请求已取消，未提交给 DSH。',
+      updated_at = ? WHERE conversation = ? AND state = 'queued' AND id != ?`)
+      .run(new Date().toISOString(), conversation, exceptId)
+  }
+
+  cancelQueuedChat(chat, exceptId) {
     this.db.prepare(`UPDATE inbox SET state = 'ready', reply = '该请求已取消，未提交给 DSH。',
       updated_at = ? WHERE chat = ? AND state = 'queued' AND id != ?`)
       .run(new Date().toISOString(), chat, exceptId)
@@ -145,6 +160,10 @@ export class ChannelStore {
 
   records() {
     return this.db.prepare('SELECT id, state, receipt FROM inbox ORDER BY seq').all()
+  }
+
+  envelopes() {
+    return this.db.prepare('SELECT id, chat, conversation FROM inbox ORDER BY seq').all()
   }
 
   planStream(id, nativeProgress = false) {

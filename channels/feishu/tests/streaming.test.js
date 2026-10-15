@@ -18,7 +18,7 @@ function fixture() {
 describe('Feishu streaming card protocol', () => {
   it('uses two distinct stable reply identities and a collapsed progress panel', async () => {
     const { port, create, reply } = fixture()
-    const envelope = { id: 'cli_test:om_input', messageId: 'om_input' }
+    const envelope = { id: 'cli_test:om_input', messageId: 'om_input', replyInThread: true }
     await port.create('progress')
     const card = JSON.parse(create.mock.calls[0][0].data.data)
     expect(card.schema).toBe('2.0')
@@ -40,7 +40,7 @@ describe('Feishu streaming card protocol', () => {
     await port.send(envelope, 'answer', 'card_two')
     await port.send(envelope, 'progress', 'card_one')
     expect(reply.mock.calls[0][0]).toMatchObject({
-      path: { message_id: 'om_input' }, data: { msg_type: 'interactive' },
+      path: { message_id: 'om_input' }, data: { msg_type: 'interactive', reply_in_thread: true },
     })
     expect(JSON.parse(reply.mock.calls[0][0].data.content)).toEqual({
       type: 'card', data: { card_id: 'card_one' },

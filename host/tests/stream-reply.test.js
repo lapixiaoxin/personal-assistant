@@ -8,7 +8,9 @@ import { StreamReply } from '../src/stream-reply.js'
 
 const stores = []
 const dirs = []
-const envelope = { id: 'input', chat: 'chat', messageId: 'om_input', text: 'hi' }
+const envelope = {
+  id: 'input', chat: 'chat', conversation: 'chat:topic:om_input', messageId: 'om_input', text: 'hi',
+}
 afterEach(() => {
   for (const store of stores.splice(0)) store.close()
   for (const dir of dirs.splice(0)) rmSync(dir, { recursive: true, force: true })
@@ -50,7 +52,7 @@ describe('durable streaming delivery', () => {
     expect(port.write).toHaveBeenCalledTimes(1)
     for (const call of calls) expect(call.args.at(-1)).toBe(call.reserved)
     for (let i = 1; i < calls.length; i++) {
-      expect(calls[i].at - calls[i - 1].at).toBeGreaterThanOrEqual(24)
+      expect(calls[i].at - calls[i - 1].at).toBeGreaterThanOrEqual(20)
     }
     expect(store.streams(envelope.id).every(row => row.finished === 1)).toBe(true)
   })

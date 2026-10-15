@@ -13,6 +13,7 @@
 - 飞书 `appId / appSecret / ownerOpenId`
 
 飞书可选 `replyMode: text | streaming-cards | native-cot`；省略保持文本。native-cot 使用原生进度消息与 Card 2.0 正文，streaming-cards 保留双卡片，命令仍使用文本。
+可选 `groupChatIds` 是允许群聊输入的精确 `oc_...` 白名单；缺省时拒绝全部群消息。Bot 身份在启动时通过官方 bot 信息接口获取，不写入私有配置。
 
 配置文件必须禁止 group/other 读取。平台凭据不放环境变量；模型 Key 由白名单环境变量传入 DSH 子进程。
 
@@ -31,12 +32,14 @@
 ```text
 id        = appId + platform message_id
 chat      = appId + platform chat_id
-sender    = configured owner open_id
+conversation = platform-defined session scope
+sender    = authenticated sender open_id
 messageId = platform message_id
 text      = normalized non-empty text
+replyInThread = whether every reply belongs to this Feishu topic
 ```
 
-该对象是进程内端口，不是公网身份声明。平台重投相同 ID/摘要不重复执行；相同 ID/不同摘要拒绝。
+私聊只接受 configured owner：根消息以自身 message ID 开启新话题/Session，话题回复按 `root_id` 续接该 Session。群聊只接受 `groupChatIds` 中用户对当前 Bot 的显式 @：群根消息共享该群的 @Bot Session，带 `root_id` 或 `thread_id` 的消息按话题根消息独立 Session。话题启动消息本身是新 Session 的第一条用户输入。该对象是进程内端口，不是公网身份声明。平台重投相同 ID/摘要不重复执行；相同 ID/不同摘要拒绝。
 
 ## 收发状态
 
@@ -53,7 +56,7 @@ queued -> running -> ready -> sending -> sent
 - `sending`：平台结果不确定；崩溃后进入 `unknown`。
 - `sent`：保存有效平台 message ID。
 
-SQLite 与 DSH Session 不是一个事务，因此不宣称 exactly-once。稳定发送 UUID 只是附加保护。
+SQLite 与 DSH Session 不是一个事务，因此不宣称 exactly-once。稳定发送 UUID 只是附加保护。SQLite v4 在收件箱保存 conversation scope；取消和排队清理按同一 scope 进行，私聊根消息中的控制命令保持整个私聊的既有取消语义。
 
 流式投递增加 SQLite v2 子记录：按输入 ID 和 part 保存卡片目标、发送回执、最终公开内容、递增 sequence 和终态；临时累计正文只在内存中，持久正文依据是 DSH assistant/message。每次发送/更新先落意图后调用 Channel，未知发送不重放；已确认卡片可以用更高 sequence 覆盖为最终正文或中断状态。重启不续跑模型，仅关闭已知未结束卡片。完整状态与迁移见 [SPEC-0020](../../specs/0020-feishu-streaming-replies.md)。
 
@@ -63,10 +66,10 @@ SQLite v3 为流式子记录增加 kind、cot_id、事件预算、终止事件�
 
 ## 会话与命令
 
-chat 映射到 DSH Session。恢复使用原生 `agents.resume()`；恢复前清除遗留 DSH inbox，避免把中断输入再次执行。
+conversation scope 映射到 DSH Session。恢复使用原生 `agents.resume()`；恢复前清除遗留 DSH inbox，避免把中断输入再次执行。
 
-- `/new`：创建新 Session 映射，保留旧历史。
-- `/cancel`、`/stop`：原生取消当前生成并清除排队输入；后者接飞书原生停止按钮，同样经过 owner 私聊认证，不进入模型或创建进度消息。
+- `/new`：为当前话题或群 @Bot scope 创建新 Session 映射，保留旧历史；私聊主线会提示下一条普通消息自动开启新话题，不创建无调用方的控制 Session。
+- `/cancel`、`/stop`：原生取消当前生成并清除同 scope 排队输入；私聊主线命令保留取消该私聊当前生成的兼容语义。后者接飞书原生停止按钮，同样经过输入认证，不进入模型或创建进度消息。
 - `/status`：展示通道和收发计数。
 - `/help`：展示当前命令和能力边界。
 
