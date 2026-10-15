@@ -6,7 +6,7 @@ const configPath = resolve(process.env.LUMI_SERVER_CONFIG ?? 'data/server/config
 let server
 try {
   server = await startHost(configPath)
-  process.stdout.write('lumi ready · DSH host + Feishu private chat\n')
+  process.stdout.write('lumi ready · DSH host + Feishu chat\n')
   let stop
   const signal = new Promise(resolve => { stop = resolve })
   process.once('SIGINT', stop)

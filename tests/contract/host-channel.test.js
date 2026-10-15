@@ -234,14 +234,12 @@ describe('DSH native channel composition', () => {
     expect(model.requests).toHaveLength(4)
   }, 60000)
 
-  it('shares only explicit @Bot root messages in an allowed group and isolates group topics', async () => {
+  it('shares only explicit @Bot root messages in any group by default and isolates group topics', async () => {
     const model = await startMockLlmServer({
       apiKey: 'contract-key', sequence: ['success'], repeatLast: true, successText: 'group answer',
     })
     models.push(model)
-    const fixture = await start(directory(), model, false, {
-      groupChatIds: ['oc_group'], botOpenId: 'ou_bot',
-    })
+    const fixture = await start(directory(), model, false, { botOpenId: 'ou_bot' })
     const mention = [{ key: '@_user_1', id: { open_id: 'ou_bot' }, mentioned_type: 'bot', name: 'lumi' }]
     await fixture.sendMessage({
       text: '@_user_1 GROUP_SHARED_CONTEXT_ONE', id: 'group_one',

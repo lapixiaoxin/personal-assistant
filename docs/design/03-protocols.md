@@ -13,7 +13,7 @@
 - 飞书 `appId / appSecret / ownerOpenId`
 
 飞书可选 `replyMode: text | streaming-cards | native-cot`；省略保持文本。native-cot 使用原生进度消息与 Card 2.0 正文，streaming-cards 保留双卡片，命令仍使用文本。
-可选 `groupChatIds` 是允许群聊输入的精确 `oc_...` 白名单；缺省时拒绝全部群消息。Bot 身份在启动时通过官方 bot 信息接口获取，不写入私有配置。
+可选 `groupChatIds` 控制群入口：省略或 `["*"]` 表示所有群中显式 @Bot 的消息均可进入；`[]` 关闭群聊；`["oc_..."]` 收窄到精确群 ID。Bot 身份在启动时通过官方 bot 信息接口获取，不写入私有配置。
 
 配置文件必须禁止 group/other 读取。平台凭据不放环境变量；模型 Key 由白名单环境变量传入 DSH 子进程。
 
@@ -39,7 +39,7 @@ text      = normalized non-empty text
 replyInThread = whether every reply belongs to this Feishu topic
 ```
 
-私聊只接受 configured owner：根消息以自身 message ID 开启新话题/Session，话题回复按 `root_id` 续接该 Session。群聊只接受 `groupChatIds` 中用户对当前 Bot 的显式 @：群根消息共享该群的 @Bot Session，带 `root_id` 或 `thread_id` 的消息按话题根消息独立 Session。话题启动消息本身是新 Session 的第一条用户输入。该对象是进程内端口，不是公网身份声明。平台重投相同 ID/摘要不重复执行；相同 ID/不同摘要拒绝。
+私聊只接受 configured owner：根消息以自身 message ID 开启新话题/Session，话题回复按 `root_id` 续接该 Session。群聊只接受用户对当前 Bot 的显式 @，并按 `groupChatIds` 策略决定是否进入：群根消息共享该群的 @Bot Session，带 `root_id` 或 `thread_id` 的消息按话题根消息独立 Session。话题启动消息本身是新 Session 的第一条用户输入。该对象是进程内端口，不是公网身份声明。平台重投相同 ID/摘要不重复执行；相同 ID/不同摘要拒绝。
 
 ## 收发状态
 

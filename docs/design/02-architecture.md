@@ -40,7 +40,7 @@ DSH 是唯一通用 Harness。lumi 不实现规划器、模型循环、专家路
 3. Host 将输入按稳定平台 message ID 先落 SQLite，再返回事件回执。
 4. Host 串行取队列，创建或恢复映射的 DSH Agent。
 5. DSH 管理 Session、提示词、模型和工具循环。
-6. Host 按终端提供的会话作用域选择或恢复 DSH Agent：私聊根消息与话题根消息各自绑定一个 Session；群聊根消息共享白名单群的 @Bot 上下文，群话题独立绑定一个 Session。
+6. Host 按终端提供的会话作用域选择或恢复 DSH Agent：私聊根消息与话题根消息各自绑定一个 Session；群聊根消息共享该群已接收的 @Bot 上下文，群话题独立绑定一个 Session。
 7. Host 保存回复意图，文本模式向原消息发送一次；私聊与话题消息均以飞书话题回复，流式模式在模型前确认两条消息，并持续更新同一目标。
 8. 平台业务码和 message ID 有效、流式卡片终态已确认后标 `sent`；不明确则标 `unknown`。
 

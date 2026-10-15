@@ -6,7 +6,7 @@
 
 单机、单 owner 的 lumi 由官方 SDK 启动持久 DSH。DSH 拥有推理、规划、Session、工具和 Agent 调度；lumi 只维护个人资产、可信插件、通道与部署。
 
-当前入口为飞书自建 Bot 私聊文本，以及可选白名单群聊中用户显式 @Bot 的文本。通道校验 App、私聊 owner `open_id`，或群 ID、当前 Bot 身份与 `mentions`；输入先持久化，按平台 message ID 去重。私聊主线消息开启独立话题与 Session；群根 @Bot 消息共享群 scope、群话题独立。回复保存发送意图与平台回执；中断生成和发送结果未知均不自动重放。
+当前入口为飞书自建 Bot 私聊文本，以及用户显式 @Bot 的群文本；默认所有群可用，`groupChatIds` 可关闭或收窄。通道校验 App、私聊 owner `open_id`，或当前 Bot 身份与 `mentions`；输入先持久化，按平台 message ID 去重。私聊主线消息开启独立话题与 Session；群根 @Bot 消息共享群 scope、群话题独立。回复保存发送意图与平台回执；中断生成和发送结果未知均不自动重放。
 
 默认只开放对话与可选 `personal-context/v1` 状态工具。文件、Shell、网络、外部 Agent、设备和业务动作未启用。具体产品接入不在本规范范围。
 

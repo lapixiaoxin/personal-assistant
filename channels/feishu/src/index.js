@@ -3,6 +3,8 @@ import { AppType, Client, defaultHttpInstance, EventDispatcher, WSClient } from 
 import { createFeishuStreaming } from './streaming.js'
 import { createFeishuProgress } from './progress.js'
 
+const GROUP_ALL = '*'
+
 export function validateFeishuConfig(config) {
   if (!config || typeof config !== 'object'
     || !/^cli_[A-Za-z0-9]+$/.test(config.appId)
@@ -12,11 +14,26 @@ export function validateFeishuConfig(config) {
     || (config.groupChatIds !== undefined && (!Array.isArray(config.groupChatIds)
       || config.groupChatIds.length > 64
       || new Set(config.groupChatIds).size !== config.groupChatIds.length
-      || config.groupChatIds.some(id => typeof id !== 'string' || !/^oc_[A-Za-z0-9_-]+$/.test(id))))
+      || (config.groupChatIds.includes(GROUP_ALL) && config.groupChatIds.length !== 1)
+      || config.groupChatIds.some(id => id !== GROUP_ALL
+        && (typeof id !== 'string' || !/^oc_[A-Za-z0-9_-]+$/.test(id)))))
     || Object.keys(config).some(key => !['appId', 'appSecret', 'ownerOpenId', 'replyMode', 'groupChatIds'].includes(key))) {
     throw new Error('Feishu config requires appId, appSecret and ownerOpenId')
   }
   return config
+}
+
+export function acceptsAllGroupChats(config) {
+  return config.groupChatIds === undefined || config.groupChatIds.includes(GROUP_ALL)
+}
+
+export function acceptsGroupChat(config, chatId) {
+  if (acceptsAllGroupChats(config)) return true
+  return config.groupChatIds.includes(chatId)
+}
+
+export function groupChatEnabled(config) {
+  return acceptsAllGroupChats(config) || config.groupChatIds.length > 0
 }
 
 /** Receives ONLY the authenticated official WS dispatcher's flattened event. */
@@ -42,7 +59,7 @@ export function normalizeFeishuEvent(event, config, botOpenId) {
   const mention = isGroup && Array.isArray(message.mentions)
     ? message.mentions.find(candidate => candidate?.id?.open_id === botOpenId
       && typeof candidate.key === 'string' && candidate.key) : undefined
-  if (isGroup && (!config.groupChatIds?.includes(message.chat_id) || !mention)) return undefined
+  if (isGroup && (!acceptsGroupChat(config, message.chat_id) || !mention)) return undefined
   const rawText = isGroup ? content.text.split(mention.key).join('') : content.text
   const text = rawText.replace(/[\u200B-\u200D\uFEFF]/g, '').trim()
   if (!text) return undefined
@@ -136,7 +153,7 @@ export function createFeishuChannel(config, report = () => {}) {
       : config.replyMode === 'streaming-cards' ? cardPort : undefined,
     recoveryStreaming: nativePort,
     async start(receive) {
-      const botOpenId = config.groupChatIds?.length ? await fetchFeishuBotOpenId(client) : undefined
+      const botOpenId = groupChatEnabled(config) ? await fetchFeishuBotOpenId(client) : undefined
       await new Promise((resolve, reject) => {
         const timer = setTimeout(() => {
           ws?.close({ force: true })

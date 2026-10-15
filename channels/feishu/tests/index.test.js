@@ -1,7 +1,8 @@
 import { EventDispatcher } from '@larksuiteoapi/node-sdk'
 import { describe, expect, it, vi } from 'vitest'
 import {
-  fetchFeishuBotOpenId, formatReply, normalizeFeishuEvent, sendFeishuReply, validateFeishuConfig,
+  acceptsAllGroupChats, acceptsGroupChat, fetchFeishuBotOpenId, formatReply, groupChatEnabled,
+  normalizeFeishuEvent, sendFeishuReply, validateFeishuConfig,
 } from '../src/index.js'
 
 const config = { appId: 'cli_test', appSecret: 'synthetic-secret', ownerOpenId: 'ou_owner' }
@@ -45,8 +46,7 @@ describe('Feishu platform boundary', () => {
     expect(normalizeFeishuEvent(input, config)).toBeUndefined()
   })
 
-  it('accepts only explicit Bot mentions from configured group chats and scopes topics by root message', () => {
-    const groupConfig = { ...config, groupChatIds: ['oc_group'] }
+  it('accepts explicit Bot mentions from every group by default and scopes topics by root message', () => {
     const groupEvent = {
       ...event,
       sender: { sender_type: 'user', sender_id: { open_id: 'ou_colleague' } },
@@ -56,7 +56,7 @@ describe('Feishu platform boundary', () => {
         mentions: [{ key: '@_user_1', id: { open_id: 'ou_bot' }, mentioned_type: 'bot', name: 'lumi' }],
       },
     }
-    expect(normalizeFeishuEvent(groupEvent, groupConfig, 'ou_bot')).toMatchObject({
+    expect(normalizeFeishuEvent(groupEvent, config, 'ou_bot')).toMatchObject({
       sender: 'ou_colleague', text: '帮我总结', conversation: 'cli_test:oc_group:group',
       replyInThread: false, chatType: 'group',
     })
@@ -66,16 +66,33 @@ describe('Feishu platform boundary', () => {
         ...groupEvent.message, message_id: 'om_reply', root_id: 'om_group_input', thread_id: 'omt_topic',
       },
     }
-    expect(normalizeFeishuEvent(thread, groupConfig, 'ou_bot')).toMatchObject({
+    expect(normalizeFeishuEvent(thread, config, 'ou_bot')).toMatchObject({
       conversation: 'cli_test:oc_group:topic:om_group_input', replyInThread: true,
     })
-    expect(normalizeFeishuEvent(groupEvent, groupConfig)).toBeUndefined()
+    expect(normalizeFeishuEvent(groupEvent, config)).toBeUndefined()
     expect(normalizeFeishuEvent({
       ...groupEvent, message: { ...groupEvent.message, mentions: [] },
-    }, groupConfig, 'ou_bot')).toBeUndefined()
+    }, config, 'ou_bot')).toBeUndefined()
+  })
+
+  it('can explicitly close or restrict group chats', () => {
+    const groupEvent = {
+      ...event,
+      sender: { sender_type: 'user', sender_id: { open_id: 'ou_colleague' } },
+      message: {
+        ...event.message, message_id: 'om_group_input', chat_id: 'oc_group', chat_type: 'group',
+        content: JSON.stringify({ text: '@_user_1 帮我总结' }),
+        mentions: [{ key: '@_user_1', id: { open_id: 'ou_bot' }, mentioned_type: 'bot', name: 'lumi' }],
+      },
+    }
+    expect(normalizeFeishuEvent(groupEvent, { ...config, groupChatIds: [] }, 'ou_bot')).toBeUndefined()
+    expect(normalizeFeishuEvent(groupEvent, { ...config, groupChatIds: ['*'] }, 'ou_bot'))
+      .toMatchObject({ conversation: 'cli_test:oc_group:group' })
+    expect(normalizeFeishuEvent(groupEvent, { ...config, groupChatIds: ['oc_group'] }, 'ou_bot'))
+      .toMatchObject({ conversation: 'cli_test:oc_group:group' })
     expect(normalizeFeishuEvent({
       ...groupEvent, message: { ...groupEvent.message, chat_id: 'oc_other' },
-    }, groupConfig, 'ou_bot')).toBeUndefined()
+    }, { ...config, groupChatIds: ['oc_group'] }, 'ou_bot')).toBeUndefined()
   })
 
   it('binds one reply to the inbound message and requires a business receipt', async () => {
@@ -114,9 +131,19 @@ describe('Feishu platform boundary', () => {
     await expect(fetchFeishuBotOpenId({ request })).rejects.not.toThrow('private-token')
   })
 
-  it('requires bounded, unique group chat allowlists', () => {
+  it('validates group chat policy and defaults to all mentioned groups', () => {
     expect(() => validateFeishuConfig({ ...config, groupChatIds: ['oc_group', 'oc_second'] })).not.toThrow()
-    for (const groupChatIds of [['oc_group', 'oc_group'], ['oc_invalid!'], 'oc_group', Array(65).fill('oc_group')]) {
+    expect(() => validateFeishuConfig({ ...config, groupChatIds: [] })).not.toThrow()
+    expect(() => validateFeishuConfig({ ...config, groupChatIds: ['*'] })).not.toThrow()
+    expect(acceptsAllGroupChats(config)).toBe(true)
+    expect(acceptsAllGroupChats({ ...config, groupChatIds: ['*'] })).toBe(true)
+    expect(acceptsGroupChat({ ...config, groupChatIds: ['oc_group'] }, 'oc_group')).toBe(true)
+    expect(acceptsGroupChat({ ...config, groupChatIds: ['oc_group'] }, 'oc_other')).toBe(false)
+    expect(groupChatEnabled(config)).toBe(true)
+    expect(groupChatEnabled({ ...config, groupChatIds: [] })).toBe(false)
+    for (const groupChatIds of [
+      ['oc_group', 'oc_group'], ['oc_invalid!'], ['*', 'oc_group'], 'oc_group', Array(65).fill('oc_group'),
+    ]) {
       expect(() => validateFeishuConfig({ ...config, groupChatIds })).toThrow()
     }
   })

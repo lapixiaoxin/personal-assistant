@@ -7,7 +7,7 @@
 | 范围 | 事实 |
 | --- | --- |
 | 核心 | `host/` 通过官方 SDK 启动 DSH `0.2.0-rc.2` 常驻进程；DSH 拥有 Agent、Session、模型和工具循环 |
-| 入口 | 飞书自建 Bot，owner 私聊文本；可选精确群白名单中用户 @Bot 文本，官方长连接，无公网回调 |
+| 入口 | 飞书自建 Bot，owner 私聊文本；默认接收任意群中用户 @Bot 文本，官方长连接，无公网回调 |
 | 结构 | Host 负责组合与持久运行，`channels/*` 负责终端、认证和会话作用域，`plugins/*` 负责个人上下文和能力 |
 | 会话 | 私聊根消息和飞书话题各自绑定原生 Agent Session；群根 @Bot 消息共享群 scope，群话题独立；支持 `/new`、`/cancel` |
 | 收发 | SQLite 去重、串行处理、回复意图和平台 message ID 回执 |
@@ -20,7 +20,7 @@
 
 ## 证据
 
-- 当前完整门禁通过 11 个文件 / 73 项测试；覆盖原生 COT、话题 Session、群 @Bot scope 和 DSH 合约。
+- 当前完整门禁通过 11 个文件 / 74 项测试；覆盖原生 COT、话题 Session、默认全群 @Bot scope、显式关闭/收窄策略和 DSH 合约。
 - DSH 原生通道契约覆盖多轮、重启、取消、新会话、工具拒绝和真实 `SIGKILL`。
 - 飞书边界测试使用官方 EventDispatcher，覆盖身份、消息类型、重复和发送回执。
 - 当前三层结构为 3 个生产 workspace、16 个生产源码文件和 1 条内部生产依赖边；9 个测试文件 / 54 项通过。
@@ -30,7 +30,7 @@
 - 2026-10-14T16:10:21Z，真实飞书 API 双卡片验证取得 2 个 IM message ID，并完成正文增量和两张卡片终态；状态 `verified_once`。该验证未模拟 WS 输入或调用真实模型，不等同于一次完整 Bot 新对话或人工客户端展示验收。
 - 2026-10-15T03:34:36Z，真实 `message_cot` 创建、两次事件更新与 Complete 均取得确认回执；使用独立私人投递账本，未伪造生产输入或工具调用。API 生命周期为 `verified_once`，客户端多级折叠观感仍待人工确认。
 - 2026-10-15T07:33:44Z，真实 owner 私聊对同一原消息的原生 COT 和最终文本均以 `reply_in_thread: true` 取得确认回执，形成部署验证话题；未伪造生产 inbox 输入。该结果不等同于真实 WS→模型→用户话题续接或群展示验收。
-- 当前私有实例已设 `native-cot`，SQLite 已从 v3 迁至 v4，服务为 `ready / connected`；15 条收件箱 `sent`、0 个未决。私有 `groupChatIds` 当前未配置，群入口关闭。迁移前完整备份位于本机私有 `data/server-backups/pre-threaded-sessions-cCY2Kd/server`。
+- 当前私有实例已设 `native-cot`，SQLite 已从 v3 迁至 v4，服务为 `ready / connected`；18 条收件箱 `sent`、0 个未决。私有 `groupChatIds` 当前未配置，语义为所有群中显式 @Bot 可用。迁移前完整备份位于本机私有 `data/server-backups/pre-threaded-sessions-cCY2Kd/server`。
 - 2026-10-15 进度区调整为 compact 宽度、紧凑留白和跟随文字的折叠箭头；完整门禁通过 54 项，未发送卡片的真实 API 接受为 `verified_once`，客户端外观待确认。公开 text/post 无手动折叠字段，仍使用 CardKit，标题自适应需客户端 ≥7.32。
 
 仓库精简的文件与磁盘结果记录在 [SPEC-0017](../specs/0017-repository-simplification.md)；三层目录收敛记录在 [SPEC-0018](../specs/0018-host-channels-plugins.md)。
